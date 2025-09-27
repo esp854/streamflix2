@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+</head>
+<body>
+    <h1>Test Subscription Plans API</h1>
+    <div id="result"></div>
+
+    <script>
+        fetch('http://localhost:5000/api/subscription/plans')
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                return response.text();
+            })
+            .then(text => {
+                console.log('Response text:', text);
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(JSON.parse(text), null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = '<p>Error: ' + error.message + '</p>';
+            });
+    </script>
+</body>
+</html>

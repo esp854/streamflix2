@@ -57,8 +57,8 @@ export default function MovieRow({ title, movies, isLoading }: MovieRowProps) {
 
   if (isLoading) {
     return (
-      <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="movie-row-loading">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>
+      <section className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8" data-testid="movie-row-loading">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-foreground">{title}</h2>
         <div className="flex space-x-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="flex-shrink-0 w-48 md:w-56">
@@ -79,8 +79,8 @@ export default function MovieRow({ title, movies, isLoading }: MovieRowProps) {
   }
 
   return (
-    <section className="py-8 px-4 sm:px-6 lg:px-8 relative group" data-testid="movie-row">
-      <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground" data-testid="movie-row-title">{title}</h2>
+    <section className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 relative group" data-testid="movie-row">
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-foreground" data-testid="movie-row-title">{title}</h2>
       
       <div className="relative">
         {/* Left scroll button */}

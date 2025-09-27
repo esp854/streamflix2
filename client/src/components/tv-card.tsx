@@ -3,7 +3,7 @@ import { Play, Star, Plus, Heart, Share2 } from "lucide-react";
 import { TMDBTVSeries, TV_GENRE_MAP } from "@/types/movie";
 import { tmdbService } from "@/lib/tmdb";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
 
@@ -14,17 +14,74 @@ interface TVCardProps {
 }
 
 export default function TVCard({ series, size = "medium", showOverlay = true }: TVCardProps) {
-  const [imageError, setImageError] = useState(false);
-  const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
-  const { shareContent } = useShare();
-  
-  // Check if series is favorite
-  const { data: favoriteStatus } = checkFavorite(series.id);
-  const isFavorite = favoriteStatus?.isFavorite || false;
+   const [imageError, setImageError] = useState(false);
+   const [showTrailer, setShowTrailer] = useState(false);
+   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+   const [isHovering, setIsHovering] = useState(false);
+   const videoRef = useRef<HTMLVideoElement>(null);
+   const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
+   const { shareContent } = useShare();
+
+   // Check if series is favorite
+   const { data: favoriteStatus } = checkFavorite(series.id);
+   const isFavorite = favoriteStatus?.isFavorite || false;
 
   const handleImageError = () => {
     setImageError(true);
   };
+
+  // Load trailer when hovering
+  const loadTrailer = async () => {
+    if (trailerUrl) return; // Already loaded
+
+    try {
+      const details = await tmdbService.getTVShowDetails(series.id);
+      if (details.videos && details.videos.results) {
+        const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+        if (trailer) {
+          setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading trailer:', error);
+    }
+  };
+
+  // Handle mouse enter
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    loadTrailer();
+    // Start trailer after a short delay
+    trailerTimeoutRef.current = setTimeout(() => {
+      if (trailerUrl) {
+        setShowTrailer(true);
+      }
+    }, 500);
+  };
+
+  // Handle mouse leave
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    setShowTrailer(false);
+    if (trailerTimeoutRef.current) {
+      clearTimeout(trailerTimeoutRef.current);
+      trailerTimeoutRef.current = null;
+    }
+    // Pause video if playing
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (trailerTimeoutRef.current) {
+        clearTimeout(trailerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -66,15 +123,33 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
   const genres = series.genre_ids?.slice(0, 2).map(id => TV_GENRE_MAP[id]).filter(Boolean) || [];
 
   return (
-    <Link href={`/tv/${series.id}`} className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer tv-card block`} data-testid={`tv-card-${series.id}`}>
+    <Link
+      href={`/tv/${series.id}`}
+      className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer tv-card block`}
+      data-testid={`tv-card-${series.id}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
         <div className="relative overflow-hidden rounded-md transition-transform duration-300 group-hover:scale-105">
-          <img
-            src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(series.poster_path)}
-            alt={series.name}
-            className={`w-full ${heightClasses[size]} object-cover`}
-            onError={handleImageError}
-            data-testid={`tv-poster-${series.id}`}
-          />
+          {showTrailer && trailerUrl ? (
+            <iframe
+              ref={videoRef as any}
+              src={trailerUrl}
+              className={`w-full ${heightClasses[size]} object-cover`}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              title={`${series.name} trailer`}
+            />
+          ) : (
+            <img
+              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(series.poster_path)}
+              alt={series.name}
+              className={`w-full ${heightClasses[size]} object-cover`}
+              onError={handleImageError}
+              data-testid={`tv-poster-${series.id}`}
+            />
+          )}
           
           {showOverlay && (
             <>
@@ -136,12 +211,12 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
           )}
         </div>
         
-        <div className="mt-3" data-testid={`tv-info-${series.id}`}>
-          <h3 className="text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${series.id}`}>
+        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${series.id}`}>
+          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${series.id}`}>
             {series.name}
           </h3>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-sm text-muted-foreground" data-testid={`tv-year-${series.id}`}>
+            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${series.id}`}>
               {series.first_air_date ? new Date(series.first_air_date).getFullYear() : "Date inconnue"} • {genres.join(", ")}
             </p>
           </div>

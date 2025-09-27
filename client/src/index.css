@@ -34,9 +34,6 @@
   --text-primary: hsl(0 0% 98%);
   --text-secondary: hsl(0 0% 70%);
   
-  /* Blue background variant */
-  --blue-background: hsl(220 20% 15%);
-  
   /* Font families */
   --font-sans: 'Inter', sans-serif;
   --font-serif: Georgia, serif;
@@ -63,6 +60,29 @@
   --border: hsl(0 0% 25%);
   --input: hsl(0 0% 15%);
   --ring: hsl(348 91% 49%);
+}
+
+/* Admin blue theme scope */
+.admin-theme {
+  --background: #0a1729;
+  --foreground: hsl(0 0% 98%);
+  --card: #0d1b2a;
+  --card-foreground: hsl(0 0% 98%);
+  --popover: #0a1729;
+  --popover-foreground: hsl(0 0% 98%);
+  --primary: #1e3a8a;
+  --primary-foreground: hsl(0 0% 98%);
+  --secondary: #132a4a;
+  --secondary-foreground: #9fb3c8;
+  --muted: #102a43;
+  --muted-foreground: #9fb3c8;
+  --accent: #3b82f6;
+  --accent-foreground: hsl(0 0% 98%);
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 98%);
+  --border: #1b2a41;
+  --input: #0f243d;
+  --ring: #3b82f6;
 }
 
 @layer base {
@@ -163,4 +183,10 @@
 
 .loading-spinner {
   animation: spin 1s linear infinite;
+}
+
+/* Admin compact dialog overrides */
+.admin-theme [role="dialog"] {
+  max-height: 80vh;
+  overflow-y: auto;
 }

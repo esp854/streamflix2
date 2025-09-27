@@ -31,3 +31,6 @@
 ## Notes
 - Data is in-memory for backend/routes/* mocks; restart resets state.
 - Ensure `npm install` is run at project root; client proxies /api → http://localhost:5000.
+
+## Test Configuration
+- targetFramework: Playwright

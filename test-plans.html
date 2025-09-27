@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Subscription Plans</title>
+</head>
+<body>
+    <h1>Test Subscription Plans</h1>
+    <button id="testPlans">Get Subscription Plans</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testPlans').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/subscription/plans');
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                console.log('Plans data:', data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = '<p>Error: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>

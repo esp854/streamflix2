@@ -40,8 +40,8 @@ export default function HeroCarousel() {
       <section className="relative h-screen overflow-hidden bg-muted animate-pulse" data-testid="hero-carousel-loading">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Chargement des films...</p>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3 sm:mb-4"></div>
+            <p className="text-sm sm:text-base text-muted-foreground">Chargement des films...</p>
           </div>
         </div>
       </section>
@@ -99,23 +99,23 @@ export default function HeroCarousel() {
       </div>
       
       {/* Content */}
-      <div className="absolute bottom-1/4 left-8 md:left-16 max-w-lg z-10" data-testid="hero-content">
-        <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight text-white" data-testid="hero-title">
+      <div className="absolute bottom-1/4 left-4 right-4 sm:left-8 sm:right-8 md:left-16 md:max-w-lg z-10" data-testid="hero-content">
+        <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold mb-3 sm:mb-4 leading-tight text-white" data-testid="hero-title">
           {currentMovie.title}
         </h1>
-        <p className="text-lg md:text-xl text-white/80 mb-6 leading-relaxed line-clamp-3" data-testid="hero-overview">
+        <p className="text-base sm:text-lg md:text-xl text-white/80 mb-4 sm:mb-6 leading-relaxed line-clamp-2 sm:line-clamp-3" data-testid="hero-overview">
           {currentMovie.overview}
         </p>
-        <div className="flex space-x-4" data-testid="hero-actions">
-          <Link href={`/movie/${currentMovie.id}`}>
-            <Button className="btn-primary flex items-center space-x-2" data-testid="button-watch">
-              <Play className="w-5 h-5" />
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="hero-actions">
+          <Link href={`/movie/${currentMovie.id}`} className="w-full sm:w-auto">
+            <Button className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" data-testid="button-watch">
+              <Play className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Regarder</span>
             </Button>
           </Link>
-          <Link href={`/movie/${currentMovie.id}`}>
-            <Button className="btn-secondary flex items-center space-x-2" data-testid="button-info">
-              <Info className="w-5 h-5" />
+          <Link href={`/movie/${currentMovie.id}`} className="w-full sm:w-auto">
+            <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto" data-testid="button-info">
+              <Info className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Plus d'infos</span>
             </Button>
           </Link>
@@ -123,25 +123,25 @@ export default function HeroCarousel() {
       </div>
       
       {/* Controls */}
-      <div className="absolute bottom-8 right-8 flex space-x-2 z-20" data-testid="carousel-controls">
+      <div className="absolute bottom-6 right-4 sm:bottom-8 sm:right-8 flex space-x-2 z-20" data-testid="carousel-controls">
         <Button
           variant="secondary"
           size="icon"
           onClick={togglePlayPause}
-          className="w-12 h-12 rounded-full bg-secondary/50 hover:bg-secondary/70"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary/50 hover:bg-secondary/70"
           data-testid="carousel-play-pause"
         >
-          {isPlaying ? <Pause className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
+          {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <PlayIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
         </Button>
       </div>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20" data-testid="carousel-indicators">
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-1 sm:space-x-2 z-20" data-testid="carousel-indicators">
         {heroMovies.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-colors duration-200 ${
               index === currentSlide ? "bg-primary" : "bg-white/50"
             }`}
             data-testid={`carousel-indicator-${index}`}

@@ -2,16 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { plans } from "./plans";
-console.log('Plans imported:', plans); // Debug log
-
 import { paymentService, type CustomerInfo } from "./payment-service";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import {
-  insertFavoriteSchema,
-  insertWatchHistorySchema,
-  insertUserPreferencesSchema,
-  insertContactMessageSchema,
+import { 
+  insertFavoriteSchema, 
+  insertWatchHistorySchema, 
+  insertUserPreferencesSchema, 
+  insertContactMessageSchema, 
   insertUserSchema,
   insertSubscriptionSchema,
   insertPaymentSchema,
@@ -21,22 +19,13 @@ import {
   insertNotificationSchema,
   insertUserSessionSchema,
   insertViewTrackingSchema,
-  insertCommentSchema,
   users,
   payments,
   notifications,
   userSessions,
   viewTracking,
   favorites,
-  watchHistory,
-  userPreferences,
-  contactMessages,
-  subscriptions,
-  banners,
-  collections,
-  content,
-  episodes,
-  comments
+  watchHistory
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -720,45 +709,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get analytics data (admin only)
-  app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
-    try {
-      // Mock analytics data
-      const analytics = {
-        totalUsers: await storage.getAllUsers().then(users => users.length),
-        activeUsers: await storage.getAllUsers().then(users => users.filter(u => !u.banned).length),
-        newUsersThisWeek: 2,
-        totalMovies: await storage.getAllContent().then(content => content.filter(c => c.mediaType === 'movie').length),
-        totalSeries: await storage.getAllContent().then(content => content.filter(c => c.mediaType === 'tv').length),
-        dailyViews: 124,
-        weeklyViews: 842,
-        activeSubscriptionsCount: await storage.getSubscriptions().then(subs => subs.filter(s => s.status === 'active').length),
-        activeSessions: 12,
-        revenue: {
-          monthly: await storage.getPayments().then(payments =>
-            payments.filter(p => p.status === 'success')
-              .reduce((sum, p) => sum + (p.amount || 0), 0)
-          ),
-          growth: 12.5,
-          totalPayments: await storage.getPayments().then(payments => payments.filter(p => p.status === 'success').length)
-        },
-        subscriptions: {
-          basic: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'basic').length),
-          standard: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'standard').length),
-          premium: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'premium').length)
-        },
-        recentActivity: {
-          newMoviesAdded: 3,
-          newUsersToday: 1
-        }
-      };
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      res.status(500).json({ error: "Failed to fetch analytics" });
-    }
-  });
-
   // Create favorite (admin only)
   app.post("/api/admin/favorites", requireAdmin, async (req, res) => {
     try {
@@ -1308,8 +1258,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-
   // Get subscription plans
   app.get("/api/subscription/plans", async (req: any, res: any) => {
     try {
@@ -1319,144 +1267,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch plans" });
     }
   });
-
-  // Get available payment providers
-  app.get("/api/subscription/payment-providers", async (req: any, res: any) => {
-    try {
-      const providers = {
-        lygos: paymentService.isLygosConfigured(),
-        paypal: paymentService.isPayPalConfigured()
-      };
-      res.json(providers);
-    } catch (error) {
-      console.error("Error fetching payment providers:", error);
-      res.status(500).json({ error: "Failed to fetch payment providers" });
-    }
   });
 
-  // Get PayPal client ID for frontend
-  app.get("/api/paypal/client-id", async (req: any, res: any) => {
+  // Subscribe to a plan
+  app.post("/api/subscribe", async (req, res) => {
     try {
-      const clientId = paymentService.getPayPalClientId();
-      res.json({ clientId });
-    } catch (error) {
-      console.error("Error fetching PayPal client ID:", error);
-      res.status(500).json({ error: "Failed to fetch PayPal client ID" });
-    }
-  });
-
-  // Test PayPal configuration
-  app.get("/api/paypal/test", async (req: any, res: any) => {
-    try {
-      const result = await paymentService.testPayPalConfiguration();
-      res.json(result);
-    } catch (error: any) {
-      console.error("PayPal test error:", error);
-      res.status(500).json({ configured: false, error: error.message });
-    }
-  });
-
-  // Capture PayPal payment
-  app.post("/api/subscription/capture-paypal/:paymentId", async (req: any, res: any) => {
-    try {
+      const { planId, paymentToken } = req.body;
+      
       if (!req.user) {
         securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
         return res.status(401).json({ error: "Non authentifié" });
       }
-
-      const { paymentId } = req.params;
-      const { orderId } = req.body;
-
-      // Capture the PayPal order
-      const captureResult = await paymentService.capturePayPalPayment(orderId);
-
-      if (captureResult.success) {
-        // Update payment status in database
-        await storage.updatePaymentStatus(paymentId, 'success');
-
-        // Activate subscription
-        const payment = await storage.getPaymentById(paymentId);
-        if (payment && (payment.paymentData as any)?.planId) {
-          const planId = (payment.paymentData as any).planId;
-          const selectedPlan = plans[planId as keyof typeof plans];
-          if (selectedPlan) {
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-            await storage.createSubscription({
-              userId: req.user.userId,
-              planId,
-              amount: selectedPlan.amount,
-              paymentMethod: 'paypal',
-              status: 'active',
-              startDate,
-              endDate
-            });
-          }
-        }
-
-        res.json({ status: 'COMPLETED', paymentId });
-      } else {
-        res.status(400).json({ error: captureResult.error });
-      }
-    } catch (error: any) {
-      console.error("Error capturing PayPal payment:", error);
-      res.status(500).json({ error: error.message || "Erreur lors de la capture du paiement PayPal" });
-    }
-  });
-
-  // Create payment invoice for subscription
-  app.post("/api/subscription/create-payment", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
+      
+      const user = await storage.getUserById(req.user.userId);
+      if (!user) {
+        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, req.user.userId);
         return res.status(401).json({ error: "Non authentifié" });
       }
-
-      const { planId, customerInfo } = req.body || {};
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
+      
       const plan = plans[planId as keyof typeof plans];
       if (!plan) {
         return res.status(400).json({ error: "Plan invalide" });
       }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
+      
+      // Process payment
+      const customerInfo: CustomerInfo = {
+        email: user.email,
+        name: user.username
       };
-
-      const result = await paymentService.createLygosPayment(planId, info, user.id);
-      // Retourner le résultat tel quel (paymentLink, approval_url, paymentId, qrCode, ...)
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement" });
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      if (!paymentId) {
-        return res.status(400).json({ error: "Payment ID requis" });
+      
+      const paymentResult = await paymentService.createLygosPayment(planId, customerInfo, user.id);
+      
+      // For free plans or successful payments, create the subscription
+      if (plan.amount === 0 || paymentResult.paymentLink) {
+        // Update user subscription
+        const subscriptionData = {
+          userId: user.id,
+          planId: planId,
+          amount: plan.amount,
+          paymentMethod: 'lygos',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + plan.duration * 24 * 60 * 60 * 1000),
+          status: 'active'
+        };
+        const subscription = await storage.createSubscription(subscriptionData);
+        
+        // Save payment information for paid plans
+        if (plan.amount > 0 && paymentResult.paymentId) {
+          const paymentData = {
+            userId: user.id,
+            amount: plan.amount,
+            method: 'lygos',
+            subscriptionId: subscription.id,
+            transactionId: paymentResult.paymentId,
+            status: 'pending'
+          };
+          await storage.createPayment(paymentData);
+        }
+        
+        res.json({ 
+          success: true, 
+          message: "Abonnement réussi", 
+          subscription,
+          paymentLink: paymentResult.paymentLink
+        });
+      } else {
+        return res.status(400).json({ error: paymentResult.error || "Échec du paiement" });
       }
-
-      const status = await paymentService.checkLygosPaymentStatus(paymentId);
-      return res.json(status);
-    } catch (error: any) {
-      console.error("Erreur lors de la vérification du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la vérification du paiement" });
+    } catch (error) {
+      console.error("Error subscribing to plan:", error);
+      res.status(500).json({ error: "Erreur lors de l'abonnement" });
     }
   });
 
@@ -1880,17 +1760,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get public banners (no authentication required)
-  app.get("/api/banners", async (req, res) => {
-    try {
-      const banners = await storage.getBanners();
-      res.json(banners);
-    } catch (error) {
-      console.error("Error fetching banners:", error);
-      res.status(500).json({ error: "Failed to fetch banners" });
-    }
-  });
-
   // Update banner (admin only)
   app.put("/api/admin/banners/:id", requireAdmin, async (req, res) => {
     try {
@@ -2039,7 +1908,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'vimeo.com',
         'mux.com',
         'player.mux.com',
-        'zupload.cc',
         '.mp4',
         '.webm',
         '.ogg',
@@ -2057,9 +1925,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (!isSupported) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           error: "URL is not from a recognized video platform",
-          supported_platforms: "Odysee, YouTube, Vimeo, Mux, Zupload.cc, and direct video files"
+          supported_platforms: "Odysee, YouTube, Vimeo, Mux, and direct video files"
         });
       }
       
@@ -2217,33 +2085,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting episode:", error);
       res.status(500).json({ error: "Erreur lors de la suppression de l'épisode" });
-    }
-  });
-
-  // Public endpoint: get episode by TMDB ID + season + episode
-  app.get("/api/episodes/tv/:tmdbId/:season/:episode", async (req: any, res: any) => {
-    try {
-      const tmdbIdNum = parseInt(req.params.tmdbId);
-      const seasonNum = parseInt(req.params.season);
-      const episodeNum = parseInt(req.params.episode);
-
-      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
-        return res.status(400).json({ error: "Paramètres invalides" });
-      }
-
-      // Get content by TMDB (any status to allow inactive items still being setup)
-      const content = await storage.getContentByTmdbIdAnyStatus(tmdbIdNum) || await storage.getContentByTmdbId(tmdbIdNum);
-      if (!content) {
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-
-      const allEpisodes = await storage.getEpisodesByContentId(content.id);
-      const ep = allEpisodes.find((e: any) => Number(e.seasonNumber) === seasonNum && Number(e.episodeNumber) === episodeNum);
-
-      return res.json({ episode: ep || null });
-    } catch (error) {
-      console.error("Error fetching episode by TMDB/season/episode:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'épisode" });
     }
   });
 
@@ -3290,82 +3131,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Lygos Payment Routes
   
-  // Create payment invoice for subscription with Lygos
-  app.post("/api/subscription/create-payment-lygos", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createLygosPayment(planId, info, user.id);
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement Lygos:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement Lygos" });
-    }
-  });
-
-  // Create payment invoice for subscription with PayPal
-  app.post("/api/subscription/create-payment-paypal", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createPayPalPayment(planId, info, user.id);
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement PayPal:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement PayPal" });
-    }
-  });
-
   // Create payment invoice for subscription
   app.post("/api/subscription/create-payment", authenticateToken, async (req: any, res: any) => {
     try {
@@ -3385,19 +3150,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use our payment service to create the payment
       const selectedPlan = plans[planId as keyof typeof plans];
       
-      // For free plans, no payment is needed
-      if (selectedPlan && selectedPlan.amount === 0) {
-        return res.json({ 
-          success: true, 
-          message: 'Abonnement gratuit activé avec succès' 
-        });
-      }
-      
       // For paid plans, use the payment service
       const userId = req.user?.userId || `temp_${customerInfo.email}_${Date.now()}`;
       console.log('Creating payment for:', { userId, planId, customerInfo });
       
-      const paymentResponse = await paymentService.createPayment(planId, customerInfo, userId);
+      const paymentResponse = await paymentService.createLygosPayment(planId, customerInfo, userId);
       
       // For paid plans, return the payment details
       console.log('Payment created successfully:', paymentResponse);
@@ -3534,7 +3291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new subscription with fixed dates
       const startDate = new Date();
       const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
+      endDate.setDate(startDate.getDate() + selectedPlan.duration);
 
       const newSubscription = await storage.createSubscription({
         userId: userId,
@@ -3603,12 +3360,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test route to check if routes are working
-  app.get("/api/test", async (req: any, res: any) => {
-    console.log('Test route called');
-    res.json({ message: "Test route working" });
-  });
-  
   // Get subscription plans
   app.get("/api/subscription/plans", async (req: any, res: any) => {
     try {
@@ -3619,15 +3370,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  console.log('Subscription plans route registered'); // Debug log
-
   // Check payment status
   app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
     try {
       const { paymentId } = req.params;
       
       // Use our payment service to check the payment status
-      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
+      const paymentStatus = await paymentService.checkLygosPaymentStatus(paymentId);
       res.json(paymentStatus);
     } catch (error: any) {
       console.error("Error checking payment status:", error);
@@ -3653,10 +3402,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         status: 'Payment Service Configuration',
         serviceInfo: {
-          currentService: paymentService.isPayPalConfigured() ? 'paypal' : 'lygos',
+          currentService: 'lygos',
           lygosAvailable: isLygosConfigured,
-          paypalAvailable: paymentService.isPayPalConfigured(),
-          usingPaymentLink: isLygosConfigured || paymentService.isPayPalConfigured()
+          usingPaymentLink: isLygosConfigured
         },
         ready: isLygosConfigured
       });
@@ -3684,34 +3432,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching security logs:", error);
       // Provide more detailed error information
-      res.status(500).json({
+      res.status(500).json({ 
         error: "Failed to fetch security logs",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Get activity logs (admin only) - returns security logs formatted as activity events
-  app.get("/api/admin/activity-logs", requireAdmin, (req, res) => {
-    try {
-      const logs = securityLogger.getRecentEvents(100);
-      // Format security logs as activity events for the admin dashboard
-      const activityEvents = logs.map(log => ({
-        id: `activity-${log.timestamp}-${Math.random()}`,
-        timestamp: log.timestamp,
-        eventType: log.eventType,
-        userId: log.userId,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
-        details: log.details,
-        severity: log.severity,
-        description: log.details || `${log.eventType} event`
-      }));
-      res.json(activityEvents);
-    } catch (error) {
-      console.error("Error fetching activity logs:", error);
-      res.status(500).json({
-        error: "Failed to fetch activity logs",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -4332,667 +4054,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      
-      // Use our payment service to check the payment status
-      const paymentStatus = await paymentService.checkLygosPaymentStatus(paymentId);
-      res.json(paymentStatus);
-    } catch (error: any) {
-      console.error("Error checking payment status:", error);
-      
-      // Send a more user-friendly error message
-      const errorMessage = error.message || 'Erreur inconnue lors de la vérification du paiement';
-      const errorDetails = process.env.NODE_ENV === 'development' ? error.stack : undefined;
-      
-      res.status(500).json({ 
-        error: "Impossible de vérifier le statut du paiement", 
-        details: errorMessage,
-        ...(errorDetails ? { stack: errorDetails } : {})
-      });
-    }
-  });
-  
-  // Test payment service configuration
-  app.get("/api/test/payment-service", async (req: any, res: any) => {
-    try {
-      // Check if payment service is configured
-      const isLygosConfigured = paymentService.isConfigured();
-      
-      res.json({
-        status: 'Payment Service Configuration',
-        serviceInfo: {
-          currentService: 'lygos',
-          lygosAvailable: isLygosConfigured,
-          usingPaymentLink: isLygosConfigured
-        },
-        ready: isLygosConfigured
-      });
-    } catch (error) {
-      console.error('Payment service test error:', error);
-      res.status(500).json({ error: 'Configuration test failed' });
-    }
-  });
-
-  // Get CSRF token
-  app.get("/api/csrf-token", async (req: any, res: any) => {
-    try {
-      if (!req.user || !req.user.userId) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const userAgent = req.headers['user-agent'] || '';
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const csrfToken = generateCSRFToken(req.user.userId, userAgent, ipAddress);
-      res.json({ csrfToken });
-    } catch (error) {
-      console.error("Error generating CSRF token:", error);
-      res.status(500).json({ error: "Erreur lors de la génération du jeton CSRF" });
-    }
-  });
-
-  // Get security logs (admin only)
-  app.get("/api/admin/security-logs", requireAdmin, (req, res) => {
-    try {
-      const logs = securityLogger.getRecentEvents(100);
-      res.json(logs);
-    } catch (error) {
-      console.error("Error fetching security logs:", error);
-      // Provide more detailed error information
-      res.status(500).json({ 
-        error: "Failed to fetch security logs",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Test video link accessibility
-  app.post("/api/admin/test-video-link", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { url } = req.body;
-      
-      if (!url) {
-        return res.status(400).json({ error: "URL is required" });
-      }
-      
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch (urlError) {
-        return res.status(400).json({ error: "Invalid URL format" });
-      }
-      
-      // Test the URL accessibility
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      try {
-        const response = await fetch(url, { 
-          method: 'HEAD',
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        res.json({
-          success: true,
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        // Check if it's a CORS error
-        if (fetchError.name === 'AbortError') {
-          return res.status(408).json({ 
-            error: "Request timeout - the server took too long to respond",
-            possible_cause: "Network issue or server not responding"
-          });
-        }
-        
-        // Generic error
-        res.status(500).json({ 
-          error: "Failed to test video link",
-          details: fetchError.message,
-          possible_cause: "CORS restriction, network issue, or invalid URL"
-        });
-      }
-    } catch (error) {
-      console.error("Error testing video link:", error);
-      res.status(500).json({ error: "Failed to test video link" });
-    }
-  });
-
-  // Admin routes for episode management
-  app.post("/api/admin/episodes", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { contentId, seasonNumber, episodeNumber, title, description, odyseeUrl, releaseDate } = req.body;
-      
-      // Validate required fields
-      if (!contentId || !seasonNumber || !episodeNumber || !title) {
-        return res.status(400).json({ error: "Les champs contentId, seasonNumber, episodeNumber et title sont requis" });
-      }
-      
-      // Check if content exists and is a TV series
-      const existingContent = await storage.getContentById(contentId);
-      if (!existingContent) {
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-      
-      if (existingContent.mediaType !== 'tv') {
-        return res.status(400).json({ error: "Le contenu doit être une série TV" });
-      }
-      
-      // Check if episode already exists
-      const existingEpisodes = await storage.getEpisodesByContentId(contentId);
-      const episodeExists = existingEpisodes.some(
-        ep => ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber
-      );
-      
-      if (episodeExists) {
-        return res.status(400).json({ error: "Cet épisode existe déjà pour cette saison" });
-      }
-      
-      // Create episode
-      const episodeData = {
-        contentId,
-        seasonNumber,
-        episodeNumber,
-        title,
-        description: description || '',
-        odyseeUrl: odyseeUrl || '',
-        releaseDate: releaseDate || '',
-        active: true
-      };
-      
-      const newEpisode = await storage.createEpisode(episodeData);
-      
-      res.status(201).json({ 
-        success: true, 
-        message: "Épisode créé avec succès",
-        episode: newEpisode
-      });
-    } catch (error) {
-      console.error("Error creating episode:", error);
-      res.status(500).json({ error: "Erreur lors de la création de l'épisode" });
-    }
-  });
-
-  app.get("/api/admin/episodes/:contentId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { contentId } = req.params;
-      
-      // Validate input
-      if (!contentId) {
-        return res.status(400).json({ error: "contentId est requis" });
-      }
-      
-      const episodes = await storage.getEpisodesByContentId(contentId);
-      res.json(episodes);
-    } catch (error) {
-      console.error("Error fetching episodes:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération des épisodes" });
-    }
-  });
-
-  app.put("/api/admin/episodes/:episodeId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { episodeId } = req.params;
-      const updateData = req.body;
-      
-      // Validate input
-      if (!episodeId) {
-        return res.status(400).json({ error: "episodeId est requis" });
-      }
-      
-      const updatedEpisode = await storage.updateEpisode(episodeId, updateData);
-      res.json({ 
-        success: true, 
-        message: "Épisode mis à jour avec succès",
-        episode: updatedEpisode
-      });
-    } catch (error) {
-      console.error("Error updating episode:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour de l'épisode" });
-    }
-  });
-
-  app.delete("/api/admin/episodes/:episodeId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { episodeId } = req.params;
-      
-      // Validate input
-      if (!episodeId) {
-        return res.status(400).json({ error: "episodeId est requis" });
-      }
-      
-      await storage.deleteEpisode(episodeId);
-      res.json({ success: true, message: "Épisode supprimé avec succès" });
-    } catch (error) {
-      console.error("Error deleting episode:", error);
-      res.status(500).json({ error: "Erreur lors de la suppression de l'épisode" });
-    }
-  });
-
-  // Subscription routes
-  // Get current user's subscription
-  app.get("/api/subscription/current", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Get user's current active subscription
-      const subscription = await storage.getUserSubscription(req.user.userId);
-      
-      if (!subscription) {
-        // Return free plan as default if no subscription exists
-        return res.json({
-          subscription: {
-            id: null,
-            userId: req.user.userId,
-            planId: "free",
-            amount: 0,
-            paymentMethod: "free",
-            status: "active",
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-            createdAt: new Date()
-          }
-        });
-      }
-
-      res.json({ subscription });
-    } catch (error) {
-      console.error("Error fetching current subscription:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'abonnement" });
-    }
-  });
-
-  // Get user's payment history
-  app.get("/api/subscription/payment-history", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Get user's payment history
-      const payments = await storage.getUserPayments(req.user.userId);
-      
-      res.json({ payments });
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'historique des paiements" });
-    }
-  });
-
-  // Create a new subscription/payment
-  app.post("/api/subscribe", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body;
-
-      // Validate plan
-      if (!plans[planId as keyof typeof plans]) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const selectedPlan = plans[planId as keyof typeof plans];
-
-      // For free plans, activate immediately
-      if (selectedPlan.amount === 0) {
-        // Calculate subscription dates
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-        // Create subscription in database
-        const subscription = await storage.createSubscription({
-          userId: req.user.userId,
-          planId: planId,
-          amount: selectedPlan.amount,
-          paymentMethod: "free",
-          status: "active",
-          startDate: startDate,
-          endDate: endDate
-        });
-
-        // Create payment record for tracking
-        await storage.createPayment({
-          userId: req.user.userId,
-          amount: selectedPlan.amount,
-          method: "free",
-          status: "success",
-          transactionId: `free_${Date.now()}`,
-          paymentData: { planId, customerInfo }
-        });
-
-        return res.json({
-          success: true,
-          message: "Abonnement gratuit activé avec succès",
-          subscription
-        });
-      }
-
-      // For paid plans, create payment with available provider
-      const paymentResult = await paymentService.createPayment(
-        planId,
-        customerInfo,
-        req.user.userId
-      );
-
-      if (paymentResult.success) {
-        // Store payment record in database
-        const paymentRecord = await storage.createPayment({
-          userId: req.user.userId,
-          amount: selectedPlan.amount,
-          method: "lygos",
-          status: "pending",
-          paymentData: paymentResult
-        });
-
-        return res.json({
-          ...paymentResult,
-          paymentId: paymentRecord.id
-        });
-      } else {
-        return res.status(400).json({
-          error: paymentResult.error || "Erreur lors de la création du paiement",
-          message: paymentResult.message
-        });
-      }
-    } catch (error: any) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ 
-        error: "Erreur lors de la création de l'abonnement",
-        details: error.message
-      });
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:id", async (req: any, res: any) => {
-    try {
-      const { id: paymentId } = req.params;
-
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Check payment status with payment provider
-      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
-      
-      // Update payment record in database
-      await storage.updatePaymentStatus(paymentId, paymentStatus.status);
-      
-      // If payment is completed, activate subscription
-      if (paymentStatus.status === "completed") {
-        // Get payment record to get user and plan info
-        const paymentRecord = await storage.getPaymentById(paymentId);
-        if (paymentRecord) {
-          // Extract plan info from payment data
-          // This would need to be stored when creating the payment
-          // For now, we'll need to get this information another way
-          
-          // Create or update subscription
-          // This is a simplified implementation - in reality, you'd need to store
-          // the plan information with the payment
-        }
-      }
-
-      res.json(paymentStatus);
-    } catch (error: any) {
-      console.error("Error checking payment status:", error);
-      res.status(500).json({ 
-        error: "Erreur lors de la vérification du paiement",
-        details: error.message
-      });
-    }
-  });
-
-  // Webhook endpoint for Lygos payment notifications
-  app.post("/api/webhook/lygos", async (req: any, res: any) => {
-    try {
-      // Process webhook from Lygos
-      const result = await paymentService.processLygosWebhook(req.body);
-      
-      if (result.success) {
-        // Update payment and subscription status based on webhook data
-        const { id, status, custom_data } = req.body;
-        
-        // Update payment status in database
-        await storage.updatePaymentStatus(id, status);
-        
-        // If payment is completed, activate subscription
-        if (status === "completed" && custom_data) {
-          const { userId, planId } = custom_data;
-          const selectedPlan = plans[planId as keyof typeof plans];
-          
-          if (selectedPlan) {
-            // Calculate subscription dates
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + selectedPlan.duration);
-            
-            // Create subscription in database
-            const subscription = await storage.createSubscription({
-              userId: userId,
-              planId: planId,
-              amount: selectedPlan.amount,
-              paymentMethod: "lygos",
-              status: "active",
-              startDate: startDate,
-              endDate: endDate
-            });
-            
-            console.log("Subscription activated for user:", userId);
-          }
-        }
-      }
-      
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error processing Lygos webhook:", error);
-      res.status(500).json({ error: "Erreur lors du traitement du webhook" });
-    }
-  });
-
-  // Comments routes
-  // Get comments for a specific content
-  app.get("/api/comments/:contentId", async (req: any, res: any) => {
-    try {
-      const { contentId } = req.params;
-
-      // Validate input
-      if (!contentId) {
-        return res.status(400).json({ error: "contentId est requis" });
-      }
-
-      // Get all approved comments for this content
-      const contentComments = await storage.getCommentsByContentId(contentId);
-
-      res.json({ comments: contentComments });
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération des commentaires" });
-    }
-  });
-
-  // Create a new comment
-  app.post("/api/comments", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const commentData = insertCommentSchema.parse(req.body);
-
-      // Ensure the user can only comment on behalf of themselves
-      if (commentData.userId !== req.user.userId) {
-        return res.status(403).json({ error: "Vous ne pouvez commenter qu'en votre nom" });
-      }
-
-      // Check if content exists
-      const existingContent = await storage.getContentById(commentData.contentId);
-      if (!existingContent) {
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-
-      // Create comment
-      const newComment = await storage.createComment(commentData);
-
-      res.status(201).json({
-        success: true,
-        message: "Commentaire ajouté avec succès",
-        comment: newComment
-      });
-    } catch (error) {
-      console.error("Error creating comment:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Données invalides", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Erreur lors de la création du commentaire" });
-      }
-    }
-  });
-
-  // Update a comment (only by the author)
-  app.put("/api/comments/:commentId", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { commentId } = req.params;
-      const updateData = req.body;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Check if comment exists and belongs to the user
-      const existingComment = await storage.getCommentById(commentId);
-      if (!existingComment) {
-        return res.status(404).json({ error: "Commentaire non trouvé" });
-      }
-
-      if (existingComment.userId !== req.user.userId) {
-        return res.status(403).json({ error: "Vous ne pouvez modifier que vos propres commentaires" });
-      }
-
-      // Update comment
-      const updatedComment = await storage.updateComment(commentId, updateData);
-
-      res.json({
-        success: true,
-        message: "Commentaire mis à jour avec succès",
-        comment: updatedComment
-      });
-    } catch (error) {
-      console.error("Error updating comment:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour du commentaire" });
-    }
-  });
-
-  // Delete a comment (by author or admin)
-  app.delete("/api/comments/:commentId", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { commentId } = req.params;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Check if comment exists
-      const existingComment = await storage.getCommentById(commentId);
-      if (!existingComment) {
-        return res.status(404).json({ error: "Commentaire non trouvé" });
-      }
-
-      // Check if user is the author or an admin
-      const user = await storage.getUserById(req.user.userId);
-      const isAuthor = existingComment.userId === req.user.userId;
-      const isAdmin = user && user.role === "admin";
-
-      if (!isAuthor && !isAdmin) {
-        return res.status(403).json({ error: "Vous ne pouvez supprimer que vos propres commentaires" });
-      }
-
-      // Delete comment
-      await storage.deleteComment(commentId);
-
-      res.json({
-        success: true,
-        message: "Commentaire supprimé avec succès"
-      });
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      res.status(500).json({ error: "Erreur lors de la suppression du commentaire" });
-    }
-  });
-
-  // Get content by TMDB ID
-  app.get("/api/content/tmdb/:tmdbId", async (req, res) => {
-    try {
-      const { tmdbId } = req.params;
-      const content = await storage.getContentByTmdbId(parseInt(tmdbId));
-      if (!content) {
-        return res.status(404).json({ error: "Content not found" });
-      }
-      res.json(content);
-    } catch (error) {
-      console.error("Error fetching content by TMDB ID:", error);
-      res.status(500).json({ error: "Failed to fetch content" });
-    }
-  });
-
-  // Get all comments (admin only)
-  app.get("/api/admin/comments", requireAdmin, async (req, res) => {
-    try {
-      const allComments = await storage.getAllComments();
-      res.json(allComments);
-    } catch (error) {
-      console.error("Error fetching all comments:", error);
-      res.status(500).json({ error: "Failed to fetch all comments" });
-    }
-  });
-
-  // Approve/reject comment (admin only)
-  app.put("/api/admin/comments/:commentId/approve", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { commentId } = req.params;
-      const { approved } = req.body;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Update comment approval status
-      const updatedComment = await storage.updateCommentApproval(commentId, approved);
-
-      res.json({
-        success: true,
-        message: `Commentaire ${approved ? 'approuvé' : 'rejeté'} avec succès`,
-        comment: updatedComment
-      });
-    } catch (error) {
-      console.error("Error updating comment approval:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour du statut du commentaire" });
-    }
-  });
-
   return server;
 }
 

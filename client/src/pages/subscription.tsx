@@ -1,51 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
-import { 
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+// PayPal global type
+declare global {
+  interface Window {
+    paypal?: any;
+  }
+}
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
-import { 
-  Check, 
-  Crown, 
-  Star, 
-  Shield, 
-  CreditCard, 
-  Clock, 
-  Users, 
-  Smartphone,
-  Monitor,
-  Tv,
-  Loader2,
-  Globe,
-  Zap,
-  Info,
-  X,
-  QrCode
-} from 'lucide-react';
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
 
-import PlanFeatureComparison from '../components/PlanFeatureComparison';
-import { useAuth } from '@/contexts/auth-context';
+import { Check, Info, Loader2, Shield, Star, Crown, Zap, X, CreditCard, Clock, QrCode } from "lucide-react";
+import PlanFeatureComparison from "@/components/PlanFeatureComparison";
 
-interface SubscriptionPlan {
-  name: string;
-  description: string;
+interface BackendPlan {
   amount: number;
-  duration: number;
+  currency: string; // e.g. "XOF"
+  name: string; // e.g. "Premium"
+  duration: number; // in days
+  description?: string;
 }
 
-interface PlanFeature {
-  text: string;
-  available: boolean;
+interface PlansResponse {
+  [key: string]: BackendPlan;
 }
 
 interface CustomerInfo {
@@ -54,931 +45,879 @@ interface CustomerInfo {
   phone?: string;
 }
 
-interface PaymentData {
-  paymentLink: string;
-  qrCode: string;
-  paymentId: string;
+interface SubscribeResponse {
+  success?: boolean;
+  message?: string;
+  subscription?: any;
+  paymentLink?: string;
+  approval_url?: string;
+  error?: string;
 }
 
-const SubscriptionPage: React.FC = () => {
-  const [selectedPlan, setSelectedPlan] = useState<string>('');
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    email: '',
-    phone: ''
-  });
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [showErrorMessage, setShowErrorMessage] = useState(false);
-  const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  
-  // Add refs for cleanup
-  const isMountedRef = useRef(true);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const createPaymentMutationRef = useRef(false);
-  
+const planIcons: Record<string, React.ReactNode> = {
+  free: <Shield className="w-6 h-6" />,
+  basic: <Shield className="w-6 h-6" />,
+  standard: <Star className="w-6 h-6" />,
+  premium: <Crown className="w-6 h-6" />,
+  vip: <Zap className="w-6 h-6" />,
+};
+
+const planColors: Record<string, string> = {
+  free: "border-gray-200",
+  basic: "border-gray-200",
+  standard: "border-blue-500 ring-2 ring-blue-200",
+  premium: "border-yellow-500 ring-2 ring-yellow-200",
+  vip: "border-purple-500 ring-2 ring-purple-200",
+};
+
+const planFeatures: Record<string, { text: string; available: boolean }[]> = {
+  free: [
+    { text: "Accès limité au contenu", available: true },
+    { text: "Qualité Standard (SD)", available: true },
+    { text: "1 appareil simultané", available: true },
+    { text: "Avec publicités", available: true },
+    { text: "Téléchargement", available: false },
+    { text: "Contenu exclusif", available: false },
+    { text: "Support client", available: false },
+    { text: "Support prioritaire", available: false },
+  ],
+  basic: [
+    { text: "Accès à tout le contenu", available: true },
+    { text: "Qualité Standard (SD)", available: true },
+    { text: "1 appareil simultané", available: true },
+    { text: "Support client", available: true },
+    { text: "Téléchargement", available: false },
+    { text: "Contenu exclusif", available: false },
+    { text: "Support prioritaire", available: false },
+    { text: "Sans publicités", available: true },
+  ],
+  standard: [
+    { text: "Accès à tout le contenu", available: true },
+    { text: "Qualité HD", available: true },
+    { text: "2 appareils simultanés", available: true },
+    { text: "Téléchargement hors ligne", available: true },
+    { text: "Support prioritaire", available: true },
+    { text: "Contenu exclusif", available: false },
+    { text: "Accès anticipé", available: false },
+    { text: "Sans publicités", available: true },
+  ],
+  premium: [
+    { text: "Accès à tout le contenu", available: true },
+    { text: "Qualité 4K Ultra HD", available: true },
+    { text: "4 appareils simultanés", available: true },
+    { text: "Téléchargement illimité", available: true },
+    { text: "Support VIP 24/7", available: true },
+    { text: "Contenu exclusif", available: true },
+    { text: "Accès anticipé", available: false },
+    { text: "Sans publicités", available: true },
+  ],
+  vip: [
+    { text: "Accès à tout le contenu", available: true },
+    { text: "Qualité 4K Ultra HD", available: true },
+    { text: "Appareils illimités", available: true },
+    { text: "Téléchargement illimité", available: true },
+    { text: "Support VIP 24/7", available: true },
+    { text: "Contenu exclusif", available: true },
+    { text: "Accès anticipé aux nouveautés", available: true },
+    { text: "Sans publicités", available: true },
+  ],
+};
+
+function SubscriptionPage() {
   const { toast } = useToast();
+  const { user, isAuthenticated, token } = useAuth();
   const queryClient = useQueryClient();
-  const { user, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Set isMountedRef to false on unmount
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+    name: "",
+    email: "",
+    phone: "",
+  });
+  const [providers, setProviders] = useState({ lygos: false, paypal: false });
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [paypalPaymentId, setPaypalPaymentId] = useState<string | null>(null);
+  const [paypalLoaded, setPaypalLoaded] = useState(false);
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+
+  const mountedRef = useRef(true);
   useEffect(() => {
     return () => {
-      isMountedRef.current = false;
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      // Also clean up any pending mutations
-      createPaymentMutationRef.current = true;
+      mountedRef.current = false;
     };
   }, []);
 
-  // Redirect to login if user is not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation('/login?redirect=/subscription');
-    }
-  }, [isAuthenticated, setLocation]);
-
-  // Prefill customer info from user data
+  // Prefill from user
   useEffect(() => {
     if (user) {
-      setCustomerInfo({
-        name: user.username,
-        email: user.email,
-        phone: ''
-      });
+      setCustomerInfo({ name: user.username, email: user.email, phone: "" });
     }
   }, [user]);
 
-  // Start polling for payment status
-  const startPaymentPolling = (paymentId: string) => {
-    // Clear any existing polling interval
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-    
-    // Start new polling interval
-    const interval = setInterval(async () => {
-      // Check if component is still mounted before making API call
-      if (!isMountedRef.current) {
-        clearInterval(interval);
-        return;
-      }
-      
+  // Fetch available payment providers and PayPal client ID
+  useEffect(() => {
+    const fetchProviders = async () => {
       try {
-        const response = await fetch(`/api/subscription/check-payment/${paymentId}`);
-        if (!response.ok) {
-          throw new Error('Failed to check payment status');
-        }
-        
-        const data = await response.json();
-        
-        // Check if component is still mounted before updating state
-        if (!isMountedRef.current) {
-          clearInterval(interval);
-          return;
-        }
-        
-        // Use functional update to ensure we have the latest state
-        setPaymentStatus(prev => {
-          if (!isMountedRef.current) {
-            clearInterval(interval);
-            return prev;
-          }
-          return data.status;
-        });
-        
-        if (data.status === 'completed') {
-          clearInterval(interval);
-          pollingIntervalRef.current = null;
-          // Refresh subscription data
-          queryClient.invalidateQueries({ queryKey: ['/api/subscription/current'] });
-          // Check if component is still mounted before showing toast
-          if (isMountedRef.current) {
-            toast({
-              title: "Paiement réussi",
-              description: "Votre paiement a été traité avec succès et votre abonnement est maintenant actif.",
-            });
-          }
-        } else if (data.status === 'failed' || data.status === 'cancelled') {
-          clearInterval(interval);
-          pollingIntervalRef.current = null;
-          // Check if component is still mounted before showing toast
-          if (isMountedRef.current) {
-            toast({
-              title: "Paiement échoué",
-              description: "Votre paiement n'a pas abouti. Veuillez réessayer.",
-              variant: "destructive",
-            });
-          }
+        const res = await fetch("/api/subscription/payment-providers");
+        if (res.ok) {
+          const data = await res.json();
+          setProviders(data);
         }
       } catch (error) {
-        console.error('Payment status check error:', error);
-        // Check if component is still mounted before showing toast
-        if (!isMountedRef.current) return;
-        
-        toast({
-          title: "Erreur",
-          description: "Impossible de vérifier le statut du paiement",
-          variant: "destructive",
-        });
+        console.error("Error fetching payment providers:", error);
       }
-    }, 5000); // Check every 5 seconds
-    
-    pollingIntervalRef.current = interval;
-  };
+    };
 
-  // Fetch subscription plans
-  const { data: plans, isLoading: plansLoading } = useQuery({
-    queryKey: ['/api/subscription/plans'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscription/plans');
-      if (!response.ok) throw new Error('Failed to fetch plans');
-      return response.json();
-    }
-  });
-
-  // Fetch current subscription
-  const { data: currentSubscription } = useQuery({
-    queryKey: ['/api/subscription/current'],
-    queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/subscription/current', {
-        credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-      });
-      if (!response.ok) throw new Error('Failed to fetch current subscription');
-      return response.json();
-    }
-  });
-
-  // Fetch payment history
-  const { data: paymentHistory } = useQuery({
-    queryKey: ['/api/subscription/payment-history'],
-    queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/subscription/payment-history', {
-        credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch payment history');
-      return response.json();
-    }
-  });
-
-  // Create payment mutation
-  const createPaymentMutation = useMutation({
-    mutationFn: async ({ planId, customerInfo }: { planId: string; customerInfo: CustomerInfo }) => {
-      // Check if component is still mounted before making API call
-      if (!isMountedRef.current) {
-        throw new Error('Component unmounted');
-      }
-      
-      // Get CSRF token
-      let csrfToken = '';
+    const fetchPayPalClientId = async () => {
       try {
-        const csrfResponse = await fetch('/api/csrf-token', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        if (csrfResponse.ok) {
-          const csrfData = await csrfResponse.json();
-          csrfToken = csrfData.csrfToken;
+        const res = await fetch("/api/paypal/client-id");
+        if (res.ok) {
+          const data = await res.json();
+          setPaypalClientId(data.clientId);
         }
       } catch (error) {
-        console.warn('Failed to get CSRF token:', error);
+        console.error("Error fetching PayPal client ID:", error);
       }
-      
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/subscription/create-payment', {
-        method: 'POST',
+    };
+
+    fetchProviders();
+    fetchPayPalClientId();
+  }, []);
+
+  // Render PayPal button when order is created
+  useEffect(() => {
+    if (paypalOrderId && paypalLoaded && window.paypal) {
+      const paypalButtonContainer = document.getElementById('paypal-button-container');
+      if (paypalButtonContainer) {
+        paypalButtonContainer.innerHTML = ''; // Clear previous button
+
+        window.paypal.Buttons({
+          createOrder: () => paypalOrderId,
+          onApprove: async (data: any) => {
+            try {
+              // Capture the payment
+              const captureResponse = await fetch(`/api/subscription/capture-paypal/${paypalPaymentId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ orderId: data.orderID }),
+              });
+
+              const captureData = await captureResponse.json();
+
+              if (captureResponse.ok && captureData.status === 'COMPLETED') {
+                toast({
+                  title: "Paiement réussi",
+                  description: "Votre abonnement PayPal a été activé avec succès!",
+                });
+                // Refresh subscription data
+                queryClient.invalidateQueries({ queryKey: ["current-subscription"] });
+                setPaypalOrderId(null);
+                setPaypalPaymentId(null);
+                setLocation('/'); // Redirect to home
+              } else {
+                throw new Error(captureData.error || 'Erreur lors de la capture du paiement');
+              }
+            } catch (error: any) {
+              toast({
+                title: "Erreur de paiement",
+                description: error.message || "Erreur lors de la finalisation du paiement PayPal",
+                variant: "destructive"
+              });
+            }
+          },
+          onError: (error: any) => {
+            console.error('PayPal payment error:', error);
+            toast({
+              title: "Erreur PayPal",
+              description: "Une erreur s'est produite lors du paiement PayPal",
+              variant: "destructive"
+            });
+          }
+        }).render('#paypal-button-container');
+      }
+    }
+  }, [paypalOrderId, paypalLoaded, token, toast, queryClient, setLocation]);
+
+  // Plans
+  const {
+    data: plans,
+    isLoading: plansLoading,
+    isError: plansError,
+    refetch: refetchPlans,
+  } = useQuery<PlansResponse>({
+    queryKey: ["subscription-plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/subscription/plans", { credentials: "include" });
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to fetch plans: ${res.status} ${errorText}`);
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  // Current subscription
+  const { data: current, refetch: refetchCurrent } = useQuery({
+    queryKey: ["current-subscription"],
+    queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/subscription/current", {
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        credentials: 'include',
+      });
+      if (!res.ok) throw new Error("Failed to fetch current subscription");
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
+  // Payment history
+  const { data: history } = useQuery({
+    queryKey: ["payment-history"],
+    queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/subscription/payment-history", {
+        credentials: "include",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch payment history");
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
+  const availablePlans = useMemo(() => {
+    if (!plans) return [] as [string, BackendPlan][];
+    
+    // Filter out free plan for authenticated users
+    if (isAuthenticated) {
+      return Object.entries(plans).filter(([id]) => id !== "free") as [string, BackendPlan][];
+    }
+    
+    // For unauthenticated users, show all plans including free
+    return Object.entries(plans) as [string, BackendPlan][];
+  }, [plans, isAuthenticated]);
+
+  const createPayment = useMutation({
+    mutationFn: async ({ planId, provider }: { planId: string; provider: string }) => {
+      // Fetch CSRF token if authenticated
+      const token = localStorage.getItem("auth_token");
+      let csrfToken = "";
+      try {
+        const csrfRes = await fetch("/api/csrf-token", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          }
+        });
+        if (csrfRes.ok) {
+          const j = await csrfRes.json();
+          csrfToken = j.csrfToken || "";
+        }
+      } catch {}
+
+      // For free plans, use the dedicated endpoint
+      if (plans && plans[planId]?.amount === 0) {
+        const res = await fetch("/api/subscription/create-free", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          },
+          body: JSON.stringify({ planId, customerInfo }),
+        });
+        const data: SubscribeResponse = await res.json().catch(() => ({} as any));
+        if (!res.ok) throw new Error(data.error || data.message || "Erreur lors de l'activation de l'abonnement gratuit");
+        return data;
+      }
+
+      // For paid plans, use the specific provider endpoint
+      const endpoint = provider === 'paypal' ? '/api/subscription/create-payment-paypal' : '/api/subscription/create-payment-lygos';
+      const res = await fetch(endpoint, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
         body: JSON.stringify({ planId, customerInfo }),
       });
-      
-      // Check again if component is still mounted after API call
-      if (!isMountedRef.current) {
-        throw new Error('Component unmounted');
-      }
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.details || errorData.error || 'Failed to create payment');
-      }
-      
-      return response.json();
+      const data: SubscribeResponse = await res.json().catch(() => ({} as any));
+      if (!res.ok) throw new Error(data.error || data.message || "Erreur paiement");
+      return data;
     },
-    onSuccess: (data) => {
-      // Check if component is still mounted before updating state
-      if (!isMountedRef.current || createPaymentMutationRef.current) return;
-      
-      // Add a small delay to ensure state updates are properly handled
-      setTimeout(() => {
-        // Check again if component is still mounted
-        if (!isMountedRef.current || createPaymentMutationRef.current) return;
-        
-        if (data.approval_url) {
-          // Redirect to payment provider for payment
-          window.location.href = data.approval_url;
-        } else if (data.success && data.subscription) {
-          // For subscription activation, show success message
-          // Check if component is still mounted before showing toast
-          if (isMountedRef.current) {
-            toast({
-              title: "Abonnement activé",
-              description: data.message || "Votre abonnement a été activé avec succès.",
-            });
-          }
-          // Refresh the current subscription data
-          queryClient.invalidateQueries({ queryKey: ['/api/subscription/current'] });
-          // Stop processing state
-          setIsProcessing(false);
-        } else if (data.paymentLink || data.paymentId) {
-          // For Lygos payment, show payment data
-          // Note: Lygos doesn't provide a QR code directly, so we'll show the payment link
-          // Check if component is still mounted before updating state
-          if (isMountedRef.current) {
-            setPaymentData({
-              paymentLink: data.paymentLink,
-              qrCode: '', // We don't have a QR code from Lygos
-              paymentId: data.paymentId
-            });
-            if (data.paymentId) {
-              startPaymentPolling(data.paymentId);
-            }
-          }
-          // Stop processing state
-          setIsProcessing(false);
-        } else if (data.success) {
-          // For other successful payments without redirect
-          // Check if component is still mounted before showing toast
-          if (isMountedRef.current) {
-            toast({
-              title: "Paiement réussi",
-              description: data.message || "Votre paiement a été traité avec succès.",
-            });
-          }
-          // Refresh the current subscription data
-          queryClient.invalidateQueries({ queryKey: ['/api/subscription/current'] });
-          // Stop processing state
-          setIsProcessing(false);
-        } else {
-          // Check if component is still mounted before showing toast
-          if (isMountedRef.current) {
-            toast({
-              title: "Erreur de paiement",
-              description: data.error || "Impossible de créer le paiement",
-              variant: "destructive",
-            });
-          }
-          // Stop processing state
-          setIsProcessing(false);
-        }
-      }, 100);
-    },
-    onError: (error: any) => {
-      // Check if component is still mounted before showing toast
-      if (!isMountedRef.current || createPaymentMutationRef.current) return;
-      
-      // Add a small delay to ensure state updates are properly handled
-      setTimeout(() => {
-        // Check again if component is still mounted
-        if (!isMountedRef.current || createPaymentMutationRef.current) return;
-        
-        // Always set isProcessing to false when we receive an error
-        setIsProcessing(false);
-        
-        console.error('Payment creation error:', error);
-        
-        // Handle specific error types
-        let title = "Erreur";
-        let description = error.message || "Erreur lors de la création du paiement";
-        
-        if (error.message && error.message.includes('DEPLOYMENT_NOT_FOUND')) {
-          title = "Service indisponible";
-          description = "Le service de paiement est temporairement indisponible. Veuillez réessayer plus tard.";
-        } else if (error.message && error.message.includes('fetch')) {
-          title = "Erreur de connexion";
-          description = "Impossible de se connecter au service de paiement. Veuillez vérifier votre connexion internet.";
-        } else if (error.message === 'Component unmounted') {
-          // Don't show toast if component is unmounted
-          return;
-        }
-        
-        // Check if component is still mounted before showing toast
-        if (isMountedRef.current) {
-          toast({
-            title,
-            description,
-            variant: "destructive",
+    onSuccess: async (data) => {
+      if (!mountedRef.current) return;
+
+      // Open payment link if it exists (for paid plans)
+      if (data.paymentLink) {
+        try { 
+          window.open(data.paymentLink, "_blank"); 
+        } catch (e) {
+          // Fallback if popup blocked
+          toast({ 
+            title: "Paiement requis", 
+            description: "Veuillez suivre les instructions de paiement qui vont s'ouvrir dans une nouvelle fenêtre.",
+            variant: "default"
           });
         }
-      }, 100);
-    }
+      }
+
+      // Refresh current subscription
+      await queryClient.invalidateQueries({ queryKey: ["current-subscription"] });
+      toast({ 
+        title: "Demande effectuée", 
+        description: data.message || "Votre demande d'abonnement a été prise en compte." 
+      });
+      setIsProcessing(false);
+    },
+    onError: (err: any) => {
+      if (!mountedRef.current) return;
+      setIsProcessing(false);
+      toast({ 
+        title: "Erreur", 
+        description: err?.message || "Impossible de créer le paiement", 
+        variant: "destructive" 
+      });
+    },
   });
 
-  const handlePlanSelection = (planId: string) => {
+  const onChoosePlan = (planId: string) => {
+    if (!isAuthenticated) {
+      setLocation("/login?redirect=/subscription");
+      return;
+    }
     setSelectedPlan(planId);
   };
 
-  // Handle free plan immediately without any payment processing
-  const handlePayment = async () => {
+  const onPay = async () => {
     if (!selectedPlan) {
       toast({
         title: "Plan requis",
-        description: "Veuillez sélectionner un plan d'abonnement",
-        variant: "destructive",
+        description: "Veuillez sélectionner un plan.",
+        variant: "destructive"
       });
       return;
     }
-
-    // Handle paid plans with Lygos payment processing
+    if (!selectedProvider) {
+      toast({
+        title: "Fournisseur requis",
+        description: "Veuillez sélectionner un fournisseur de paiement.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!customerInfo.name || !customerInfo.email) {
       toast({
-        title: "Informations manquantes", 
-        description: "Veuillez remplir votre nom et email",
-        variant: "destructive",
+        title: "Informations requises",
+        description: "Nom et email sont requis.",
+        variant: "destructive"
       });
       return;
     }
 
-    setIsProcessing(true);
-    try {
-      await createPaymentMutation.mutateAsync({ planId: selectedPlan, customerInfo });
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      // Error is handled in onError callback
+    if (selectedProvider === 'paypal') {
+      // Handle PayPal payment directly on site
+      await handlePayPalPayment();
+    } else {
+      // Handle Lygos payment
+      setIsProcessing(true);
+      createPayment.mutate({ planId: selectedPlan, provider: selectedProvider });
     }
-    // Note: We don't need a finally block anymore since we handle isProcessing in the mutation callbacks
   };
 
-  const planFeatures = {
-    basic: [
-      { text: 'Accès à tout le contenu', available: true },
-      { text: 'Qualité Standard (SD)', available: true },
-      { text: '1 appareil simultané', available: true },
-      { text: 'Support client', available: true },
-      { text: 'Téléchargement', available: false },
-      { text: 'Contenu exclusif', available: false },
-      { text: 'Support prioritaire', available: false },
-      { text: 'Accès anticipé', available: false }
-    ],
-    standard: [
-      { text: 'Accès à tout le contenu', available: true },
-      { text: 'Qualité HD', available: true },
-      { text: '2 appareils simultanés', available: true },
-      { text: 'Téléchargement hors ligne', available: true },
-      { text: 'Support prioritaire', available: true },
-      { text: 'Contenu exclusif', available: false },
-      { text: 'Accès anticipé', available: false },
-      { text: 'Sans publicités', available: true }
-    ],
-    premium: [
-      { text: 'Accès à tout le contenu', available: true },
-      { text: 'Qualité 4K Ultra HD', available: true },
-      { text: '4 appareils simultanés', available: true },
-      { text: 'Téléchargement illimité', available: true },
-      { text: 'Support VIP 24/7', available: true },
-      { text: 'Contenu exclusif', available: true },
-      { text: 'Accès anticipé', available: false },
-      { text: 'Sans publicités', available: true }
-    ],
-    vip: [
-      { text: 'Accès à tout le contenu', available: true },
-      { text: 'Qualité 4K Ultra HD', available: true },
-      { text: 'Appareils illimités', available: true },
-      { text: 'Téléchargement illimité', available: true },
-      { text: 'Support VIP 24/7', available: true },
-      { text: 'Contenu exclusif', available: true },
-      { text: 'Accès anticipé aux nouveautés', available: true },
-      { text: 'Sans publicités', available: true }
-    ]
+  const handlePayPalPayment = async () => {
+    if (!paypalClientId || paypalClientId === 'your_paypal_client_id') {
+      toast({
+        title: "PayPal non configuré",
+        description: "Le paiement PayPal n'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser une autre méthode.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Create PayPal order
+      const csrfToken = await getCSRFToken();
+      const res = await fetch('/api/subscription/create-payment-paypal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
+        body: JSON.stringify({ planId: selectedPlan, customerInfo }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création du paiement PayPal');
+
+      if (data.orderId) {
+        setPaypalOrderId(data.orderId);
+        setPaypalPaymentId(data.paymentId);
+        // Load PayPal SDK if not loaded
+        if (!paypalLoaded) {
+          await loadPayPalSDK();
+        }
+        // The PayPal button will be rendered when orderId is set
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur PayPal",
+        description: error.message || "Erreur lors de l'initialisation du paiement PayPal",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const planIcons = {
-    basic: <Shield className="w-6 h-6" />,
-    standard: <Star className="w-6 h-6" />,
-    premium: <Crown className="w-6 h-6" />,
-    vip: <Zap className="w-6 h-6" />
+  const loadPayPalSDK = () => {
+    return new Promise((resolve) => {
+      if (window.paypal) {
+        setPaypalLoaded(true);
+        resolve(true);
+        return;
+      }
+
+      if (!paypalClientId) {
+        console.error("PayPal client ID not available");
+        resolve(false);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD&intent=capture`;
+      script.onload = () => {
+        setPaypalLoaded(true);
+        resolve(true);
+      };
+      script.onerror = () => {
+        console.error("Failed to load PayPal SDK");
+        resolve(false);
+      };
+      document.head.appendChild(script);
+    });
   };
 
-  const planColors = {
-    basic: 'border-gray-200',
-    standard: 'border-blue-500 ring-2 ring-blue-200',
-    premium: 'border-yellow-500 ring-2 ring-yellow-200',
-    vip: 'border-purple-500 ring-2 ring-purple-200'
+  const getCSRFToken = async () => {
+    try {
+      const res = await fetch('/api/csrf-token', {
+        credentials: 'include',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      return data.csrfToken;
+    } catch {
+      return null;
+    }
   };
 
-  // Error boundary state
-  const [error, setError] = useState<string | null>(null);
+  const isFreePlan = (planId: string) => {
+    return plans && plans[planId]?.amount === 0;
+  };
 
-  if (plansLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex justify-center items-center min-h-[400px]">
+  const renderPlans = () => {
+    if (plansLoading) {
+      return (
+        <div className="flex justify-center items-center min-h-[240px]">
           <div className="flex items-center">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <span className="ml-2">Chargement des plans...</span>
+            <div className="loader-wrapper">
+              <Loader2 className="w-6 h-6 animate-spin mr-2"/>
+            </div>
+            <span>Chargement des plans…</span>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Handle errors
-  if (error) {
-    return (
-      <div className="container mx-auto py-8 px-4">
+      );
+    }
+    if (plansError) {
+      return (
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle className="text-red-600">Erreur</CardTitle>
+            <CardDescription>Impossible de récupérer les plans d'abonnement.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>Recharger la page</Button>
+            <Button onClick={() => refetchPlans()}>
+              <div className="loader-wrapper">
+                <Loader2 className="w-4 h-4 mr-2"/>
+              </div>
+              <span>Réessayer</span>
+            </Button>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  // Add safety check for plans data and filter out free plan
-  if (!plans || Object.keys(plans).length === 0) {
-    return (
-      <div className="container mx-auto py-8 px-4">
+      );
+    }
+    if (!availablePlans.length) {
+      return (
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Aucun plan disponible</CardTitle>
+            <CardDescription>Aucun plan d'abonnement n'est actuellement disponible.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">Aucun plan d'abonnement n'est actuellement disponible.</p>
-            <Button onClick={() => window.location.reload()}>Recharger la page</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Filter out free plan since it's only for unauthenticated users
-  const availablePlans = plans ? Object.entries(plans).filter(([planId]) => planId !== 'free') : [];
-
-  return (
-    <div className="container mx-auto py-8 px-4 max-w-7xl">
-      {/* Payment QR Code Modal */}
-      <Dialog open={!!paymentData} onOpenChange={(open) => {
-        if (!open && isMountedRef.current) {
-          setPaymentData(null);
-        }
-      }}>
-        <DialogContent className="max-w-md" aria-describedby="payment-dialog-description">
-          <DialogHeader>
-            <DialogTitle>Paiement Lygos</DialogTitle>
-            <DialogDescription>
-              Cliquez sur le lien pour procéder au paiement
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {paymentData?.qrCode && (
-              <div className="flex flex-col items-center">
-                <img 
-                  src={paymentData.qrCode} 
-                  alt="QR Code de paiement" 
-                  className="w-48 h-48 mx-auto"
-                />
-                <p className="text-sm text-muted-foreground mt-2 text-center">
-                  Scannez ce QR code avec votre application mobile pour payer
-                </p>
-              </div>
-            )}
-            
-            {paymentData?.paymentLink && (
-              <Button asChild className="w-full">
-                <a href={paymentData.paymentLink} target="_blank" rel="noopener noreferrer">
-                  Ouvrir le lien de paiement
-                </a>
-              </Button>
-            )}
-            
-            {!paymentData?.qrCode && !paymentData?.paymentLink && (
-              <p className="text-center text-muted-foreground">
-                Les détails de paiement seront disponibles bientôt...
-              </p>
-            )}
-            
-            {paymentStatus && (
-              <div className="text-center p-3 rounded-lg bg-gray-100">
-                <p className="font-medium">
-                  Statut du paiement: {paymentStatus === 'completed' ? 'Réussi' : 
-                    paymentStatus === 'failed' ? 'Échoué' : 
-                    paymentStatus === 'cancelled' ? 'Annulé' : paymentStatus}
-                </p>
-              </div>
-            )}
-            
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                if (isMountedRef.current) {
-                  setPaymentData(null);
-                }
-              }}
-              className="w-full"
-            >
-              Fermer
+            <Button variant="outline" onClick={() => refetchPlans()}>
+              <span>Recharger la page</span>
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Message */}
-      {showSuccessMessage && (
-        <Card className="mb-8 bg-green-50 border-green-200">
-          <CardHeader>
-            <CardTitle className="text-green-800 flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              Paiement réussi !
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-green-700">
-              Votre paiement a été traité avec succès et votre abonnement est maintenant actif.
-            </p>
           </CardContent>
         </Card>
-      )}
+      );
+    }
 
-      {/* Error Message */}
-      {showErrorMessage && (
-        <Card className="mb-8 bg-red-50 border-red-200">
-          <CardHeader>
-            <CardTitle className="text-red-800 flex items-center gap-2">
-              <Info className="w-5 h-5" />
-              Erreur de paiement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-red-700">
-              Une erreur s'est produite lors du traitement de votre paiement. Veuillez réessayer.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {availablePlans.map(([planId, plan]) => {
+          const icon = planIcons[planId] ?? <Shield className="w-6 h-6"/>;
+          const color = selectedPlan === planId ? (planColors[planId] ?? "border-gray-200") : "border-gray-200";
+          const features = planFeatures[planId] ?? [];
 
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">Choisissez votre plan</h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Profitez d'un streaming illimité avec nos plans flexibles. 
-          Changez ou annulez à tout moment.
-        </p>
-        
-        {/* Account requirement notice */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
-          <p className="text-blue-800">
-            <span className="font-medium">Note importante :</span> Vous devez être connecté avec un compte pour vous abonner à un plan. 
-            Si vous n'avez pas encore de compte, veuillez vous inscrire d'abord.
-          </p>
-        </div>
-      </div>
-
-      {/* Current Subscription Status */}
-      {currentSubscription?.subscription ? (
-        <Card className="mb-8 bg-green-50 border-green-200">
-          <CardHeader>
-            <CardTitle className="text-green-800 flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              Abonnement actuel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">
-                  Plan {currentSubscription.subscription.planId.charAt(0).toUpperCase() + 
-                       currentSubscription.subscription.planId.slice(1)}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Expire le {new Date(currentSubscription.subscription.endDate).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
-              <Badge variant="outline" className="bg-green-100 text-green-800">
-                Actif
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* Subscription Plans (excluding free plan) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        {availablePlans.map(([planId, plan]: [string, any]) => {
-          // Safety check for plan data
-          if (!plan || !plan.name || plan.amount === undefined) {
-            console.warn(`Invalid plan data for ${planId}:`, plan);
-            return (
-              <Card key={`invalid-${planId}`} className="border-red-200 bg-red-50">
-                <CardHeader>
-                  <CardTitle className="text-red-600">Plan invalide</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>Les données du plan {planId} sont incomplètes</p>
-                </CardContent>
-              </Card>
-            );
-          }
-          
-          // Ensure planId exists in our defined features and icons
-          const features = planFeatures[planId as keyof typeof planFeatures] || [];
-          const icon = planIcons[planId as keyof typeof planIcons] || <Shield className="w-6 h-6" />;
-          const colorClass = planColors[planId as keyof typeof planColors] || 'border-gray-200';
-          
           return (
             <Card 
-              key={planId}
-              className={`relative cursor-pointer transition-all duration-200 hover:shadow-lg ${selectedPlan === planId ? colorClass : 'border-gray-200'}`}
-              onClick={() => {
-                if (isMountedRef.current) {
-                  handlePlanSelection(planId);
-                }
-              }}
+              key={planId} 
+              className={`relative transition-all cursor-pointer hover:shadow-lg ${color}`} 
+              onClick={() => onChoosePlan(planId)}
             >
-              {planId === 'standard' && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              {planId === "standard" && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-blue-600 text-white">Populaire</Badge>
                 </div>
               )}
-              
+              {planId === "premium" && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-yellow-600 text-white">Recommandé</Badge>
+                </div>
+              )}
               <CardHeader className="text-center">
                 <div className="mx-auto mb-4 p-3 rounded-full bg-gray-100 w-16 h-16 flex items-center justify-center">
                   {icon}
                 </div>
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
+                <CardDescription>{plan.description ?? `Accès ${planId}`}</CardDescription>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">{plan.amount.toLocaleString('fr-FR')}</span>
-                  <span className="text-muted-foreground ml-1">FCFA/mois</span>
+                  {plan.amount > 0 ? (
+                    <>
+                      <span className="text-4xl font-bold">{plan.amount.toLocaleString('fr-FR')}</span>
+                      <span className="text-muted-foreground ml-1">{plan.currency}/mois</span>
+                    </>
+                  ) : (
+                    <span className="text-4xl font-bold">Gratuit</span>
+                  )}
                 </div>
               </CardHeader>
-              
               <CardContent>
-                <ul className="space-y-3 mb-6 min-h-[150px]">
-                  {features && Array.isArray(features) ? (
-                    features.map((feature: PlanFeature, index) => (
-                      <li key={`${planId}-feature-${index}`} className="flex items-start gap-2">
-                        {feature.available ? (
-                          <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <X className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        )}
-                        <span className={`text-sm ${feature.available ? '' : 'text-muted-foreground line-through'}`}>
-                          {feature.text}
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    <li key={`${planId}-no-features`} className="flex items-center gap-2">
-                      <span className="text-sm">Aucune fonctionnalité disponible</span>
+                <ul className="space-y-3 mb-6 min-h-[180px]">
+                  {features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      {f.available ? <Check className="w-4 h-4 text-green-600 mt-0.5"/> : <X className="w-4 h-4 text-red-500 mt-0.5"/>}
+                      <span className={f.available ? "" : "text-muted-foreground line-through"}>{f.text}</span>
                     </li>
-                  )}
+                  ))}
                 </ul>
-                
                 <Button 
                   className="w-full" 
-                  variant={selectedPlan === planId ? "default" : "outline"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isMountedRef.current) {
-                      handlePlanSelection(planId);
-                    }
+                  variant={selectedPlan === planId ? "default" : "outline"} 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    onChoosePlan(planId); 
                   }}
                 >
-                  {selectedPlan === planId ? 'Sélectionné' : 'Choisir ce plan'}
+                  {selectedPlan === planId ? "Sélectionné" : "Choisir ce plan"}
                 </Button>
               </CardContent>
-
             </Card>
           );
         })}
       </div>
+    );
+  };
 
-      {/* Plan Feature Comparison */}
+  return (
+    <div className="container mx-auto py-8 px-4 max-w-7xl">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold mb-4">Choisissez votre plan</h1>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Profitez d'un streaming illimité avec nos plans flexibles. Changez ou annulez à tout moment.
+        </p>
+        {!isAuthenticated && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
+            <p className="text-blue-800">
+              <span className="font-medium">Note :</span> Vous devez être connecté pour vous abonner.
+              <Button className="ml-3" size="sm" onClick={() => setLocation('/login?redirect=/subscription')}>Se connecter</Button>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Current subscription */}
+      {current?.subscription && (
+        <Card className="mb-8 bg-green-50 border-green-200">
+          <CardHeader>
+            <CardTitle className="text-green-800 flex items-center gap-2">
+              <Check className="w-5 h-5"/> Abonnement actuel
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Plan {String(current.subscription.planId).charAt(0).toUpperCase() + String(current.subscription.planId).slice(1)}</p>
+              <p className="text-sm text-muted-foreground">Expire le {new Date(current.subscription.endDate).toLocaleDateString('fr-FR')}</p>
+            </div>
+            <Badge variant="outline" className="bg-green-100 text-green-800">Actif</Badge>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plans */}
+      <div className="mb-12">{renderPlans()}</div>
+
+      {/* Feature comparison */}
       <Card className="mb-12">
         <CardHeader>
           <CardTitle>Comparaison des fonctionnalités</CardTitle>
-          <CardDescription>
-            Comparez les fonctionnalités disponibles dans chaque plan
-          </CardDescription>
+          <CardDescription>Comparez les fonctionnalités disponibles dans chaque plan</CardDescription>
         </CardHeader>
         <CardContent>
-          <PlanFeatureComparison currentPlanId={currentSubscription?.subscription?.planId} />
+          <PlanFeatureComparison currentPlanId={current?.subscription?.planId} />
         </CardContent>
       </Card>
 
-      {/* Customer Information Form */}
-      {selectedPlan ? (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Informations de facturation</CardTitle>
-            <CardDescription>
-              Remplissez vos informations pour procéder au paiement
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Nom complet *</Label>
-                <Input
-                  id="name"
-                  value={customerInfo.name}
-                  onChange={(e) => {
-                    if (isMountedRef.current) {
-                      setCustomerInfo(prev => ({ ...prev, name: e.target.value }));
-                    }
-                  }}
-                  placeholder="Votre nom complet"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={customerInfo.email}
-                  onChange={(e) => {
-                    if (isMountedRef.current) {
-                      setCustomerInfo(prev => ({ ...prev, email: e.target.value }));
-                    }
-                  }}
-                  placeholder="votre@email.com"
-                  required
-                />
-              </div>
-              
-              <div className="md:col-span-2">
-                <Label htmlFor="phone">Téléphone (optionnel)</Label>
-                <Input
-                  id="phone"
-                  value={customerInfo.phone}
-                  onChange={(e) => {
-                    if (isMountedRef.current) {
-                      setCustomerInfo(prev => ({ ...prev, phone: e.target.value }));
-                    }
-                  }}
-                  placeholder="+221 XX XXX XX XX"
-                />
-              </div>
-              
-              <div className="md:col-span-2">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2 flex items-center">
-                    <Info className="w-4 h-4 mr-2" />
-                    Instructions de paiement
-                  </h4>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li className="flex items-start">
-                      <span className="mr-2">1.</span>
-                      <span>Après avoir cliqué sur "Procéder au paiement", vous serez redirigé vers notre système de paiement Lygos</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">2.</span>
-                      <span>Vous recevrez un QR code ou un lien de paiement</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">3.</span>
-                      <span>Scannez le QR code ou suivez le lien pour payer via votre portefeuille mobile</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="mr-2">4.</span>
-                      <span>Votre abonnement sera activé automatiquement après paiement</span>
-                    </li>
-                  </ul>
-                  <div className="mt-3 p-3 bg-blue-100 rounded text-blue-800 text-sm">
-                    <p className="font-medium mb-1">Méthodes de paiement acceptées :</p>
-                    <p>Orange Money, MTN Mobile Money, Wave</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {/* Payment Section */}
-      {selectedPlan ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-3">
-              <CreditCard className="w-8 h-8 text-blue-500" />
-              Finaliser votre abonnement
-            </CardTitle>
-            <CardDescription>
-              Paiement sécurisé et crypté via Lygos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+      {/* Customer info form + payment */}
+      {selectedPlan && (
+        <>
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Informations de facturation</CardTitle>
+              <CardDescription>Remplissez vos informations pour procéder au paiement</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="font-medium">
-                    Plan {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Abonnement mensuel</p>
+                  <Label htmlFor="name">Nom complet *</Label>
+                  <Input id="name" value={customerInfo.name} onChange={(e) => setCustomerInfo((p) => ({ ...p, name: e.target.value }))} placeholder="Votre nom complet" required />
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">
-                    {plans?.[selectedPlan]?.amount.toLocaleString('fr-FR')} FCFA
-                  </p>
-                  <p className="text-sm text-muted-foreground">par mois</p>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input id="email" type="email" value={customerInfo.email} onChange={(e) => setCustomerInfo((p) => ({ ...p, email: e.target.value }))} placeholder="votre@email.com" required />
                 </div>
-              </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="phone">Téléphone (optionnel)</Label>
+                  <Input id="phone" value={customerInfo.phone} onChange={(e) => setCustomerInfo((p) => ({ ...p, phone: e.target.value }))} placeholder="+221 XX XXX XX XX" />
+                </div>
 
-              <div className="flex flex-col items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <QrCode className="w-8 h-8 text-blue-500" />
-                  <span className="font-medium text-gray-700">Paiement Lygos</span>
-                </div>
-                <p className="text-center text-sm text-muted-foreground">
-                  Paiement sécurisé via portefeuille mobile (Orange Money, MTN Mobile Money, Wave)
-                </p>
-              </div>
-
-              <Button 
-                onClick={handlePayment}
-                disabled={isProcessing}
-                className="w-full py-6 text-lg"
-                size="lg"
-              >
-                {isProcessing ? (
-                  <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    <span>Traitement en cours...</span>
+                <div className="md:col-span-2">
+                  <Label className="text-base font-medium">Choisissez votre méthode de paiement</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    {providers.lygos && (
+                      <div
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                          selectedProvider === 'lygos' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
+                        }`}
+                        onClick={() => setSelectedProvider('lygos')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">L</span>
+                          </div>
+                          <div>
+                            <h4 className="font-medium">Lygos</h4>
+                            <p className="text-sm text-muted-foreground">Portefeuille mobile</p>
+                          </div>
+                        </div>
+                        <p className="text-xs mt-2 text-muted-foreground">
+                          Orange Money, MTN Mobile Money, Wave
+                        </p>
+                      </div>
+                    )}
+                    {providers.paypal && (
+                      <div
+                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                          selectedProvider === 'paypal' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                        }`}
+                        onClick={() => setSelectedProvider('paypal')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">P</span>
+                          </div>
+                          <div>
+                            <h4 className="font-medium">PayPal</h4>
+                            <p className="text-sm text-muted-foreground">Carte bancaire</p>
+                          </div>
+                        </div>
+                        <p className="text-xs mt-2 text-muted-foreground">
+                          Visa, Mastercard, PayPal
+                        </p>
+                      </div>
+                    )}
                   </div>
+                  {!providers.lygos && !providers.paypal && (
+                    <p className="text-red-600 text-sm mt-2">Aucun fournisseur de paiement disponible</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                {isFreePlan(selectedPlan) ? (
+                  <>
+                    <Shield className="w-6 h-6 text-green-500"/>Activer votre abonnement gratuit
+                  </>
                 ) : (
-                  <div className="flex items-center">
-                    <CreditCard className="w-5 h-5 mr-2" />
-                    <span>Procéder au paiement avec Lygos</span>
+                  <>
+                    <CreditCard className="w-6 h-6 text-blue-500"/>Finaliser votre abonnement
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {isFreePlan(selectedPlan) 
+                  ? "Confirmez vos informations pour activer votre abonnement gratuit" 
+                  : "Paiement sécurisé et crypté via Lygos"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Plan {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}</p>
+                    <p className="text-sm text-muted-foreground">Abonnement mensuel</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold">
+                      {isFreePlan(selectedPlan) 
+                        ? "Gratuit" 
+                        : `${plans?.[selectedPlan]?.amount.toLocaleString('fr-FR') ?? '0'} ${plans?.[selectedPlan]?.currency ?? 'FCFA'}`}
+                    </p>
+                    {!isFreePlan(selectedPlan) && plans?.[selectedPlan] && (
+                      <p className="text-sm text-muted-foreground">par mois</p>
+                    )}
+                  </div>
+                </div>
+
+                {isFreePlan(selectedPlan) ? (
+                  <div className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-6 h-6 text-green-500"/>
+                      <span className="font-medium">Abonnement gratuit</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Votre abonnement gratuit sera activé immédiatement après confirmation
+                    </p>
+                  </div>
+                ) : selectedProvider === 'paypal' ? (
+                  paypalOrderId ? (
+                    <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-6 h-6 text-blue-600"/>
+                        <span className="font-medium">Paiement PayPal</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-4">Cliquez sur le bouton ci-dessous pour payer avec PayPal</p>
+                      <div id="paypal-button-container"></div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-6 h-6 text-blue-600"/>
+                        <span className="font-medium">Paiement PayPal</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Paiement sécurisé via PayPal (Visa, Mastercard)</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-6 h-6 text-green-500"/>
+                      <span className="font-medium">Paiement Lygos</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Paiement via portefeuille mobile (Orange Money, MTN, Wave)</p>
                   </div>
                 )}
-              </Button>
 
-              <p className="text-xs text-center text-muted-foreground">
-                En cliquant sur "Procéder au paiement", vous acceptez nos{' '}
-                <a href="/terms" className="underline">conditions d'utilisation</a> et notre{' '}
-                <a href="/privacy" className="underline">politique de confidentialité</a>.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+                {(!selectedProvider || selectedProvider !== 'paypal' || !paypalOrderId) && (
+                  <Button className="w-full py-6 text-lg" size="lg" disabled={isProcessing} onClick={onPay}>
+                    {isProcessing ? (
+                      <span className="inline-flex items-center">
+                        <div className="loader-wrapper">
+                          <Loader2 className="w-5 h-5 animate-spin mr-2"/>
+                        </div>
+                        <span>Traitement…</span>
+                      </span>
+                    ) : isFreePlan(selectedPlan) ? (
+                      <span className="inline-flex items-center">
+                        <Check className="w-5 h-5 mr-2"/>
+                        <span>Activer l'abonnement gratuit</span>
+                      </span>
+                    ) : selectedProvider === 'paypal' ? (
+                      <span className="inline-flex items-center">
+                        <CreditCard className="w-5 h-5 mr-2"/>
+                        <span>Payer avec PayPal</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center">
+                        <QrCode className="w-5 h-5 mr-2"/>
+                        <span>Payer avec Lygos</span>
+                      </span>
+                    )}
+                  </Button>
+                )}
 
-      {/* Payment History */}
-      {paymentHistory?.payments && paymentHistory.payments.length > 0 ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  En cliquant sur "{isFreePlan(selectedPlan) ? 'Activer l\'abonnement gratuit' : 'Procéder au paiement'}", vous acceptez nos <a href="/terms" className="underline">conditions d'utilisation</a> et notre <a href="/privacy" className="underline">politique de confidentialité</a>.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Payment history */}
+      {history?.payments?.length > 0 && (
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Historique des paiements
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2"><Clock className="w-5 h-5"/>Historique des paiements</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {paymentHistory.payments.slice(0, 5).map((payment: any) => (
-                <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
+              {history.payments.slice(0, 5).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">
-                      {payment.amount.toLocaleString('fr-FR')} FCFA
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(payment.createdAt).toLocaleDateString('fr-FR')} - {payment.method}
-                    </p>
+                    <p className="font-medium">{Number(p.amount).toLocaleString('fr-FR')} {plans?.[selectedPlan]?.currency ?? 'FCFA'}</p>
+                    <p className="text-sm text-muted-foreground">{new Date(p.createdAt).toLocaleDateString('fr-FR')} - {p.method}</p>
                   </div>
-                  <Badge 
-                    variant={payment.status === 'success' ? 'default' : 'destructive'}
-                  >
-                    {payment.status === 'success' ? 'Réussi' : 'Échec'}
+                  <Badge variant={p.status === 'success' ? 'default' : 'destructive'}>
+                    {p.status === 'success' ? 'Réussi' : 'Échec'}
                   </Badge>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      )}
     </div>
   );
-};
+}
 
 export default SubscriptionPage;

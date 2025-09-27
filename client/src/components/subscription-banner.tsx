@@ -17,11 +17,11 @@ const SubscriptionBanner: React.FC = () => {
     ]
   });
 
-  // Fetch banner data from admin banners
+  // Fetch banner data from public banners endpoint
   useEffect(() => {
     const fetchBannerData = async () => {
       try {
-        const response = await fetch("/api/admin/banners");
+        const response = await fetch("/api/banners");
         if (response.ok) {
           const banners = await response.json();
           

@@ -167,6 +167,33 @@ export const viewTracking = pgTable("view_tracking", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Watch progress tracking for "Continue Watching" feature
+export const watchProgress = pgTable("watch_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contentId: varchar("content_id").references(() => content.id, { onDelete: "cascade" }), // For series episodes
+  episodeId: varchar("episode_id").references(() => episodes.id, { onDelete: "cascade" }), // For specific episodes
+  movieId: integer("movie_id"), // TMDB movie ID for backward compatibility
+  currentTime: integer("current_time").notNull(), // in seconds
+  duration: integer("duration"), // total duration in seconds
+  completed: boolean("completed").default(false).notNull(),
+  lastWatchedAt: timestamp("last_watched_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Comments table for user comments on content
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contentId: varchar("content_id").notNull().references(() => content.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  rating: integer("rating"), // Optional rating 1-5 stars
+  approved: boolean("approved").default(true).notNull(), // For moderation
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   favorites: many(favorites),
@@ -177,6 +204,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   notifications: many(notifications),
   sessions: many(userSessions),
   views: many(viewTracking),
+  watchProgress: many(watchProgress),
+  comments: many(comments),
 }));
 
 export const favoritesRelations = relations(favorites, ({ one }) => ({
@@ -245,6 +274,32 @@ export const viewTrackingRelations = relations(viewTracking, ({ one }) => ({
   }),
 }));
 
+export const watchProgressRelations = relations(watchProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [watchProgress.userId],
+    references: [users.id],
+  }),
+  content: one(content, {
+    fields: [watchProgress.contentId],
+    references: [content.id],
+  }),
+  episode: one(episodes, {
+    fields: [watchProgress.episodeId],
+    references: [episodes.id],
+  }),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  content: one(content, {
+    fields: [comments.contentId],
+    references: [content.id],
+  }),
+}));
+
 // Episodes relations
 export const episodesRelations = relations(episodes, ({ one }) => ({
   content: one(content, {
@@ -255,6 +310,7 @@ export const episodesRelations = relations(episodes, ({ one }) => ({
 
 export const contentRelations = relations(content, ({ many }) => ({
   episodes: many(episodes),
+  comments: many(comments),
 }));
 
 // Insert schemas
@@ -317,7 +373,19 @@ export const insertViewTrackingSchema = createInsertSchema(viewTracking).omit({
   createdAt: true,
 });
 
+export const insertWatchProgressSchema = createInsertSchema(watchProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertContentSchema = createInsertSchema(content).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -350,3 +418,7 @@ export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 export type ViewTracking = typeof viewTracking.$inferSelect;
 export type InsertViewTracking = z.infer<typeof insertViewTrackingSchema>;
+export type WatchProgress = typeof watchProgress.$inferSelect;
+export type InsertWatchProgress = z.infer<typeof insertWatchProgressSchema>;
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;

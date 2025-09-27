@@ -1,44 +1,48 @@
-import { 
-  users, 
-  favorites, 
-  watchHistory, 
-  userPreferences,
-  contactMessages,
-  subscriptions,
-  payments,
-  banners,
-  collections,
-  content,
-  notifications,
-  userSessions,
-  viewTracking,
-  type User, 
-  type InsertUser, 
-  type Favorite, 
-  type InsertFavorite,
-  type WatchHistory,
-  type InsertWatchHistory,
-  type UserPreferences,
-  type InsertUserPreferences,
-  type ContactMessage,
-  type InsertContactMessage,
-  type Subscription,
-  type InsertSubscription,
-  type Payment,
-  type InsertPayment,
-  type Banner,
-  type InsertBanner,
-  type Collection,
-  type InsertCollection,
-  type Content,
-  type InsertContent,
-  type Notification,
-  type InsertNotification,
-  type UserSession,
-  type InsertUserSession,
-  type ViewTracking,
-  type InsertViewTracking
-} from "@shared/schema";
+import {
+   users,
+   favorites,
+   watchHistory,
+   userPreferences,
+   contactMessages,
+   subscriptions,
+   payments,
+   banners,
+   collections,
+   content,
+   notifications,
+   userSessions,
+   viewTracking,
+   episodes,
+   comments,
+   type User,
+   type InsertUser,
+   type Favorite,
+   type InsertFavorite,
+   type WatchHistory,
+   type InsertWatchHistory,
+   type UserPreferences,
+   type InsertUserPreferences,
+   type ContactMessage,
+   type InsertContactMessage,
+   type Subscription,
+   type InsertSubscription,
+   type Payment,
+   type InsertPayment,
+   type Banner,
+   type InsertBanner,
+   type Collection,
+   type InsertCollection,
+   type Content,
+   type InsertContent,
+   type Notification,
+   type InsertNotification,
+   type UserSession,
+   type InsertUserSession,
+   type ViewTracking,
+   type InsertViewTracking,
+   type Comment,
+   type InsertComment
+ } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -135,6 +139,15 @@ export interface IStorage {
   // View Tracking
   createViewTracking(view: InsertViewTracking): Promise<ViewTracking>;
   getViewStats(): Promise<{dailyViews: number, weeklyViews: number}>;
+
+  // Comments
+  createComment(comment: InsertComment): Promise<Comment>;
+  getCommentsByContentId(contentId: string): Promise<Comment[]>;
+  getCommentById(commentId: string): Promise<Comment | undefined>;
+  updateComment(commentId: string, data: Partial<InsertComment>): Promise<Comment>;
+  updateCommentApproval(commentId: string, approved: boolean): Promise<Comment>;
+  deleteComment(commentId: string): Promise<void>;
+  getAllComments(): Promise<Comment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -415,6 +428,43 @@ export class DatabaseStorage implements IStorage {
       .from(payments)
       .where(eq(payments.userId, userId))
       .orderBy(desc(payments.createdAt));
+  }
+
+  async getPaymentById(paymentId: string): Promise<Payment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.id, paymentId));
+    return payment || undefined;
+  }
+
+  async updatePaymentStatus(paymentId: string, status: string): Promise<Payment> {
+    const [updated] = await db
+      .update(payments)
+      .set({ status } as Partial<Payment>)
+      .where(eq(payments.id, paymentId))
+      .returning();
+    return updated;
+  }
+
+  // Add a method to create or update subscription
+  async createOrUpdateSubscription(subscriptionData: InsertSubscription): Promise<Subscription> {
+    // Check if user already has an active subscription
+    const existingSubscription = await this.getUserSubscription(subscriptionData.userId);
+    
+    if (existingSubscription) {
+      // Update existing subscription
+      const [updated] = await db
+        .update(subscriptions)
+        .set(subscriptionData as any)
+        .where(eq(subscriptions.id, existingSubscription.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new subscription
+      const [newSubscription] = await db.insert(subscriptions).values(subscriptionData as any).returning();
+      return newSubscription;
+    }
   }
 
   // Banners
@@ -942,25 +992,29 @@ export class DatabaseStorage implements IStorage {
   
   // Episode Management
   async createEpisode(episode: any): Promise<any> {
-    // Import episodes table
-    const { episodes } = await import('@shared/schema');
     const [newEpisode] = await db.insert(episodes).values(episode).returning();
     return newEpisode;
   }
 
   async getEpisodesByContentId(contentId: string): Promise<any[]> {
-    // Import episodes table
-    const { episodes } = await import('@shared/schema');
-    return await db
-      .select()
-      .from(episodes)
-      .where(eq(episodes.contentId, contentId))
-      .orderBy(episodes.seasonNumber, episodes.episodeNumber);
+    try {
+      return await db
+        .select()
+        .from(episodes)
+        .where(eq(episodes.contentId, contentId))
+        .orderBy(episodes.seasonNumber, episodes.episodeNumber);
+    } catch (error: any) {
+      const msg = error?.message || '';
+      // Handle case where episodes table is not yet created/migrated
+      if (typeof msg === 'string' && (msg.includes('relation "episodes" does not exist') || msg.includes("relation 'episodes' does not exist") || msg.includes('undefined table: episodes'))) {
+        console.warn('[episodes] table missing; returning empty list. Run migrations to create the table.');
+        return [];
+      }
+      throw error;
+    }
   }
 
   async getEpisodeById(episodeId: string): Promise<any | undefined> {
-    // Import episodes table
-    const { episodes } = await import('@shared/schema');
     const [episode] = await db
       .select()
       .from(episodes)
@@ -969,8 +1023,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEpisode(episodeId: string, data: Partial<any>): Promise<any> {
-    // Import episodes table
-    const { episodes } = await import('@shared/schema');
     const [updated] = await db
       .update(episodes)
       .set({ ...data, updatedAt: new Date() } as any)
@@ -980,11 +1032,60 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteEpisode(episodeId: string): Promise<void> {
-    // Import episodes table
-    const { episodes } = await import('@shared/schema');
     await db
       .delete(episodes)
       .where(eq(episodes.id, episodeId));
+  }
+
+  // Comments
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const [newComment] = await db.insert(comments).values(comment as any).returning();
+    return newComment;
+  }
+
+  async getCommentsByContentId(contentId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(and(eq(comments.contentId, contentId), eq(comments.approved, true)))
+      .orderBy(desc(comments.createdAt));
+  }
+
+  async getCommentById(commentId: string): Promise<Comment | undefined> {
+    const [comment] = await db
+      .select()
+      .from(comments)
+      .where(eq(comments.id, commentId));
+    return comment || undefined;
+  }
+
+  async updateComment(commentId: string, data: Partial<InsertComment>): Promise<Comment> {
+    const [updated] = await db
+      .update(comments)
+      .set({ ...data, updatedAt: new Date() } as any)
+      .where(eq(comments.id, commentId))
+      .returning();
+    return updated;
+  }
+
+  async updateCommentApproval(commentId: string, approved: boolean): Promise<Comment> {
+    const [updated] = await db
+      .update(comments)
+      .set({ approved, updatedAt: new Date() } as any)
+      .where(eq(comments.id, commentId))
+      .returning();
+    return updated;
+  }
+
+  async deleteComment(commentId: string): Promise<void> {
+    await db.delete(comments).where(eq(comments.id, commentId));
+  }
+
+  async getAllComments(): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .orderBy(desc(comments.createdAt));
   }
 }
 

@@ -358,7 +358,7 @@ class TMDBService {
     }
   }
 
-  async getTVShowDetails(id: number): Promise<TVDetails> {
+  async getTVShowDetails(id: number): Promise<TVDetails | any> {
     const cacheKey = `tv-${id}`;
     const cached = this.cache.get(cacheKey);
     if (cached) {
@@ -372,7 +372,8 @@ class TMDBService {
       
       const response = await fetch(`${this.baseUrl}/tv/${id}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch TV show details");
+        console.error(`Failed to fetch TV show details for ID ${id}:`, response.status, response.statusText);
+        throw new Error(`Failed to fetch TV show details: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
       

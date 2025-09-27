@@ -17,12 +17,13 @@ const cspMiddleware = () => {
         res.setHeader(
           'Content-Security-Policy',
           `default-src 'self'; ` +
-          `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google-analytics.com; ` +
-          `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ` +
+          `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google-analytics.com https://www.gstatic.com http://localhost:5173 http://127.0.0.1:5000 https://*.paypal.com:* https://*.paypalobjects.com https://*.braintreegateway.com blob:; ` +
+          `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://www.google-analytics.com https://www.gstatic.com http://localhost:5173 http://127.0.0.1:5000 https://*.paypal.com:* https://*.paypalobjects.com https://*.braintreegateway.com blob:; ` +
+          `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com https://translate.googleapis.com; ` +
           `img-src 'self' data: https:; ` +
           `font-src 'self' data: https://fonts.gstatic.com; ` +
-          `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org; ` +
-          `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.io; ` +
+          `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com; ` +
+          `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.io https://www.paypal.com https://www.sandbox.paypal.com; ` +
           `media-src 'self' blob: https:; ` +
           `worker-src 'self' blob:; ` +
           `child-src 'self' blob: https://zupload.cc https://zupload.io;`

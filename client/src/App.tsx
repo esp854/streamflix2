@@ -113,53 +113,17 @@ function App() {
   const isWatchPage = location.startsWith("/watch/");
   const isAdminPage = location === "/admin";
 
-  if (isWatchPage) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <ErrorBoundary>
-              <Router />
-            </ErrorBoundary>
-            <Toaster />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    );
-  }
-
-  // Admin page - no navbar or footer
-  if (isAdminPage) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <ErrorBoundary>
-              <div className="flex flex-col min-h-screen">
-                <main className="flex-grow">
-                  <Router />
-                </main>
-              </div>
-            </ErrorBoundary>
-            <Toaster />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    );
-  }
-
-  // Regular pages with navbar and footer
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
           <ErrorBoundary>
             <div className="flex flex-col min-h-screen">
-              <Navbar />
-              <main className="flex-grow">
+              {!isWatchPage && !isAdminPage && <Navbar />}
+              <main className={`flex-grow ${!isWatchPage && !isAdminPage ? 'pt-12 md:pt-16 pb-16 md:pb-0' : ''}`}>
                 <Router />
               </main>
-              <Footer />
+              {!isWatchPage && !isAdminPage && <Footer />}
             </div>
           </ErrorBoundary>
           <Toaster />

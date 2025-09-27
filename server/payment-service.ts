@@ -1,4 +1,5 @@
 import { plans } from "./plans";
+import { storage } from "./storage";
 
 // Define types for our payment service
 export interface CustomerInfo {
@@ -11,6 +12,7 @@ export interface PaymentResponse {
   paymentLink?: string;
   qrCode?: string;
   paymentId?: string;
+  orderId?: string;
   success?: boolean;
   approval_url?: string;
   error?: string;
@@ -29,18 +31,99 @@ export interface PaymentStatus {
 export class PaymentService {
   private lygosApiKey: string;
   private lygosApiBaseUrl: string;
+  private paypalClientId: string;
+  private paypalClientSecret: string;
+  private paypalMode: string;
   private clientUrl: string;
 
   constructor() {
     this.lygosApiKey = process.env.LYGOS_API_KEY || '';
     // Use the correct endpoint from environment variables
-    this.lygosApiBaseUrl = process.env.LYGOS_API_BASE_URL || 'https://api.lygosapp.com';
+    // Remove trailing slash and /v1 if present, as we'll add it in the requests
+    let baseUrl = process.env.LYGOS_API_BASE_URL || 'https://api.lygosapp.com';
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    if (baseUrl.endsWith('/v1')) {
+      baseUrl = baseUrl.slice(0, -3);
+    }
+    this.lygosApiBaseUrl = baseUrl;
+    this.paypalClientId = process.env.PAYPAL_CLIENT_ID || '';
+    this.paypalClientSecret = process.env.PAYPAL_CLIENT_SECRET || '';
+    this.paypalMode = process.env.PAYPAL_MODE || 'sandbox';
     this.clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
   }
 
   // Check if the payment service is properly configured
   isConfigured(): boolean {
-    return !!this.lygosApiKey && !!this.lygosApiBaseUrl;
+    return !!(this.lygosApiKey && this.lygosApiBaseUrl) || !!(this.paypalClientId && this.paypalClientSecret);
+  }
+
+  // Check if PayPal is configured
+  isPayPalConfigured(): boolean {
+    return !!(this.paypalClientId && this.paypalClientSecret);
+  }
+
+  // Check if Lygos is configured
+  isLygosConfigured(): boolean {
+    return !!(this.lygosApiKey && this.lygosApiBaseUrl);
+  }
+
+  // Get PayPal client ID for frontend
+  getPayPalClientId(): string {
+    return this.paypalClientId;
+  }
+
+  // Test PayPal configuration
+  async testPayPalConfiguration(): Promise<{ configured: boolean; accessToken?: boolean; error?: string }> {
+    try {
+      const configured = this.isPayPalConfigured();
+      if (!configured) {
+        return { configured: false };
+      }
+
+      const accessToken = await this.getPayPalAccessToken();
+      return { configured: true, accessToken: !!accessToken };
+    } catch (error: any) {
+      return { configured: false, error: error.message };
+    }
+  }
+
+  // Generic create payment method that chooses the best available provider
+  async createPayment(
+    planId: string,
+    customerInfo: CustomerInfo,
+    userId: string
+  ): Promise<PaymentResponse> {
+    // Prefer Lygos if configured, then PayPal
+    if (this.lygosApiKey && this.lygosApiBaseUrl) {
+      console.log('Using Lygos for payment');
+      return this.createLygosPayment(planId, customerInfo, userId);
+    } else if (this.paypalClientId && this.paypalClientSecret) {
+      console.log('Using PayPal for payment');
+      return this.createPayPalPayment(planId, customerInfo, userId);
+    } else {
+      throw new Error("Aucun service de paiement configuré");
+    }
+  }
+
+  // Generic check payment status method
+  async checkPaymentStatus(paymentId: string): Promise<PaymentStatus> {
+    // Try PayPal first if configured
+    if (this.paypalClientId && this.paypalClientSecret) {
+      try {
+        return await this.checkPayPalPaymentStatus(paymentId);
+      } catch (error) {
+        console.log('PayPal check failed, trying Lygos');
+      }
+    }
+
+    // Fallback to Lygos
+    if (this.lygosApiKey && this.lygosApiBaseUrl) {
+      return this.checkLygosPaymentStatus(paymentId);
+    }
+
+    throw new Error("Aucun service de paiement configuré pour vérifier le statut");
   }
 
   // Create a payment using Lygos
@@ -72,13 +155,14 @@ export class PaymentService {
       }
 
       // Log the request data for debugging
+      const webhookBase = process.env.BASE_URL || process.env.APP_URL || 'http://localhost:5000';
       const requestData = {
         amount: selectedPlan.amount,
-        shop_name: "StreamFlix",
+        shop_name: `StreamFlix - Plan ${selectedPlan.name}`,
+        order_id: `subscription_${userId}_${planId}_${Date.now()}`,
         message: description,
         success_url: `${this.clientUrl}/subscription?payment=success`,
-        failure_url: `${this.clientUrl}/subscription?payment=error`,
-        order_id: `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        failure_url: `${this.clientUrl}/subscription?payment=failed`,
         customer: {
           name: customerInfo.name,
           email: customerInfo.email,
@@ -89,7 +173,7 @@ export class PaymentService {
       console.log('Sending request to Lygos API:', {
         url: `${this.lygosApiBaseUrl}/v1/gateway`,
         headers: {
-          "api-key": this.lygosApiKey ? "[REDACTED]" : "MISSING",
+          "api-key": this.lygosApiKey,
           "Content-Type": "application/json"
         },
         body: requestData
@@ -123,12 +207,13 @@ export class PaymentService {
       const paymentData = await response.json();
       console.log('Lygos API success response:', paymentData);
       
-      // Based on the test response, we need to map the fields correctly
+      // Map common Lygos response fields
       return {
-        paymentLink: paymentData.link,  // Lygos returns 'link' field, not 'paymentLink'
-        paymentId: paymentData.id
-        // Note: Lygos doesn't seem to provide a QR code directly in this response
-        // We might need to generate it on the frontend or use a different endpoint
+        paymentLink: paymentData.link || paymentData.payment_url || paymentData.paymentLink,
+        approval_url: paymentData.approval_url,
+        paymentId: paymentData.id || paymentData.token || paymentData.paymentId,
+        qrCode: paymentData.qr_code_url || paymentData.qrCode,
+        success: true
       };
     } catch (error: any) {
       console.error("Error creating Lygos payment:", error);
@@ -149,7 +234,8 @@ export class PaymentService {
       // Check payment status with Lygos
       const response = await fetch(`${this.lygosApiBaseUrl}/v1/gateway/${paymentId}`, {
         headers: {
-          "api-key": this.lygosApiKey
+          "api-key": this.lygosApiKey,
+          "Content-Type": "application/json"
         }
       });
 
@@ -170,9 +256,9 @@ export class PaymentService {
   async processLygosWebhook(paymentData: any): Promise<{ success: boolean; message?: string }> {
     try {
       console.log("Processing Lygos webhook:", paymentData);
-      
+
       const { id, status, custom_data } = paymentData;
-      
+
       // Process the payment based on status
       if (status === "completed") {
         // Activate subscription in your database
@@ -185,11 +271,213 @@ export class PaymentService {
         console.log("Lygos payment failed or cancelled for payment ID:", id);
         return { success: true, message: "Payment failed or cancelled" };
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error("Error processing Lygos webhook:", error);
       throw new Error("Failed to process webhook");
+    }
+  }
+
+  // PayPal methods
+  private getPayPalBaseUrl(): string {
+    return this.paypalMode === 'live'
+      ? 'https://api.paypal.com'
+      : 'https://api.sandbox.paypal.com';
+  }
+
+  private async getPayPalAccessToken(): Promise<string> {
+    const auth = Buffer.from(`${this.paypalClientId}:${this.paypalClientSecret}`).toString('base64');
+
+    const response = await fetch(`${this.getPayPalBaseUrl()}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get PayPal access token');
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  }
+
+  // Create a payment using PayPal
+  async createPayPalPayment(
+    planId: string,
+    customerInfo: CustomerInfo,
+    userId: string
+  ): Promise<PaymentResponse> {
+    try {
+      console.log('Starting PayPal payment creation for plan:', planId);
+
+      // Validate plan
+      if (!plans[planId as keyof typeof plans]) {
+        throw new Error("Plan invalide");
+      }
+
+      const selectedPlan = plans[planId as keyof typeof plans];
+      console.log('Selected plan:', selectedPlan);
+
+      // For free plans, no payment is needed
+      if (selectedPlan.amount === 0) {
+        return {
+          success: true,
+          message: 'Abonnement gratuit activé avec succès'
+        };
+      }
+
+      // Check if PayPal is configured
+      if (!this.paypalClientId || !this.paypalClientSecret) {
+        console.error('PayPal not configured:', { clientId: !!this.paypalClientId, clientSecret: !!this.paypalClientSecret });
+        throw new Error("PayPal non configuré");
+      }
+
+      console.log('Getting PayPal access token...');
+      const accessToken = await this.getPayPalAccessToken();
+      console.log('Access token obtained:', !!accessToken);
+
+      // Convert XOF to USD (approximate rate: 1 USD = 655 XOF)
+      const usdAmount = (selectedPlan.amount / 655).toFixed(2);
+      console.log('Converted amount:', selectedPlan.amount, 'XOF ->', usdAmount, 'USD');
+
+      // Create order using PayPal Orders API v2
+      const orderData = {
+        intent: 'CAPTURE',
+        purchase_units: [{
+          amount: {
+            currency_code: 'USD',
+            value: usdAmount
+          },
+          description: `Abonnement ${selectedPlan.name} - ${selectedPlan.amount} FCFA (${usdAmount} USD)`
+        }]
+      };
+
+      console.log('Creating PayPal order with data:', orderData);
+      const response = await fetch(`${this.getPayPalBaseUrl()}/v2/checkout/orders`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      console.log('PayPal API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PayPal API error response:', errorText);
+        throw new Error(`PayPal API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('PayPal order created:', result);
+
+      // Store payment record
+      const paymentRecord = await storage.createPayment({
+        userId,
+        amount: selectedPlan.amount,
+        method: 'paypal',
+        status: 'pending',
+        paymentData: { orderId: result.id, planId }
+      });
+
+      console.log('Payment record created:', paymentRecord.id);
+
+      return {
+        success: true,
+        orderId: result.id,
+        paymentId: paymentRecord.id,
+      };
+    } catch (error: any) {
+      console.error("Error creating PayPal payment:", error);
+      throw new Error(`Erreur lors de la création du paiement PayPal: ${error.message}`);
+    }
+  }
+
+  // Capture PayPal payment
+  async capturePayPalPayment(orderId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const accessToken = await this.getPayPalAccessToken();
+
+      const response = await fetch(`${this.getPayPalBaseUrl()}/v2/checkout/orders/${orderId}/capture`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`PayPal capture error: ${errorData.message}`);
+      }
+
+      const captureData = await response.json();
+
+      return {
+        success: true
+      };
+    } catch (error: any) {
+      console.error("Error capturing PayPal payment:", error);
+      return {
+        success: false,
+        error: error.message || "Erreur lors de la capture du paiement PayPal"
+      };
+    }
+  }
+
+  // Check PayPal payment status
+  async checkPayPalPaymentStatus(paymentId: string): Promise<PaymentStatus> {
+    try {
+      const accessToken = await this.getPayPalAccessToken();
+
+      // First try to get order details
+      const orderResponse = await fetch(`${this.getPayPalBaseUrl()}/v2/checkout/orders/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (orderResponse.ok) {
+        const orderData = await orderResponse.json();
+        return {
+          id: orderData.id,
+          status: orderData.status,
+          amount: parseFloat(orderData.purchase_units[0].amount.value),
+          currency: orderData.purchase_units[0].amount.currency_code,
+          custom_data: orderData.purchase_units[0].custom_id ? { custom_id: orderData.purchase_units[0].custom_id } : undefined,
+        };
+      }
+
+      // Fallback to payment API if order not found
+      const paymentResponse = await fetch(`${this.getPayPalBaseUrl()}/v1/payments/payment/${paymentId}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!paymentResponse.ok) {
+        throw new Error('Failed to check PayPal payment status');
+      }
+
+      const paymentData = await paymentResponse.json();
+
+      return {
+        id: paymentData.id,
+        status: paymentData.state,
+        amount: parseFloat(paymentData.transactions[0].amount.total),
+        currency: paymentData.transactions[0].amount.currency,
+        custom_data: paymentData.transactions[0].custom ? JSON.parse(paymentData.transactions[0].custom) : undefined,
+      };
+    } catch (error: any) {
+      console.error("Error checking PayPal payment status:", error);
+      throw new Error(`Erreur lors de la vérification du paiement PayPal: ${error.message}`);
     }
   }
 }

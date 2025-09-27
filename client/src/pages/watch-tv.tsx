@@ -458,18 +458,29 @@ export default function WatchTV() {
   }, [isYouTubeVideo]);
 
   const goToPreviousEpisode = useCallback(() => {
-    if (!isMountedRef.current) return;
-    
-    // In a real app, this would navigate to the previous episode
-    console.log('Go to previous episode');
-  }, []);
+    if (!isMountedRef.current || currentEpisode <= 1) return;
+
+    const newEpisode = currentEpisode - 1;
+    const newUrl = `/watch/tv/${tvId}/${currentSeason}/${newEpisode}`;
+    window.location.href = newUrl;
+  }, [tvId, currentSeason, currentEpisode]);
 
   const goToNextEpisode = useCallback(() => {
     if (!isMountedRef.current) return;
-    
-    // In a real app, this would navigate to the next episode
-    console.log('Go to next episode');
-  }, []);
+
+    // For now, assume 10 episodes per season as maximum
+    const maxEpisodes = 10;
+    let newEpisode = currentEpisode + 1;
+    let newSeason = currentSeason;
+
+    if (newEpisode > maxEpisodes) {
+      newEpisode = 1;
+      newSeason = currentSeason + 1;
+    }
+
+    const newUrl = `/watch/tv/${tvId}/${newSeason}/${newEpisode}`;
+    window.location.href = newUrl;
+  }, [tvId, currentSeason, currentEpisode]);
 
   const handleGoHome = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -678,7 +689,14 @@ export default function WatchTV() {
                   <Download className="w-4 h-4" />
                 </Button>
                 
-                <Select value={currentSeason.toString()}>
+                <Select
+                  value={currentSeason.toString()}
+                  onValueChange={(value) => {
+                    const newSeason = parseInt(value);
+                    const newUrl = `/watch/tv/${tvId}/${newSeason}/${currentEpisode}`;
+                    window.location.href = newUrl;
+                  }}
+                >
                   <SelectTrigger className="w-24 bg-black/50 text-white border-white/20">
                     <SelectValue />
                   </SelectTrigger>
@@ -690,8 +708,15 @@ export default function WatchTV() {
                     ))}
                   </SelectContent>
                 </Select>
-                
-                <Select value={currentEpisode.toString()}>
+
+                <Select
+                  value={currentEpisode.toString()}
+                  onValueChange={(value) => {
+                    const newEpisode = parseInt(value);
+                    const newUrl = `/watch/tv/${tvId}/${currentSeason}/${newEpisode}`;
+                    window.location.href = newUrl;
+                  }}
+                >
                   <SelectTrigger className="w-24 bg-black/50 text-white border-white/20">
                     <SelectValue />
                   </SelectTrigger>
