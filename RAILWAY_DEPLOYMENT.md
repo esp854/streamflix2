@@ -32,8 +32,8 @@ Make sure your project is pushed to a Git repository. The following files have b
 Railway will automatically detect some environment variables, but you may need to add or modify the following in the Railway dashboard:
 
 ```bash
-# Database configuration (Railway will provide this automatically if you use their PostgreSQL service)
-DATABASE_URL=your_railway_postgres_database_url
+# Database configuration (using your provided Railway PostgreSQL database)
+DATABASE_URL=postgresql://postgres:GriCZZNCRTLbKetAZrDcMVsBZAhIgILU@maglev.proxy.rlwy.net:52057/railway
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET=your_secure_jwt_secret

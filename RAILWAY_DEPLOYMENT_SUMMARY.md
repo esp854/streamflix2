@@ -41,7 +41,7 @@ Your StreamFlix application has been prepared for deployment on Railway. Here's 
 
 ### Environment Variables
 The following variables should be configured in your Railway project settings:
-- DATABASE_URL (automatically provided if using Railway PostgreSQL)
+- DATABASE_URL (postgresql://postgres:GriCZZNCRTLbKetAZrDcMVsBZAhIgILU@maglev.proxy.rlwy.net:52057/railway)
 - JWT_SECRET
 - TMDB_API_KEY
 - LYGOS_API_KEY
