@@ -16,6 +16,7 @@ Make sure your project is pushed to a Git repository. The following files have b
 
 - `railway.json` - Railway configuration file
 - `Dockerfile` - Docker configuration for containerized deployment
+- `.dockerignore` - Files to exclude from Docker build
 - `.env` - Environment variables (already configured)
 
 ### 2. Import Project to Railway
@@ -68,11 +69,9 @@ PORT=3000
 
 ### 5. Configure Build Settings
 
-Railway should automatically detect the correct settings:
-- **Build Command**: `npm run build`
-- **Start Command**: `npm run start`
-
-If not automatically detected, set these manually in the project settings.
+Railway will use the Dockerfile for building the application:
+- **Builder**: Dockerfile
+- **Start Command**: `npm run start` (configured in railway.json)
 
 ### 6. Deploy
 
@@ -100,6 +99,8 @@ Railway provides some environment variables automatically:
 - `PORT` - The port your application should listen on
 - `DATABASE_URL` - When using Railway PostgreSQL
 - `NODE_ENV` - Set to "production" automatically
+
+The Docker container will use these environment variables as configured in the Dockerfile and application code.
 
 ## Troubleshooting
 

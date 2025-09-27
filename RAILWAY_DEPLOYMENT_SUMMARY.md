@@ -5,14 +5,16 @@ Your StreamFlix application has been prepared for deployment on Railway. Here's 
 ## Files Created
 
 1. **railway.json** - Main Railway configuration file with:
-   - Build configuration using Nixpacks
+   - Build configuration using Dockerfile
    - Deployment settings with restart policies
 
 2. **Dockerfile** - Docker configuration for containerized deployment:
    - Uses Node.js 18 alpine as base image
-   - Installs production dependencies
+   - Installs production dependencies with --legacy-peer-deps flag to resolve conflicts
    - Builds the application
    - Configures the start command
+
+3. **.dockerignore** - Optimizes Docker build by excluding unnecessary files
 
 3. **RAILWAY_DEPLOYMENT.md** - Detailed deployment guide with:
    - Step-by-step deployment instructions
@@ -20,7 +22,9 @@ Your StreamFlix application has been prepared for deployment on Railway. Here's 
    - PostgreSQL database setup
    - Troubleshooting tips
 
-4. **RAILWAY_DEPLOYMENT_SUMMARY.md** - This summary file
+4. **RAILWAY_DEPLOYMENT.md** - Detailed deployment guide
+
+5. **RAILWAY_DEPLOYMENT_SUMMARY.md** - This summary file
 
 ## Key Configuration Details
 
