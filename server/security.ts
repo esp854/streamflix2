@@ -23,7 +23,7 @@ declare global {
 // Rate limiting middleware
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit in development
+  max: 1000, // Limit each IP to 1000 requests per windowMs (increased for both development and production)
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
@@ -38,7 +38,7 @@ export const apiLimiter = rateLimit({
 // Strict rate limiting for auth endpoints
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 50 : 5, // Higher limit in development
+  max: process.env.NODE_ENV === 'development' ? Infinity : 5, // Disable rate limiting in development, 5 in production
   message: {
     error: 'Too many authentication attempts, please try again later.'
   },
@@ -52,18 +52,18 @@ export const authLimiter = rateLimit({
 
 // Security headers middleware with enhanced protection
 export const securityHeaders = helmet({
-  contentSecurityPolicy: {
+  contentSecurityPolicy: process.env.NODE_ENV === 'development' ? false : {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com", "https://translate.googleapis.com"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173"],
       scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173"],
-      imgSrc: ["'self'", "data:", "https:", "https://odysee.com", "https://i.ytimg.com", "https://i.vimeocdn.com", "https://www.gstatic.com", "https://translate.googleapis.com"],
-      connectSrc: ["'self'", "https://api.themoviedb.org", "http://127.0.0.1:5000", "http://localhost:5173", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "ws://127.0.0.1:5000", "https://player.vimeo.com", "https://translate.googleapis.com", "https://www.google-analytics.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://www.gstatic.com", "https:", "data:"],
+      imgSrc: ["'self'", "data:", "https:", "https://odysee.com", "https://i.ytimg.com", "https://i.vimeocdn.com", "https://www.gstatic.com", "https://translate.googleapis.com", "https://i.pinimg.com"],
+      connectSrc: ["'self'", "https://api.themoviedb.org", "http://127.0.0.1:5000", "http://localhost:5173", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "ws://127.0.0.1:5000", "https://player.vimeo.com", "https://translate.googleapis.com", "https://www.google-analytics.com", "https://fonts.googleapis.com", "https://i.pinimg.com", "https://fonts.gstatic.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://www.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "https:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://player.vimeo.com"],
-      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com"],
+      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://zupload.co"],
       frameAncestors: ["'self'"],
       upgradeInsecureRequests: [],
     },
@@ -142,8 +142,11 @@ export const validateCSRFToken = (userId: string, token: string, userAgent: stri
 
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
   // Skip CSRF for GET requests and authentication routes
-  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || 
-      req.path === '/api/auth/login' || req.path === '/api/auth/register') {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' ||
+      req.path === '/api/auth/login' || req.path === '/api/auth/register' ||
+      req.path.startsWith('/api/favorites/') || req.path === '/api/favorites' ||
+      req.path.startsWith('/api/watch-history/') || req.path === '/api/watch-history' ||
+      req.path.startsWith('/api/watch-progress/') || req.path === '/api/watch-progress') {
     return next();
   }
   

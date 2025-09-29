@@ -1267,7 +1267,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch plans" });
     }
   });
-  });
 
   // Subscribe to a plan
   app.post("/api/subscribe", async (req, res) => {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link, useLocation } from "wouter";
-import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Share2 } from "lucide-react";
+import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Share2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,7 +9,10 @@ import { tmdbService } from "@/lib/tmdb";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
+import { useAuth } from "@/contexts/auth-context";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import ZuploadVideoPlayer from "@/components/zupload-video-player";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 declare global {
   interface Window {
@@ -19,12 +22,15 @@ declare global {
 }
 
 export default function WatchMovie() {
-  const { shouldShowAds } = useAuthCheck();
-  const { id } = useParams<{ id: string }>();
-  const movieId = parseInt(id || "0");
-  const playerRef = useRef<any>(null);
-  const isMountedRef = useRef(true);
-  const youtubePlayerRef = useRef<any>(null);
+   const { shouldShowAds } = useAuthCheck();
+   const { isAuthenticated } = useAuth();
+   const { features, planId, isLoading: planLoading } = usePlanFeatures();
+   const { id } = useParams<{ id: string }>();
+   const movieId = parseInt(id || "0");
+   const playerRef = useRef<any>(null);
+   const isMountedRef = useRef(true);
+   const youtubePlayerRef = useRef<any>(null);
+   const isMobile = useIsMobile(); // Détecter si l'appareil est mobile
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -99,21 +105,22 @@ export default function WatchMovie() {
     retry: false // Don't retry on 404
   });
 
-  const isLoading = tmdbLoading || contentLoading;
+  const isLoading = tmdbLoading || contentLoading || planLoading;
 
-  // Auto-hide controls after 3 seconds
+  // Auto-hide controls after 3 seconds (or 5 seconds on mobile)
   useEffect(() => {
     if (!isMountedRef.current) return;
     
     if (showControls && isPlaying) {
+      const timeoutDuration = isMobile ? 5000 : 3000; // 5s for mobile, 3s for desktop
       const timer = setTimeout(() => {
         if (isMountedRef.current) {
           setShowControls(false);
         }
-      }, 3000);
+      }, timeoutDuration);
       return () => clearTimeout(timer);
     }
-  }, [showControls, isPlaying]);
+  }, [showControls, isPlaying, isMobile]);
 
   // Check if video is YouTube or Zupload
   useEffect(() => {
@@ -482,6 +489,38 @@ export default function WatchMovie() {
     );
   }
 
+  // Check if authenticated user has paid subscription
+  if (isAuthenticated && planId === 'free') {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-center max-w-md p-8">
+          <div className="text-6xl mb-6">🎬</div>
+          <h1 className="text-2xl font-bold mb-4">Abonnement requis</h1>
+          <p className="text-gray-300 mb-6">
+            Pour regarder ce film, vous devez souscrire à un abonnement payant.
+          </p>
+          <div className="space-y-4">
+            <Button
+              onClick={() => window.location.href = '/subscription'}
+              className="w-full bg-primary hover:bg-primary/90"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Voir les abonnements
+            </Button>
+            <Button
+              onClick={handleGoHome}
+              variant="outline"
+              className="w-full border-white/20 text-white hover:bg-white/10"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Retour à l'accueil
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!movieDetails) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -570,16 +609,21 @@ export default function WatchMovie() {
 
         {/* Controls Overlay - only show for non-Odysee and non-Zupload videos */}
         {!isOdyseeVideo && !isZuploadVideo && (
-          <div 
+          <div
             className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             onMouseMove={() => {
-              if (!isTransitioning) {
+              if (!isTransitioning && !isMobile) { // Only show on mouse move for desktop
                 setShowControls(true);
+              }
+            }}
+            onClick={() => { // Toggle controls on click/tap for mobile
+              if (isMobile && !isTransitioning) {
+                setShowControls(prev => !prev);
               }
             }}
           >
             {/* Top Bar */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between p-2 md:p-0">
               <div className="flex items-center space-x-4">
                 {/* Empty space where home button was */}
               </div>
@@ -611,41 +655,41 @@ export default function WatchMovie() {
 
             {/* Center Controls */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-4 md:space-x-8">
                 <Button
                   onClick={rewind15}
                   variant="ghost"
-                  size="lg"
-                  className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  size={isMobile ? "icon" : "lg"}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCcw className="w-6 h-6" />
+                  <RotateCcw className="w-5 h-5 md:w-6 md:h-6" />
                 </Button>
                 
                 <Button
                   onClick={handlePlayPause}
                   variant="ghost"
-                  size="lg"
-                  className="w-20 h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  size={isMobile ? "icon" : "lg"}
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+                  {isPlaying ? <Pause className="w-6 h-6 md:w-8 md:h-8" /> : <Play className="w-6 h-6 md:w-8 md:h-8" />}
                 </Button>
                 
                 <Button
                   onClick={forward15}
                   variant="ghost"
-                  size="lg"
-                  className="w-16 h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  size={isMobile ? "icon" : "lg"}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCw className="w-6 h-6" />
+                  <RotateCw className="w-5 h-5 md:w-6 md:h-6" />
                 </Button>
               </div>
             </div>
 
             {/* Bottom Controls */}
-            <div className="absolute bottom-4 left-4 right-4 space-y-4">
+            <div className="absolute bottom-4 left-4 right-4 space-y-2 md:space-y-4">
               {/* Progress Bar */}
-              <div className="flex items-center space-x-4">
-                <span className="text-white text-sm min-w-[60px]">
+              <div className="flex items-center space-x-2 md:space-x-4">
+                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
                   {formatTime(currentTime)}
                 </span>
                 <Slider
@@ -655,77 +699,77 @@ export default function WatchMovie() {
                   step={1}
                   className="flex-1"
                 />
-                <span className="text-white text-sm min-w-[60px]">
+                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
                   {formatTime(duration)}
                 </span>
               </div>
 
               {/* Control Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center space-x-1 md:space-x-2">
                   <Button
                     onClick={handlePlayPause}
                     variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                   >
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
                   </Button>
                   
                   <Button
                     onClick={skipBackward}
                     variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                   >
-                    <SkipBack className="w-5 h-5" />
+                    <SkipBack className="w-4 h-4 md:w-5 md:h-5" />
                   </Button>
                   
                   <Button
                     onClick={skipForward}
                     variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                   >
-                    <SkipForward className="w-5 h-5" />
+                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
                   </Button>
 
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center space-x-1 md:space-x-2 ml-2 md:ml-4">
                     <Button
                       onClick={handleMute}
                       variant="ghost"
-                      size="sm"
-                      className="text-white hover:bg-white/20"
+                      size="icon"
+                      className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                     >
-                      {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
                     </Button>
                     <Slider
                       value={volume}
                       onValueChange={handleVolumeChange}
                       max={100}
                       step={1}
-                      className="w-24"
+                      className="w-16 md:w-24"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 md:space-x-2">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="text-white hover:bg-white/20"
+                        size="icon"
+                        className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                       >
-                        <Settings className="w-5 h-5" />
+                        <Settings className="w-4 h-4 md:w-5 md:h-5" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-56 bg-black/90 border-white/20" side="top">
-                      <div className="space-y-4">
+                    <PopoverContent className="w-48 md:w-56 bg-black/90 border-white/20 p-3 md:p-4" side="top">
+                      <div className="space-y-3 md:space-y-4">
                         <div>
-                          <label className="text-white text-sm font-medium">Vitesse de lecture</label>
+                          <label className="text-white text-xs md:text-sm font-medium">Vitesse de lecture</label>
                           <Select value={playbackSpeed.toString()} onValueChange={handlePlaybackSpeedChange}>
-                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20">
+                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -741,9 +785,9 @@ export default function WatchMovie() {
                           </Select>
                         </div>
                         <div>
-                          <label className="text-white text-sm font-medium">Qualité</label>
+                          <label className="text-white text-xs md:text-sm font-medium">Qualité</label>
                           <Select value={quality} onValueChange={handleQualityChange}>
-                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20">
+                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -764,10 +808,10 @@ export default function WatchMovie() {
                   <Button
                     onClick={toggleFullscreen}
                     variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
                   >
-                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                    {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
                   </Button>
                 </div>
               </div>
@@ -775,8 +819,8 @@ export default function WatchMovie() {
           </div>
         )}
 
-        {/* Keyboard Shortcuts Help - only show for non-Odysee and non-Zupload videos */}
-        {!isOdyseeVideo && !isZuploadVideo && (
+        {/* Keyboard Shortcuts Help - only show for non-Odysee and non-Zupload videos on desktop */}
+        {!isOdyseeVideo && !isZuploadVideo && !isMobile && (
           <div className="absolute bottom-20 left-4 text-white text-xs opacity-50">
             <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Plein écran)</p>
           </div>

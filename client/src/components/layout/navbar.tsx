@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, Bell, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp } from "lucide-react";
+import { Search, Bell, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +21,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import PWAInstallButton from "@/components/PWAInstallButton";
 
 interface Notification {
   id: string;
@@ -155,8 +156,9 @@ export default function Navbar() {
     { href: "/", label: "Accueil", active: location === "/" },
     { href: "/category/28", label: "Films", active: location.startsWith("/category") },
     { href: "/series", label: "Séries", active: location === "/series" },
-    { href: "/favorites", label: "Ma Liste", active: false },
-    { href: "/trending", label: "Tendances", active: false },
+    { href: "/continue-watching", label: "Continuer", active: location === "/continue-watching" },
+    { href: "/favorites", label: "Ma Liste", active: location === "/favorites" },
+    { href: "/trending", label: "Tendances", active: location === "/trending" },
   ];
 
   return (
@@ -299,6 +301,9 @@ export default function Navbar() {
               </Popover>
             )}
             
+            {/* PWA Install Button */}
+            <PWAInstallButton />
+
             {/* User Menu */}
             {isAuthenticated ? (
               <DropdownMenu>
@@ -511,6 +516,16 @@ export default function Navbar() {
           >
             <Tv className="w-5 h-5" />
             <span className="text-xs">Séries</span>
+          </Link>
+
+          <Link
+            href="/continue-watching"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
+              location === "/continue-watching" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Play className="w-5 h-5" />
+            <span className="text-xs">Continuer</span>
           </Link>
 
           <Link

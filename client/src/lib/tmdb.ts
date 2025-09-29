@@ -68,6 +68,46 @@ class TMDBService {
   private cache = new Cache();
   private rateLimiter = new RateLimiter();
 
+  private async fetchWithRetry(url: string, options?: RequestInit, maxRetries: number = 3): Promise<Response> {
+    let lastError: Error;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Wait for rate limiter
+        await this.rateLimiter.wait();
+
+        const response = await fetch(url, options);
+
+        // If successful or not a rate limit error, return the response
+        if (response.ok || response.status !== 429) {
+          return response;
+        }
+
+        // If rate limited and we have retries left, wait with exponential backoff
+        if (response.status === 429 && attempt < maxRetries) {
+          const backoffTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000; // Exponential backoff with jitter
+          console.log(`Rate limited, retrying in ${backoffTime}ms (attempt ${attempt + 1}/${maxRetries + 1})`);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          continue;
+        }
+
+        // If rate limited and no retries left, return the response
+        return response;
+
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt < maxRetries) {
+          const backoffTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+          console.log(`Request failed, retrying in ${backoffTime}ms (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+          await new Promise(resolve => setTimeout(resolve, backoffTime));
+          continue;
+        }
+      }
+    }
+
+    throw lastError!;
+  }
+
   async getTrending(): Promise<TMDBMovie[]> {
     const cacheKey = "trending";
     const cached = this.cache.get(cacheKey);
@@ -77,17 +117,14 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/trending`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/trending`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
         return [];
       }
       const data: TMDBResponse = await response.json();
       const result = data.results || [];
-      
+
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
@@ -106,17 +143,14 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/popular`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/popular`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
         return [];
       }
       const data: TMDBResponse = await response.json();
       const result = data.results || [];
-      
+
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
@@ -135,10 +169,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/genre/${genreId}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/genre/${genreId}`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
         return [];
@@ -164,10 +195,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/movie/${id}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/movie/${id}`);
       if (!response.ok) {
         throw new Error("Failed to fetch movie details");
       }
@@ -185,10 +213,7 @@ class TMDBService {
   async searchMovies(query: string): Promise<TMDBMovie[]> {
     // Don't cache search results as they're user-specific
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/search?query=${encodeURIComponent(query)}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error("Failed to search movies");
       }
@@ -227,10 +252,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/popular`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/popular`);
       if (!response.ok) {
         throw new Error("Failed to fetch popular TV shows");
       }
@@ -255,10 +277,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/top_rated`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/top_rated`);
       if (!response.ok) {
         throw new Error("Failed to fetch top rated TV shows");
       }
@@ -283,10 +302,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/on_the_air`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/on_the_air`);
       if (!response.ok) {
         throw new Error("Failed to fetch on the air TV shows");
       }
@@ -311,10 +327,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/airing_today`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/airing_today`);
       if (!response.ok) {
         throw new Error("Failed to fetch airing today TV shows");
       }
@@ -339,10 +352,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/genre/${genreId}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/genre/${genreId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch TV shows by genre");
       }
@@ -367,10 +377,7 @@ class TMDBService {
     }
 
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/${id}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/${id}`);
       if (!response.ok) {
         console.error(`Failed to fetch TV show details for ID ${id}:`, response.status, response.statusText);
         throw new Error(`Failed to fetch TV show details: ${response.status} ${response.statusText}`);
@@ -389,10 +396,7 @@ class TMDBService {
   async searchTVShows(query: string): Promise<TMDBTVSeries[]> {
     // Don't cache search results as they're user-specific
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/tv/search?query=${encodeURIComponent(query)}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error("Failed to search TV shows");
       }
@@ -404,14 +408,38 @@ class TMDBService {
     }
   }
 
+  async getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<any> {
+    const cacheKey = `tv-${tvId}-season-${seasonNumber}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log(`Returning cached season details for TV ${tvId}, season ${seasonNumber}`);
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/${tvId}/season/${seasonNumber}`);
+      console.log(`[DEBUG] TMDB season response status: ${response.status}, content-type: ${response.headers.get('content-type')}`);
+      if (!response.ok) {
+        console.log(`[DEBUG] TMDB season response not ok, status: ${response.status}`);
+        throw new Error("Failed to fetch TV season details");
+      }
+      const data = await response.json();
+      console.log(`[DEBUG] TMDB season data received:`, data);
+
+      // Cache the result
+      this.cache.set(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching TV season details:", error);
+      throw error;
+    }
+  }
+
   // Multi-search for both movies and TV shows
   async multiSearch(query: string): Promise<(TMDBMovie | TMDBTVSeries)[]> {
     // Don't cache search results as they're user-specific
     try {
-      // Wait for rate limiter
-      await this.rateLimiter.wait();
-      
-      const response = await fetch(`${this.baseUrl}/multi-search?query=${encodeURIComponent(query)}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/multi-search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error("Failed to search content");
       }

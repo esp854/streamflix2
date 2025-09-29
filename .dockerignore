@@ -145,9 +145,9 @@ out/
 tmp/
 temp/
 
-# Documentation
-docs/
-*.md
+# Documentation (keep some for reference)
+# docs/
+# *.md
 
 # Test files
 test/
@@ -176,3 +176,22 @@ tests/
 
 # Ignore backend directory as it's not needed for Railway deployment
 backend/
+
+# Additional optimization for Railway deployment
+.git/
+*.md
+LICENSE
+Dockerfile
+.dockerignore
+railway.json
+.env*
+README*
+
+# Ignore development and test files
+*.test.*
+*.spec.*
+test/
+tests/
+
+# Ignore documentation
+docs/

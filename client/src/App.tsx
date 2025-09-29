@@ -15,6 +15,7 @@ import Search from "@/pages/search";
 import Category from "@/pages/category";
 import Trending from "@/pages/trending";
 import Favorites from "@/pages/favorites";
+import ContinueWatching from "@/pages/continue-watching";
 import Profile from "@/pages/profile";
 import Contact from "@/pages/contact";
 import Terms from "@/pages/terms";
@@ -95,6 +96,7 @@ function Router() {
       <Route path="/category/:genre" component={Category} />
       <Route path="/trending" component={Trending} />
       <Route path="/favorites" component={Favorites} />
+      <Route path="/continue-watching" component={ContinueWatching} />
       <Route path="/profile" component={Profile} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/payment-success" component={PaymentSuccess} />

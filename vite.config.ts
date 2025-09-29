@@ -22,7 +22,7 @@ const cspMiddleware = () => {
           `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com https://translate.googleapis.com; ` +
           `img-src 'self' data: https:; ` +
           `font-src 'self' data: https://fonts.gstatic.com; ` +
-          `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com; ` +
+          `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com https://fonts.googleapis.com https://i.pinimg.com https://fonts.gstatic.com; ` +
           `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.io https://www.paypal.com https://www.sandbox.paypal.com; ` +
           `media-src 'self' blob: https:; ` +
           `worker-src 'self' blob:; ` +
@@ -51,6 +51,9 @@ export default defineConfig({
         ]
       : []),
   ],
+  optimizeDeps: {
+    exclude: ['chunk-IPDEAFVS']
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
@@ -62,6 +65,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 2000,
   },
   server: {
     fs: {
@@ -69,7 +73,8 @@ export default defineConfig({
       deny: ["**/.*"],
     },
     hmr: {
-      overlay: false // Désactive l'overlay d'erreur HMR
+      overlay: false, // Désactive l'overlay d'erreur HMR
+      port: parseInt(process.env.PORT || '5000', 10)
     },
     proxy: {
       '/api': {

@@ -15,7 +15,7 @@ This guide will help you deploy your StreamFlix application to Railway.
 Make sure your project is pushed to a Git repository. The following files have been configured for Railway deployment:
 
 - `railway.json` - Railway configuration file
-- `Dockerfile` - Docker configuration for containerized deployment
+- `Dockerfile` - Docker configuration for containerized deployment using Node.js 20
 - `.dockerignore` - Files to exclude from Docker build
 - `.env` - Environment variables (already configured)
 
@@ -70,7 +70,7 @@ PORT=3000
 ### 5. Configure Build Settings
 
 Railway will use the Dockerfile for building the application:
-- **Builder**: Dockerfile
+- **Builder**: Dockerfile (using Node.js 20 to satisfy cross-env requirements)
 - **Start Command**: `npm run start` (configured in railway.json)
 
 ### 6. Deploy

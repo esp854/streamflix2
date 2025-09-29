@@ -1,5 +1,18 @@
 import express from "express";
+import Bottleneck from "bottleneck"; // Importez Bottleneck
 const router = express.Router();
+
+// Configurez le limiteur de débit pour TMDB
+const limiter = new Bottleneck({
+  minTime: 350, // Attendre 350 ms entre chaque requête
+  maxConcurrent: 1, // 1 requête à la fois
+});
+
+// Fonction pour appeler TMDB avec limite
+const fetchTMDB = limiter.wrap(async (url) => {
+  const res = await fetch(url);
+  return res;
+});
 
 // Simple in-memory cache for TMDB responses
 const cache = new Map();
@@ -67,7 +80,7 @@ router.get("/tmdb/trending", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/trending/all/week?api_key=${apiKey}&language=fr-FR`
     );
     
@@ -76,7 +89,7 @@ router.get("/tmdb/trending", async (req, res) => {
       // Handle rate limiting specifically
       if (response.status === 429) {
         return res.status(429).json({ 
-          error: "Rate limit exceeded. Please try again later.",
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
           status: 429 
         });
       }
@@ -185,7 +198,7 @@ router.get("/tmdb/popular", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}&language=fr-FR&page=1`
     );
     
@@ -194,7 +207,7 @@ router.get("/tmdb/popular", async (req, res) => {
       // Handle rate limiting specifically
       if (response.status === 429) {
         return res.status(429).json({ 
-          error: "Rate limit exceeded. Please try again later.",
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
           status: 429 
         });
       }
@@ -294,7 +307,7 @@ router.get("/tmdb/genre/:genreId", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=fr-FR&with_genres=${genreId}&page=1`
     );
     
@@ -302,9 +315,9 @@ router.get("/tmdb/genre/:genreId", async (req, res) => {
       console.error(`TMDB API error: ${response.status} ${response.statusText}`);
       // Handle rate limiting specifically
       if (response.status === 429) {
-        return res.status(429).json({ 
-          error: "Rate limit exceeded. Please try again later.",
-          status: 429 
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
         });
       }
       // Return mock data on API error
@@ -368,12 +381,19 @@ router.get("/tmdb/movie/:id", async (req, res) => {
     }
 
     const [movieResponse, creditsResponse, videosResponse] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=fr-FR`),
-      fetch(`https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}`),
-      fetch(`https://api.themoviedb.org/3/movie/${id}/videos?api_key=${apiKey}&language=fr-FR`)
+      fetchTMDB(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&language=fr-FR`),
+      fetchTMDB(`https://api.themoviedb.org/3/movie/${id}/credits?api_key=${apiKey}`),
+      fetchTMDB(`https://api.themoviedb.org/3/movie/${id}/videos?api_key=${apiKey}&language=fr-FR`)
     ]);
 
     if (!movieResponse.ok || !creditsResponse.ok || !videosResponse.ok) {
+      // Handle rate limiting specifically
+      if (movieResponse.status === 429 || creditsResponse.status === 429 || videosResponse.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error("TMDB API error");
     }
 
@@ -408,11 +428,18 @@ router.get("/tmdb/search", async (req, res) => {
       return res.status(400).json({ error: "Query parameter is required" });
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query)}&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -439,11 +466,18 @@ router.get("/tmdb/tv/popular", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -473,11 +507,18 @@ router.get("/tmdb/tv/top_rated", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/tv/top_rated?api_key=${apiKey}&language=fr-FR&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -507,11 +548,18 @@ router.get("/tmdb/tv/on_the_air", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/tv/on_the_air?api_key=${apiKey}&language=fr-FR&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -541,11 +589,18 @@ router.get("/tmdb/tv/airing_today", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/tv/airing_today?api_key=${apiKey}&language=fr-FR&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -576,11 +631,18 @@ router.get("/tmdb/tv/genre/:genreId", async (req, res) => {
       return res.json(cached);
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/discover/tv?api_key=${apiKey}&language=fr-FR&with_genres=${genreId}&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -612,12 +674,19 @@ router.get("/tmdb/tv/:id", async (req, res) => {
     }
 
     const [showResponse, creditsResponse, videosResponse] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=fr-FR`),
-      fetch(`https://api.themoviedb.org/3/tv/${id}/credits?api_key=${apiKey}`),
-      fetch(`https://api.themoviedb.org/3/tv/${id}/videos?api_key=${apiKey}&language=fr-FR`)
+      fetchTMDB(`https://api.themoviedb.org/3/tv/${id}?api_key=${apiKey}&language=fr-FR`),
+      fetchTMDB(`https://api.themoviedb.org/3/tv/${id}/credits?api_key=${apiKey}`),
+      fetchTMDB(`https://api.themoviedb.org/3/tv/${id}/videos?api_key=${apiKey}&language=fr-FR`)
     ]);
 
     if (!showResponse.ok || !creditsResponse.ok || !videosResponse.ok) {
+      // Handle rate limiting specifically
+      if (showResponse.status === 429 || creditsResponse.status === 429 || videosResponse.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error("TMDB API error");
     }
 
@@ -652,11 +721,18 @@ router.get("/tmdb/tv/search", async (req, res) => {
       return res.status(400).json({ error: "Query parameter is required" });
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query)}&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 
@@ -668,12 +744,55 @@ router.get("/tmdb/tv/search", async (req, res) => {
   }
 });
 
+// TV season details
+router.get("/tmdb/tv/:id/season/:seasonNumber", async (req, res) => {
+  try {
+    const { id, seasonNumber } = req.params;
+    const apiKey = process.env.TMDB_API_KEY;
+    console.log(`[DEBUG] TMDB API key configured: ${!!apiKey}`);
+    if (!apiKey) {
+      return res.status(500).json({ error: "TMDB API key not configured" });
+    }
+
+    const cacheKey = `tv-${id}-season-${seasonNumber}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      console.log(`Returning cached season details for TV ${id}, season ${seasonNumber}`);
+      return res.json(cached);
+    }
+
+    const response = await fetchTMDB(
+      `https://api.themoviedb.org/3/tv/${id}/season/${seasonNumber}?api_key=${apiKey}&language=fr-FR`
+    );
+
+    if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
+      throw new Error(`TMDB API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Cache the result
+    setCachedData(cacheKey, data);
+    res.json(data);
+  } catch (error) {
+    console.error("Error fetching TV season details:", error);
+    res.status(500).json({ error: "Failed to fetch TV season details" });
+  }
+});
+
 // Multi-search for both movies and TV shows
 router.get("/tmdb/multi-search", async (req, res) => {
   try {
     const { query } = req.query;
     const apiKey = process.env.TMDB_API_KEY;
-    
+
     if (!apiKey) {
       return res.status(500).json({ error: "TMDB API key not configured" });
     }
@@ -682,11 +801,18 @@ router.get("/tmdb/multi-search", async (req, res) => {
       return res.status(400).json({ error: "Query parameter is required" });
     }
 
-    const response = await fetch(
+    const response = await fetchTMDB(
       `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query)}&page=1`
     );
-    
+
     if (!response.ok) {
+      // Handle rate limiting specifically
+      if (response.status === 429) {
+        return res.status(429).json({
+          error: "Trop de requêtes provenant de cette adresse IP, veuillez réessayer ultérieurement.",
+          status: 429
+        });
+      }
       throw new Error(`TMDB API error: ${response.statusText}`);
     }
 

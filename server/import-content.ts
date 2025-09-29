@@ -61,6 +61,7 @@ async function fetchPopularMovies(page: number = 1): Promise<any[]> {
     // Cache the result
     setCachedData(cacheKey, movies);
     console.log(`Fetched ${movies.length} movies from TMDB (page ${page})`);
+    await new Promise(resolve => setTimeout(resolve, 250)); // Add delay
     return movies;
   } catch (error) {
     console.error('Error fetching popular movies:', error);
@@ -100,6 +101,7 @@ async function fetchPopularTVShows(page: number = 1): Promise<any[]> {
     // Cache the result
     setCachedData(cacheKey, shows);
     console.log(`Fetched ${shows.length} TV shows from TMDB (page ${page})`);
+    await new Promise(resolve => setTimeout(resolve, 250)); // Add delay
     return shows;
   } catch (error) {
     console.error('Error fetching popular TV shows:', error);
@@ -136,9 +138,9 @@ async function addMovieToDatabase(movie: any): Promise<boolean> {
       backdropPath: movie.backdrop_path,
       releaseDate: movie.release_date,
       genres: movie.genre_ids || [],
-      odyseeUrl: '', // Empty by default, will be filled when video link is added
-      muxPlaybackId: '',
-      muxUrl: '',
+      odyseeUrl: 'https://zupload.co/d/NjY3MzI', // Placeholder Zupload URL
+      muxPlaybackId: 'placeholder-mux-id',
+      muxUrl: 'https://stream.mux.com/placeholder-mux-id.m3u8',
       language: 'vf', // Default to French
       quality: 'hd', // Default to HD
       mediaType: 'movie',
@@ -174,9 +176,9 @@ async function addTVShowToDatabase(show: any): Promise<boolean> {
       backdropPath: show.backdrop_path,
       releaseDate: show.first_air_date,
       genres: show.genre_ids || [],
-      odyseeUrl: '', // Empty by default, will be filled when video link is added
-      muxPlaybackId: '',
-      muxUrl: '',
+      odyseeUrl: 'https://zupload.co/d/NjY3MzI', // Placeholder Zupload URL
+      muxPlaybackId: 'placeholder-mux-id',
+      muxUrl: 'https://stream.mux.com/placeholder-mux-id.m3u8',
       language: 'vf', // Default to French
       quality: 'hd', // Default to HD
       mediaType: 'tv',
@@ -226,6 +228,7 @@ async function searchTVShows(query: string, page: number = 1): Promise<any[]> {
     // Cache the result
     setCachedData(cacheKey, shows);
     console.log(`Found ${shows.length} TV shows for query "${query}" (page ${page})`);
+    await new Promise(resolve => setTimeout(resolve, 250)); // Add delay
     return shows;
   } catch (error) {
     console.error(`Error searching for TV shows with query "${query}":`, error);
@@ -265,6 +268,7 @@ async function searchMovies(query: string, page: number = 1): Promise<any[]> {
     // Cache the result
     setCachedData(cacheKey, movies);
     console.log(`Found ${movies.length} movies for query "${query}" (page ${page})`);
+    await new Promise(resolve => setTimeout(resolve, 250)); // Add delay
     return movies;
   } catch (error) {
     console.error(`Error searching for movies with query "${query}":`, error);

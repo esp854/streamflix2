@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import {
   insertFavoriteSchema,
   insertWatchHistorySchema,
+  insertWatchProgressSchema,
   insertUserPreferencesSchema,
   insertContactMessageSchema,
   insertUserSchema,
@@ -29,6 +30,7 @@ import {
   viewTracking,
   favorites,
   watchHistory,
+  watchProgress,
   userPreferences,
   contactMessages,
   subscriptions,
@@ -425,6 +427,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to add to watch history" });
       }
+    }
+  });
+
+  // Get watch progress
+  app.get("/api/watch-progress/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const progress = await storage.getWatchProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching watch progress:", error);
+      res.status(500).json({ error: "Failed to fetch watch progress" });
+    }
+  });
+
+  // Create or update watch progress
+  app.post("/api/watch-progress", async (req, res) => {
+    try {
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const existingProgress = await storage.getWatchProgressByContent(
+        progressData.userId,
+        progressData.contentId || undefined,
+        progressData.episodeId || undefined
+      );
+
+      let progress;
+      if (existingProgress) {
+        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
+      } else {
+        progress = await storage.createWatchProgress(progressData);
+      }
+
+      res.json(progress);
+    } catch (error) {
+      console.error("Error creating/updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to save watch progress" });
+      }
+    }
+  });
+
+  // Update watch progress
+  app.put("/api/watch-progress/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const progressData = insertWatchProgressSchema.partial().parse(req.body);
+      const progress = await storage.updateWatchProgress(id, progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update watch progress" });
+      }
+    }
+  });
+
+  // Delete watch progress
+  app.delete("/api/watch-progress/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteWatchProgress(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting watch progress:", error);
+      res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });
 
@@ -2227,18 +2298,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const seasonNum = parseInt(req.params.season);
       const episodeNum = parseInt(req.params.episode);
 
+      console.log(`[DEBUG] Episode request: TMDB ${tmdbIdNum}, Season ${seasonNum}, Episode ${episodeNum}`);
+
       if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
+        console.log(`[DEBUG] Invalid parameters: tmdbId=${req.params.tmdbId}, season=${req.params.season}, episode=${req.params.episode}`);
         return res.status(400).json({ error: "Paramètres invalides" });
       }
 
       // Get content by TMDB (any status to allow inactive items still being setup)
       const content = await storage.getContentByTmdbIdAnyStatus(tmdbIdNum) || await storage.getContentByTmdbId(tmdbIdNum);
+      console.log(`[DEBUG] Content found:`, content ? { id: content.id, title: content.title, mediaType: content.mediaType } : 'null');
+
       if (!content) {
+        console.log(`[DEBUG] Content not found for TMDB ID ${tmdbIdNum}`);
         return res.status(404).json({ error: "Contenu non trouvé" });
       }
 
       const allEpisodes = await storage.getEpisodesByContentId(content.id);
+      console.log(`[DEBUG] Episodes found for content ${content.id}: ${allEpisodes.length} episodes`);
+
       const ep = allEpisodes.find((e: any) => Number(e.seasonNumber) === seasonNum && Number(e.episodeNumber) === episodeNum);
+      console.log(`[DEBUG] Episode found:`, ep ? { id: ep.id, title: ep.title, odyseeUrl: ep.odyseeUrl } : 'null');
 
       return res.json({ episode: ep || null });
     } catch (error) {
@@ -2258,21 +2338,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import episodes for all TV shows that don't have them
+  app.post("/api/admin/import-all-episodes", requireAdmin, async (req: any, res: any) => {
+    try {
+      // Verify that user is authenticated as admin
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+
+      // Verify that user is admin
+      const user = await storage.getUserById(req.user.userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      console.log("Starting bulk episode import for all TV shows...");
+
+      // Get all TV shows
+      const allContent = await storage.getAllContent();
+      const tvShows = allContent.filter(c => c.mediaType === 'tv');
+
+      console.log(`Found ${tvShows.length} TV shows to process`);
+
+      let totalEpisodesImported = 0;
+      let showsProcessed = 0;
+      const results = [];
+
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      // Process each TV show
+      for (const show of tvShows.slice(0, 10)) { // Limit to first 10 shows for testing
+        try {
+          console.log(`Processing show: ${show.title} (TMDB ID: ${show.tmdbId})`);
+
+          // Check if show already has episodes
+          const existingEpisodes = await storage.getEpisodesByContentId(show.id);
+          if (existingEpisodes.length > 0) {
+            console.log(`Show "${show.title}" already has ${existingEpisodes.length} episodes, skipping...`);
+            results.push({
+              showId: show.id,
+              title: show.title,
+              status: 'skipped',
+              reason: 'already has episodes',
+              existingEpisodes: existingEpisodes.length
+            });
+            continue;
+          }
+
+          // Fetch TV show details from TMDB
+          const showResponse = await fetch(
+            `https://api.themoviedb.org/3/tv/${show.tmdbId}?api_key=${apiKey}&language=fr-FR`
+          );
+
+          if (!showResponse.ok) {
+            console.error(`Failed to fetch show ${show.title}: ${showResponse.status}`);
+            results.push({
+              showId: show.id,
+              title: show.title,
+              status: 'error',
+              reason: 'failed to fetch from TMDB'
+            });
+            continue;
+          }
+
+          const showData = await showResponse.json();
+          const seasons = showData.seasons || [];
+
+          let showEpisodesImported = 0;
+
+          // Import episodes for each season (limit to first 3 seasons for testing)
+          for (const season of seasons.slice(0, 3)) {
+            if (season.season_number === 0) continue; // Skip specials
+
+            try {
+              // Fetch season details
+              const seasonResponse = await fetch(
+                `https://api.themoviedb.org/3/tv/${show.tmdbId}/season/${season.season_number}?api_key=${apiKey}&language=fr-FR`
+              );
+
+              if (!seasonResponse.ok) {
+                console.error(`Failed to fetch season ${season.season_number} for ${show.title}: ${seasonResponse.status}`);
+                continue;
+              }
+
+              const seasonData = await seasonResponse.json();
+              const episodes = seasonData.episodes || [];
+
+              // Import each episode
+              for (const episode of episodes) {
+                try {
+                  // Check if episode already exists (double check)
+                  const checkEpisodes = await storage.getEpisodesByContentId(show.id);
+                  const episodeExists = checkEpisodes.some(
+                    ep => ep.seasonNumber === season.season_number && ep.episodeNumber === episode.episode_number
+                  );
+
+                  if (episodeExists) continue;
+
+                  // Prepare episode data
+                  const episodeData = {
+                    contentId: show.id,
+                    seasonNumber: season.season_number,
+                    episodeNumber: episode.episode_number,
+                    title: episode.name || `Épisode ${episode.episode_number}`,
+                    description: episode.overview || '',
+                    odyseeUrl: '', // Empty by default
+                    muxPlaybackId: '',
+                    muxUrl: '',
+                    duration: episode.runtime ? episode.runtime * 60 : null,
+                    releaseDate: episode.air_date || '',
+                    active: true
+                  };
+
+                  // Add to database
+                  await storage.createEpisode(episodeData);
+                  showEpisodesImported++;
+                  totalEpisodesImported++;
+
+                } catch (episodeError) {
+                  console.error(`Error adding episode S${season.season_number}E${episode.episode_number} for ${show.title}:`, episodeError);
+                }
+              }
+            } catch (seasonError) {
+              console.error(`Error processing season ${season.season_number} for ${show.title}:`, seasonError);
+            }
+          }
+
+          results.push({
+            showId: show.id,
+            title: show.title,
+            status: 'success',
+            episodesImported: showEpisodesImported,
+            seasonsProcessed: Math.min(seasons.length, 3)
+          });
+
+          showsProcessed++;
+
+          // Add delay between shows to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (showError) {
+          console.error(`Error processing show ${show.title}:`, showError);
+          results.push({
+            showId: show.id,
+            title: show.title,
+            status: 'error',
+            reason: showError.message
+          });
+        }
+      }
+
+      console.log(`Bulk episode import completed. Total episodes imported: ${totalEpisodesImported}`);
+
+      res.json({
+        success: true,
+        message: `Bulk episode import completed`,
+        showsProcessed,
+        totalEpisodesImported,
+        results
+      });
+    } catch (error) {
+      console.error("Error in bulk episode import:", error);
+      res.status(500).json({ error: "Failed to import episodes: " + (error as Error).message });
+    }
+  });
+
+  // Debug endpoint to check episodes in database
+  app.get("/api/debug/episodes", async (req: any, res: any) => {
+    try {
+      console.log("[DEBUG] Checking episodes in database...");
+      const allContent = await storage.getAllContent();
+      const tvShows = allContent.filter(c => c.mediaType === 'tv');
+      console.log(`[DEBUG] Found ${tvShows.length} TV shows in database`);
+
+      let totalEpisodes = 0;
+      const episodesByShow = [];
+
+      for (const show of tvShows.slice(0, 5)) { // Check first 5 shows
+        const episodes = await storage.getEpisodesByContentId(show.id);
+        totalEpisodes += episodes.length;
+        episodesByShow.push({
+          showId: show.id,
+          showTitle: show.title,
+          episodeCount: episodes.length,
+          episodes: episodes.slice(0, 3) // Show first 3 episodes
+        });
+        console.log(`[DEBUG] Show "${show.title}" has ${episodes.length} episodes`);
+      }
+
+      res.json({
+        totalTVShows: tvShows.length,
+        totalEpisodes,
+        episodesByShow,
+        message: totalEpisodes === 0 ? "NO EPISODES FOUND IN DATABASE - This explains the problem!" : "Episodes found in database"
+      });
+    } catch (error) {
+      console.error("Error checking episodes:", error);
+      res.status(500).json({ error: "Failed to check episodes" });
+    }
+  });
+
   // Get content by TMDB ID (for frontend player)
   app.get("/api/contents/tmdb/:tmdbId", async (req: any, res: any) => {
     try {
       const { tmdbId } = req.params;
-      
+
       // Validate input
       if (!tmdbId) {
         return res.status(400).json({ error: "tmdbId is required" });
       }
-      
+
       const tmdbIdNum = parseInt(tmdbId);
       if (isNaN(tmdbIdNum)) {
         return res.status(400).json({ error: "Invalid tmdbId format" });
       }
-      
+
       // Get content by TMDB ID
       const content = await storage.getContentByTmdbId(tmdbIdNum);
       
@@ -2553,6 +2836,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error searching content:", error);
       res.status(500).json({ error: "Failed to search content: " + (error as Error).message });
+    }
+  });
+
+  // Import episodes for a specific TV show by TMDB ID
+  app.post("/api/admin/import-episodes", requireAdmin, async (req: any, res: any) => {
+    try {
+      // Verify that user is authenticated as admin
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+
+      // Verify that user is admin
+      const user = await storage.getUserById(req.user.userId);
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Accès administrateur requis" });
+      }
+
+      const { tmdbId, contentId } = req.body;
+
+      if (!tmdbId || !contentId) {
+        return res.status(400).json({ error: "tmdbId and contentId parameters are required" });
+      }
+
+      console.log(`Importing episodes for TMDB ID: ${tmdbId}, Content ID: ${contentId}`);
+
+      // Check if content exists and is a TV series
+      const existingContent = await storage.getContentById(contentId);
+      if (!existingContent) {
+        return res.status(404).json({ error: "Content not found" });
+      }
+
+      if (existingContent.mediaType !== 'tv') {
+        return res.status(400).json({ error: "Content must be a TV series" });
+      }
+
+      // Fetch TV show details from TMDB to get seasons
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const showResponse = await fetch(
+        `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${apiKey}&language=fr-FR`
+      );
+
+      if (!showResponse.ok) {
+        console.error(`TMDB API error: ${showResponse.status} ${showResponse.statusText}`);
+        return res.status(500).json({ error: "Failed to fetch TV show details" });
+      }
+
+      const showData = await showResponse.json();
+      const seasons = showData.seasons || [];
+
+      console.log(`Found ${seasons.length} seasons for TV show "${showData.name}"`);
+
+      let totalEpisodesImported = 0;
+
+      // Import episodes for each season
+      for (const season of seasons) {
+        if (season.season_number === 0) continue; // Skip specials
+
+        console.log(`Importing season ${season.season_number} with ${season.episode_count} episodes...`);
+
+        try {
+          // Fetch season details
+          const seasonResponse = await fetch(
+            `https://api.themoviedb.org/3/tv/${tmdbId}/season/${season.season_number}?api_key=${apiKey}&language=fr-FR`
+          );
+
+          if (!seasonResponse.ok) {
+            console.error(`Failed to fetch season ${season.season_number}: ${seasonResponse.status}`);
+            continue;
+          }
+
+          const seasonData = await seasonResponse.json();
+          const episodes = seasonData.episodes || [];
+
+          // Import each episode
+          for (const episode of episodes) {
+            try {
+              // Check if episode already exists
+              const existingEpisodes = await storage.getEpisodesByContentId(contentId);
+              const episodeExists = existingEpisodes.some(
+                ep => ep.seasonNumber === season.season_number && ep.episodeNumber === episode.episode_number
+              );
+
+              if (episodeExists) {
+                console.log(`Episode S${season.season_number}E${episode.episode_number} already exists, skipping...`);
+                continue;
+              }
+
+              // Prepare episode data
+              const episodeData = {
+                contentId,
+                seasonNumber: season.season_number,
+                episodeNumber: episode.episode_number,
+                title: episode.name || `Épisode ${episode.episode_number}`,
+                description: episode.overview || '',
+                odyseeUrl: '', // Empty by default, will be filled when video link is added
+                muxPlaybackId: '',
+                muxUrl: '',
+                duration: episode.runtime ? episode.runtime * 60 : null, // Convert minutes to seconds
+                releaseDate: episode.air_date || '',
+                active: true
+              };
+
+              // Add to database
+              const newEpisode = await storage.createEpisode(episodeData);
+              console.log(`Added episode "${episode.name}" (S${season.season_number}E${episode.episode_number}) to database`);
+              totalEpisodesImported++;
+
+              // Add a small delay to avoid rate limiting
+              await new Promise(resolve => setTimeout(resolve, 100));
+            } catch (episodeError) {
+              console.error(`Error adding episode S${season.season_number}E${episode.episode_number}:`, episodeError);
+            }
+          }
+        } catch (seasonError) {
+          console.error(`Error processing season ${season.season_number}:`, seasonError);
+        }
+      }
+
+      console.log(`Episode import completed. Total episodes imported: ${totalEpisodesImported}`);
+
+      res.json({
+        success: true,
+        message: `Episodes import completed successfully`,
+        episodesImported: totalEpisodesImported,
+        seasonsProcessed: seasons.length
+      });
+    } catch (error) {
+      console.error("Error importing episodes:", error);
+      res.status(500).json({ error: "Failed to import episodes: " + (error as Error).message });
     }
   });
 
@@ -2968,19 +3384,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}&language=fr-FR&page=1`
       );
-      
+
       if (!response.ok) {
         console.error(`TMDB API error: ${response.status} ${response.statusText}`);
         // Handle rate limiting specifically
         if (response.status === 429) {
-          return res.status(429).json({ 
+          return res.status(429).json({
             error: "Rate limit exceeded. Please try again later.",
-            status: 429 
+            status: 429
           });
         }
-        return res.status(response.status).json({ 
+        return res.status(response.status).json({
           error: `TMDB API error: ${response.statusText}`,
-          status: response.status 
+          status: response.status
         });
       }
 
@@ -3004,19 +3420,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=fr-FR&with_genres=${genreId}&page=1`
       );
-      
+
       if (!response.ok) {
         console.error(`TMDB API error: ${response.status} ${response.statusText}`);
         // Handle rate limiting specifically
         if (response.status === 429) {
-          return res.status(429).json({ 
+          return res.status(429).json({
             error: "Rate limit exceeded. Please try again later.",
-            status: 429 
+            status: 429
           });
         }
-        return res.status(response.status).json({ 
+        return res.status(response.status).json({
           error: `TMDB API error: ${response.statusText}`,
-          status: response.status 
+          status: response.status
         });
       }
 
@@ -3063,7 +3479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query } = req.query;
       const apiKey = process.env.TMDB_API_KEY;
-      
+
       if (!apiKey) {
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
@@ -3075,7 +3491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
       );
-      
+
       if (!response.ok) {
         throw new Error(`TMDB API error: ${response.statusText}`);
       }
@@ -3093,7 +3509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query } = req.query;
       const apiKey = process.env.TMDB_API_KEY;
-      
+
       if (!apiKey) {
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
@@ -3105,7 +3521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
       );
-      
+
       if (!response.ok) {
         throw new Error(`TMDB API error: ${response.statusText}`);
       }

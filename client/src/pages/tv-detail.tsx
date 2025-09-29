@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import React from "react";
 import { tmdbService } from "@/lib/tmdb";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
@@ -37,6 +38,18 @@ export default function TVDetail() {
     enabled: !!tvId,
   });
 
+  // Get real episodes from database
+  const { data: episodesData } = useQuery({
+    queryKey: [`/api/admin/episodes/${contentData?.id}`],
+    queryFn: async () => {
+      if (!contentData?.id) return null;
+      const response = await fetch(`/api/admin/episodes/${contentData.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!contentData?.id,
+  });
+
   const { data: similarShows } = useQuery({
     queryKey: [`/api/tmdb/tv/similar/${tvId}`],
     queryFn: () => {
@@ -55,7 +68,7 @@ export default function TVDetail() {
         name: tvDetails.name,
         poster_path: tvDetails.poster_path,
         first_air_date: tvDetails.first_air_date,
-        genre_ids: tvDetails.genres?.map(g => g.id) || [],
+        genre_ids: tvDetails.genres?.map((g: any) => g.id) || [],
         vote_average: tvDetails.vote_average,
         vote_count: tvDetails.vote_count,
         popularity: tvDetails.popularity,
@@ -162,15 +175,25 @@ export default function TVDetail() {
     });
   };
 
-  const generateEpisodes = (seasonNumber: number, episodeCount: number) => {
-    return Array.from({ length: episodeCount }, (_, i) => ({
-      episode_number: i + 1,
-      name: `Épisode ${i + 1}`,
-      overview: "Résumé de l'épisode à venir...",
-      runtime: tv.episode_run_time?.[0] || 45,
-      air_date: tv.first_air_date // Placeholder
-    }));
-  };
+  // Group episodes by season from database
+  const episodesBySeason = React.useMemo(() => {
+    if (!episodesData?.episodes) return {};
+
+    const grouped: { [seasonNumber: number]: any[] } = {};
+    episodesData.episodes.forEach((episode: any) => {
+      if (!grouped[episode.seasonNumber]) {
+        grouped[episode.seasonNumber] = [];
+      }
+      grouped[episode.seasonNumber].push(episode);
+    });
+
+    // Sort episodes within each season
+    Object.keys(grouped).forEach(season => {
+      grouped[parseInt(season)].sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+    });
+
+    return grouped;
+  }, [episodesData]);
 
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
@@ -332,7 +355,9 @@ export default function TVDetail() {
             <div className="space-y-3 sm:space-y-4">
               {tv.seasons.map((season: any) => {
                 const isExpanded = expandedSeasons.has(season.season_number);
-                const episodes = generateEpisodes(season.season_number, season.episode_count);
+                const seasonEpisodes = episodesBySeason[season.season_number] || [];
+                const episodeCount = seasonEpisodes.length > 0 ? seasonEpisodes.length : season.episode_count;
+
                 return (
                   <div key={season.id} className="bg-gray-800 rounded-lg overflow-hidden">
                     <div
@@ -357,7 +382,7 @@ export default function TVDetail() {
                           )}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm sm:text-base line-clamp-1">{season.name}</h4>
-                            <p className="text-xs sm:text-sm text-gray-400">{season.episode_count} épisodes</p>
+                            <p className="text-xs sm:text-sm text-gray-400">{episodeCount} épisodes</p>
                             {season.air_date && (
                               <p className="text-xs text-gray-500">
                                 {new Date(season.air_date).getFullYear()}
@@ -373,22 +398,42 @@ export default function TVDetail() {
                     {isExpanded && (
                       <div className="border-t border-gray-700">
                         <div className="p-3 sm:p-4 space-y-2">
-                          {episodes.map((episode: any) => (
-                            <Link
-                              key={`${season.season_number}-${episode.episode_number}`}
-                              href={`/watch/tv/${tv.id}/${season.season_number}/${episode.episode_number}`}
-                              className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors block"
-                            >
-                              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
-                                {episode.episode_number}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h5 className="font-medium text-sm sm:text-base line-clamp-1">{episode.name}</h5>
-                                <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">{episode.overview}</p>
-                              </div>
-                              <Play className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                            </Link>
-                          ))}
+                          {seasonEpisodes.length > 0 ? (
+                            seasonEpisodes.map((episode: any) => (
+                              <Link
+                                key={`${season.season_number}-${episode.episodeNumber}`}
+                                href={`/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber}`}
+                                className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors block"
+                              >
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
+                                  {episode.episodeNumber}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-medium text-sm sm:text-base line-clamp-1">{episode.title}</h5>
+                                  <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">{episode.description}</p>
+                                </div>
+                                <Play className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
+                              </Link>
+                            ))
+                          ) : (
+                            // Fallback to placeholder episodes if no real episodes in DB
+                            Array.from({ length: season.episode_count }, (_, i) => (
+                              <Link
+                                key={`${season.season_number}-${i + 1}`}
+                                href={`/watch/tv/${tv.id}/${season.season_number}/${i + 1}`}
+                                className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors block"
+                              >
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
+                                  {i + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="font-medium text-sm sm:text-base line-clamp-1">Épisode {i + 1}</h5>
+                                  <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">Résumé de l'épisode à venir...</p>
+                                </div>
+                                <Play className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
+                              </Link>
+                            ))
+                          )}
                         </div>
                       </div>
                     )}

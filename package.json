@@ -26,7 +26,8 @@
     "test-auth": "tsx server/test-auth.ts",
     "check-import-status": "tsx server/check-import-status.ts",
     "test-video-support": "tsx server/test-video-support.ts",
-    "fix-video-urls": "tsx server/fix-video-urls.ts"
+    "fix-video-urls": "tsx server/fix-video-urls.ts",
+    "update-video-urls": "tsx server/update-video-urls.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -67,6 +68,7 @@
     "@types/pg": "^8.15.5",
     "@types/qrcode": "^1.5.5",
     "bcryptjs": "^3.0.2",
+    "caniuse-lite": "^1.0.30001745",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

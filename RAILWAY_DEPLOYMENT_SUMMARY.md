@@ -9,18 +9,13 @@ Your StreamFlix application has been prepared for deployment on Railway. Here's 
    - Deployment settings with restart policies
 
 2. **Dockerfile** - Docker configuration for containerized deployment:
-   - Uses Node.js 18 alpine as base image
+   - Uses Node.js 20 alpine as base image to satisfy cross-env requirements
+   - Updates package-lock.json to match package.json
    - Installs production dependencies with --legacy-peer-deps flag to resolve conflicts
    - Builds the application
    - Configures the start command
 
 3. **.dockerignore** - Optimizes Docker build by excluding unnecessary files
-
-3. **RAILWAY_DEPLOYMENT.md** - Detailed deployment guide with:
-   - Step-by-step deployment instructions
-   - Environment variable configuration
-   - PostgreSQL database setup
-   - Troubleshooting tips
 
 4. **RAILWAY_DEPLOYMENT.md** - Detailed deployment guide
 

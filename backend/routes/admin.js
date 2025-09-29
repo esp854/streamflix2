@@ -1,43 +1,25 @@
 import express from "express";
+import { db } from "../../server/db.ts";
+import { eq } from "drizzle-orm";
+import {
+  users as usersTable,
+  favorites,
+  contactMessages,
+  subscriptions,
+  payments,
+  banners,
+  collections,
+  content,
+  episodes
+} from "@shared/schema";
+
 const router = express.Router();
 
-// In-memory storage for various data (in a real app, this would be a database)
-let content = [];
-let users = [
-  { id: "1", username: "admin", email: "admin@example.com", role: "admin", createdAt: new Date().toISOString() },
-  { id: "2", username: "user1", email: "user1@example.com", role: "user", createdAt: new Date().toISOString() },
-  { id: "3", username: "user2", email: "user2@example.com", role: "user", createdAt: new Date().toISOString() }
-];
-let favorites = [];
-let contactMessages = [];
-let subscriptions = [];
-let payments = [];
-let banners = [
-  { 
-    id: "1", 
-    title: "Offre spéciale - 50% de réduction !", 
-    description: "Profitez de 50% de réduction sur tous les plans d'abonnement ce mois-ci !", 
-    priority: 1, 
-    imageUrl: "", 
-    active: true 
-  }
-];
-let collections = [];
-let securityLogs = [
-  { 
-    timestamp: new Date().toISOString(), 
-    eventType: "ADMIN_ACCESS", 
-    userId: "1", 
-    ipAddress: "192.168.1.1", 
-    details: "Admin user logged in", 
-    severity: "INFO" 
-  }
-];
-
 // Content management endpoints
-router.get("/admin/content", (req, res) => {
+router.get("/admin/content", async (req, res) => {
   try {
-    res.json(content);
+    const allContent = await db.select().from(content);
+    res.json(allContent);
   } catch (error) {
     console.error("Error fetching content:", error);
     res.status(500).json({ error: "Failed to fetch content" });
@@ -45,12 +27,12 @@ router.get("/admin/content", (req, res) => {
 });
 
 // Add endpoint to fetch content by TMDB ID
-router.get("/contents/tmdb/:tmdbId", (req, res) => {
+router.get("/contents/tmdb/:tmdbId", async (req, res) => {
   try {
     const { tmdbId } = req.params;
-    const contentItem = content.find(c => c.tmdbId == tmdbId);
-    
-    if (!contentItem) {
+    const contentItem = await db.select().from(content).where(eq(content.tmdbId, parseInt(tmdbId))).limit(1);
+
+    if (!contentItem || contentItem.length === 0) {
       // Return a default content object with empty video URL instead of 404
       return res.json({
         id: `tmdb-${tmdbId}`,
@@ -60,17 +42,19 @@ router.get("/contents/tmdb/:tmdbId", (req, res) => {
         createdAt: new Date().toISOString()
       });
     }
-    
+
+    const item = contentItem[0];
+
     // Check if content has a video URL
-    if (!contentItem.odyseeUrl) {
+    if (!item.odyseeUrl) {
       // Return content with empty URL instead of 404
       return res.json({
-        ...contentItem,
+        ...item,
         odyseeUrl: ""
       });
     }
-    
-    res.json(contentItem);
+
+    res.json(item);
   } catch (error) {
     console.error("Error fetching content by TMDB ID:", error);
     // Return a default content object with empty video URL instead of error
@@ -85,14 +69,15 @@ router.get("/contents/tmdb/:tmdbId", (req, res) => {
   }
 });
 
-router.post("/admin/content", (req, res) => {
+router.post("/admin/content", async (req, res) => {
   try {
-    const newContent = {
-      id: `${Date.now()}`,
+    const newContentData = {
       ...req.body,
-      createdAt: new Date().toISOString()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-    content.push(newContent);
+
+    const [newContent] = await db.insert(content).values(newContentData).returning();
     res.status(201).json(newContent);
   } catch (error) {
     console.error("Error creating content:", error);
@@ -101,43 +86,54 @@ router.post("/admin/content", (req, res) => {
 });
 
 // User management endpoints
-router.get("/admin/users", (req, res) => {
+router.get("/admin/users", async (req, res) => {
   try {
-    res.json(users);
+    const allUsers = await db.select().from(usersTable);
+    // Remove passwords from response
+    const usersWithoutPasswords = allUsers.map(({ password, ...user }) => user);
+    res.json(usersWithoutPasswords);
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
-router.put("/admin/users/:userId", (req, res) => {
+router.put("/admin/users/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
     const updates = req.body;
-    
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
+
+    const [updatedUser] = await db.update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, userId))
+      .returning();
+
+    if (!updatedUser) {
       return res.status(404).json({ error: "User not found" });
     }
-    
-    users[userIndex] = { ...users[userIndex], ...updates };
-    res.json(users[userIndex]);
+
+    // Remove password from response
+    const { password, ...userWithoutPassword } = updatedUser;
+    res.json(userWithoutPassword);
   } catch (error) {
     console.error("Error updating user:", error);
     res.status(500).json({ error: "Failed to update user" });
   }
 });
 
-router.post("/admin/users/:userId/suspend", (req, res) => {
+router.post("/admin/users/:userId/suspend", async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
+
+    const [updatedUser] = await db.update(usersTable)
+      .set({ banned: true })
+      .where(eq(usersTable.id, userId))
+      .returning();
+
+    if (!updatedUser) {
       return res.status(404).json({ error: "User not found" });
     }
-    
-    users[userIndex].suspended = true;
+
     res.json({ message: "User suspended successfully" });
   } catch (error) {
     console.error("Error suspending user:", error);
@@ -146,17 +142,16 @@ router.post("/admin/users/:userId/suspend", (req, res) => {
 });
 
 // Add delete user endpoint
-router.delete("/admin/users/:userId", (req, res) => {
+router.delete("/admin/users/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
+
+    const result = await db.delete(usersTable).where(eq(usersTable.id, userId));
+
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-    
-    // Remove user from the array
-    users.splice(userIndex, 1);
+
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     console.error("Error deleting user:", error);
@@ -165,9 +160,10 @@ router.delete("/admin/users/:userId", (req, res) => {
 });
 
 // Favorites management endpoints
-router.get("/admin/favorites", (req, res) => {
+router.get("/admin/favorites", async (req, res) => {
   try {
-    res.json(favorites);
+    const allFavorites = await db.select().from(favorites);
+    res.json(allFavorites);
   } catch (error) {
     console.error("Error fetching favorites:", error);
     res.status(500).json({ error: "Failed to fetch favorites" });
@@ -175,19 +171,25 @@ router.get("/admin/favorites", (req, res) => {
 });
 
 // Contact messages endpoints
-router.get("/contact-messages", (req, res) => {
+router.get("/contact-messages", async (req, res) => {
   try {
-    res.json(contactMessages);
+    const messages = await db.select().from(contactMessages);
+    res.json(messages);
   } catch (error) {
     console.error("Error fetching contact messages:", error);
     res.status(500).json({ error: "Failed to fetch contact messages" });
   }
 });
 
-router.delete("/contact-messages/:messageId", (req, res) => {
+router.delete("/contact-messages/:messageId", async (req, res) => {
   try {
     const { messageId } = req.params;
-    contactMessages = contactMessages.filter(m => m.id !== messageId);
+    const result = await db.delete(contactMessages).where(eq(contactMessages.id, messageId));
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
     res.json({ message: "Message deleted successfully" });
   } catch (error) {
     console.error("Error deleting contact message:", error);
@@ -196,9 +198,10 @@ router.delete("/contact-messages/:messageId", (req, res) => {
 });
 
 // Subscriptions management endpoints
-router.get("/admin/subscriptions", (req, res) => {
+router.get("/admin/subscriptions", async (req, res) => {
   try {
-    res.json(subscriptions);
+    const allSubscriptions = await db.select().from(subscriptions);
+    res.json(allSubscriptions);
   } catch (error) {
     console.error("Error fetching subscriptions:", error);
     res.status(500).json({ error: "Failed to fetch subscriptions" });
@@ -206,9 +209,10 @@ router.get("/admin/subscriptions", (req, res) => {
 });
 
 // Payments history endpoints
-router.get("/admin/payments", (req, res) => {
+router.get("/admin/payments", async (req, res) => {
   try {
-    res.json(payments);
+    const allPayments = await db.select().from(payments);
+    res.json(allPayments);
   } catch (error) {
     console.error("Error fetching payments:", error);
     res.status(500).json({ error: "Failed to fetch payments" });
@@ -216,32 +220,41 @@ router.get("/admin/payments", (req, res) => {
 });
 
 // Analytics data endpoints
-router.get("/admin/analytics", (req, res) => {
+router.get("/admin/analytics", async (req, res) => {
   try {
-    // Mock analytics data
+    // Get real data from database
+    const [allUsers, allContent, allSubscriptions, allPayments] = await Promise.all([
+      db.select().from(usersTable),
+      db.select().from(content),
+      db.select().from(subscriptions),
+      db.select().from(payments)
+    ]);
+
     const analytics = {
-      totalUsers: users.length,
-      activeUsers: users.filter(u => !u.suspended).length,
-      newUsersThisWeek: 2,
-      totalMovies: content.filter(c => c.mediaType === 'movie').length,
-      totalSeries: content.filter(c => c.mediaType === 'tv').length,
-      dailyViews: 124,
-      weeklyViews: 842,
-      activeSubscriptionsCount: subscriptions.filter(s => s.status === 'active').length,
-      activeSessions: 12,
+      totalUsers: allUsers.length,
+      activeUsers: allUsers.filter(u => !u.banned).length,
+      newUsersThisWeek: 2, // This would need a date query in a real implementation
+      totalMovies: allContent.filter(c => c.mediaType === 'movie').length,
+      totalSeries: allContent.filter(c => c.mediaType === 'tv').length,
+      dailyViews: 124, // This would need view tracking implementation
+      weeklyViews: 842, // This would need view tracking implementation
+      activeSubscriptionsCount: allSubscriptions.filter(s => s.status === 'active').length,
+      activeSessions: 12, // This would need session tracking
       revenue: {
-        monthly: 2450,
-        growth: 12.5,
-        totalPayments: 42
+        monthly: allPayments
+          .filter(p => p.status === 'success')
+          .reduce((sum, p) => sum + (p.amount || 0), 0),
+        growth: 12.5, // This would need time-based calculation
+        totalPayments: allPayments.filter(p => p.status === 'success').length
       },
       subscriptions: {
-        basic: 15,
-        standard: 28,
-        premium: 12
+        basic: allSubscriptions.filter(s => s.planId === 'basic').length,
+        standard: allSubscriptions.filter(s => s.planId === 'standard').length,
+        premium: allSubscriptions.filter(s => s.planId === 'premium').length
       },
       recentActivity: {
-        newMoviesAdded: 3,
-        newUsersToday: 1
+        newMoviesAdded: 3, // This would need date-based queries
+        newUsersToday: 1 // This would need date-based queries
       }
     };
     res.json(analytics);
@@ -252,27 +265,31 @@ router.get("/admin/analytics", (req, res) => {
 });
 
 // Banners management endpoints
-router.get("/admin/banners", (req, res) => {
+router.get("/admin/banners", async (req, res) => {
   try {
-    res.json(banners);
+    const allBanners = await db.select().from(banners);
+    res.json(allBanners);
   } catch (error) {
     console.error("Error fetching banners:", error);
     res.status(500).json({ error: "Failed to fetch banners" });
   }
 });
 
-router.put("/admin/banners/:bannerId", (req, res) => {
+router.put("/admin/banners/:bannerId", async (req, res) => {
   try {
     const { bannerId } = req.params;
     const updates = req.body;
-    
-    const bannerIndex = banners.findIndex(b => b.id === bannerId);
-    if (bannerIndex === -1) {
+
+    const [updatedBanner] = await db.update(banners)
+      .set(updates)
+      .where(eq(banners.id, bannerId))
+      .returning();
+
+    if (!updatedBanner) {
       return res.status(404).json({ error: "Banner not found" });
     }
-    
-    banners[bannerIndex] = { ...banners[bannerIndex], ...updates };
-    res.json(banners[bannerIndex]);
+
+    res.json(updatedBanner);
   } catch (error) {
     console.error("Error updating banner:", error);
     res.status(500).json({ error: "Failed to update banner" });
@@ -280,33 +297,72 @@ router.put("/admin/banners/:bannerId", (req, res) => {
 });
 
 // Collections management endpoints
-router.get("/admin/collections", (req, res) => {
+router.get("/admin/collections", async (req, res) => {
   try {
-    res.json(collections);
+    const allCollections = await db.select().from(collections);
+    res.json(allCollections);
   } catch (error) {
     console.error("Error fetching collections:", error);
     res.status(500).json({ error: "Failed to fetch collections" });
   }
 });
 
-// Security logs endpoints
+// Security logs endpoints - TODO: Implement proper security logs table
 router.get("/admin/security-logs", (req, res) => {
   try {
-    res.json(securityLogs);
+    // For now, return empty array until security logs table is implemented
+    res.json([]);
   } catch (error) {
     console.error("Error fetching security logs:", error);
     res.status(500).json({ error: "Failed to fetch security logs" });
   }
 });
 
-// Episodes management (in-memory)
-let episodes = [];
+// Activity logs endpoints - TODO: Implement proper activity logs table
+router.get("/admin/activity-logs", (req, res) => {
+  try {
+    // For now, return empty array until activity logs table is implemented
+    res.json([]);
+  } catch (error) {
+    console.error("Error fetching activity logs:", error);
+    res.status(500).json({ error: "Failed to fetch activity logs" });
+  }
+});
+
+// Search content endpoint
+router.post("/admin/search-content", (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) {
+      return res.status(400).json({ error: "Query parameter is required" });
+    }
+
+    // Mock search results - in a real app, this would search TMDB
+    const mockMovies = [
+      { id: 550, title: "Fight Club", release_date: "1999-10-15", poster_path: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg" },
+      { id: 680, title: "Pulp Fiction", release_date: "1994-09-10", poster_path: "/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg" }
+    ];
+
+    const mockTVShows = [
+      { id: 1399, name: "Game of Thrones", first_air_date: "2011-04-17", poster_path: "/u3bZgnGQ9T01sWNhyveQz0wH0Hl.jpg" },
+      { id: 66732, name: "Stranger Things", first_air_date: "2016-07-15", poster_path: "/49WJfeN0moxb9IPfGn8AIqMGskD.jpg" }
+    ];
+
+    res.json({
+      movies: mockMovies.filter(m => m.title.toLowerCase().includes(query.toLowerCase())),
+      tvShows: mockTVShows.filter(s => s.name.toLowerCase().includes(query.toLowerCase()))
+    });
+  } catch (error) {
+    console.error("Error searching content:", error);
+    res.status(500).json({ error: "Failed to search content" });
+  }
+});
 
 // Get episodes for a content ID
-router.get("/admin/episodes/:contentId", (req, res) => {
+router.get("/admin/episodes/:contentId", async (req, res) => {
   try {
     const { contentId } = req.params;
-    const list = episodes.filter((e) => e.contentId === contentId);
+    const list = await db.select().from(episodes).where(eq(episodes.contentId, contentId));
     res.json({ episodes: list });
   } catch (error) {
     console.error("Error fetching episodes:", error);
@@ -315,7 +371,7 @@ router.get("/admin/episodes/:contentId", (req, res) => {
 });
 
 // Create a new episode
-router.post("/admin/episodes", (req, res) => {
+router.post("/admin/episodes", async (req, res) => {
   try {
     const {
       contentId,
@@ -334,22 +390,20 @@ router.post("/admin/episodes", (req, res) => {
       });
     }
 
-    const now = new Date().toISOString();
-    const newEpisode = {
-      id: `${Date.now()}`,
+    const newEpisodeData = {
       contentId,
       seasonNumber: Number(seasonNumber),
       episodeNumber: Number(episodeNumber),
       title,
       description,
       odyseeUrl,
-      releaseDate,
+      releaseDate: releaseDate ? new Date(releaseDate) : null,
       active: Boolean(active),
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
-    episodes.push(newEpisode);
+    const [newEpisode] = await db.insert(episodes).values(newEpisodeData).returning();
     res.status(201).json(newEpisode);
   } catch (error) {
     console.error("Error creating episode:", error);
@@ -358,14 +412,21 @@ router.post("/admin/episodes", (req, res) => {
 });
 
 // Update an episode
-router.put("/admin/episodes/:episodeId", (req, res) => {
+router.put("/admin/episodes/:episodeId", async (req, res) => {
   try {
     const { episodeId } = req.params;
-    const idx = episodes.findIndex((e) => e.id === episodeId);
-    if (idx === -1) return res.status(404).json({ error: "Episode not found" });
+    const updateData = { ...req.body, updatedAt: new Date() };
 
-    episodes[idx] = { ...episodes[idx], ...req.body, updatedAt: new Date().toISOString() };
-    res.json(episodes[idx]);
+    const [updatedEpisode] = await db.update(episodes)
+      .set(updateData)
+      .where(eq(episodes.id, episodeId))
+      .returning();
+
+    if (!updatedEpisode) {
+      return res.status(404).json({ error: "Episode not found" });
+    }
+
+    res.json(updatedEpisode);
   } catch (error) {
     console.error("Error updating episode:", error);
     res.status(500).json({ error: "Failed to update episode" });
@@ -373,12 +434,15 @@ router.put("/admin/episodes/:episodeId", (req, res) => {
 });
 
 // Delete an episode
-router.delete("/admin/episodes/:episodeId", (req, res) => {
+router.delete("/admin/episodes/:episodeId", async (req, res) => {
   try {
     const { episodeId } = req.params;
-    const before = episodes.length;
-    episodes = episodes.filter((e) => e.id !== episodeId);
-    if (episodes.length === before) return res.status(404).json({ error: "Episode not found" });
+
+    const result = await db.delete(episodes).where(eq(episodes.id, episodeId));
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Episode not found" });
+    }
 
     res.json({ message: "Episode deleted successfully" });
   } catch (error) {

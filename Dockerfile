@@ -1,5 +1,4 @@
-# Use Node.js 18 alpine as base image
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
@@ -7,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps to avoid conflicts
-RUN npm ci --only=production --legacy-peer-deps
+# Update package-lock.json to match package.json and install dependencies
+RUN npm install --package-lock-only && npm ci --legacy-peer-deps
 
 # Copy all files
 COPY . .
@@ -17,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Expose port (Railway will set PORT environment variable)
-EXPOSE $PORT
+EXPOSE 3000
 
 # Start the application
 CMD ["npm", "run", "start"]

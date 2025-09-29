@@ -2,6 +2,7 @@ import {
    users,
    favorites,
    watchHistory,
+   watchProgress,
    userPreferences,
    contactMessages,
    subscriptions,
@@ -20,6 +21,8 @@ import {
    type InsertFavorite,
    type WatchHistory,
    type InsertWatchHistory,
+   type WatchProgress,
+   type InsertWatchProgress,
    type UserPreferences,
    type InsertUserPreferences,
    type ContactMessage,
@@ -42,7 +45,7 @@ import {
    type InsertViewTracking,
    type Comment,
    type InsertComment
- } from "@shared/schema";
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -67,6 +70,13 @@ export interface IStorage {
   // Watch History
   getWatchHistory(userId: string): Promise<WatchHistory[]>;
   addToWatchHistory(history: InsertWatchHistory): Promise<WatchHistory>;
+
+  // Watch Progress
+  getWatchProgress(userId: string): Promise<WatchProgress[]>;
+  createWatchProgress(progress: InsertWatchProgress): Promise<WatchProgress>;
+  updateWatchProgress(progressId: string, data: Partial<InsertWatchProgress>): Promise<WatchProgress>;
+  deleteWatchProgress(progressId: string): Promise<void>;
+  getWatchProgressByContent(userId: string, contentId?: string, episodeId?: string): Promise<WatchProgress | undefined>;
   
   // User Preferences
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
@@ -224,17 +234,17 @@ export class DatabaseStorage implements IStorage {
     if (!userId || typeof userId !== 'string') {
       throw new Error('Invalid user ID');
     }
-    
+
     const [user] = await db
       .update(users)
       .set({ banned: false } as Partial<User>)
       .where(eq(users.id, userId))
       .returning();
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     return user;
   }
 
@@ -243,19 +253,20 @@ export class DatabaseStorage implements IStorage {
     if (!userId || typeof userId !== 'string') {
       throw new Error('Invalid user ID');
     }
-    
+
     const [user] = await db
       .update(users)
       .set(updates as any)
       .where(eq(users.id, userId))
       .returning();
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     return user;
   }
+
 
   // Favorites
   async getFavorites(userId: string): Promise<Favorite[]> {
@@ -321,6 +332,49 @@ export class DatabaseStorage implements IStorage {
   async addToWatchHistory(history: InsertWatchHistory): Promise<WatchHistory> {
     const [newHistory] = await db.insert(watchHistory).values(history).returning();
     return newHistory;
+  }
+
+  // Watch Progress
+  async getWatchProgress(userId: string): Promise<WatchProgress[]> {
+    return await db
+      .select()
+      .from(watchProgress)
+      .where(eq(watchProgress.userId, userId))
+      .orderBy(desc(watchProgress.lastWatchedAt));
+  }
+
+  async createWatchProgress(progress: InsertWatchProgress): Promise<WatchProgress> {
+    const [newProgress] = await db.insert(watchProgress).values(progress as any).returning();
+    return newProgress;
+  }
+
+  async updateWatchProgress(progressId: string, data: Partial<InsertWatchProgress>): Promise<WatchProgress> {
+    const [updated] = await db
+      .update(watchProgress)
+      .set({ ...data, updatedAt: new Date() } as any)
+      .where(eq(watchProgress.id, progressId))
+      .returning();
+    return updated;
+  }
+
+  async deleteWatchProgress(progressId: string): Promise<void> {
+    await db.delete(watchProgress).where(eq(watchProgress.id, progressId));
+  }
+
+  async getWatchProgressByContent(userId: string, contentId?: string, episodeId?: string): Promise<WatchProgress | undefined> {
+    let query = db
+      .select()
+      .from(watchProgress)
+      .where(eq(watchProgress.userId, userId));
+
+    if (episodeId) {
+      query = query.where(eq(watchProgress.episodeId, episodeId));
+    } else if (contentId) {
+      query = query.where(and(eq(watchProgress.contentId, contentId), sql`${watchProgress.episodeId} IS NULL`));
+    }
+
+    const [progress] = await query.limit(1);
+    return progress || undefined;
   }
 
   // User Preferences
@@ -477,19 +531,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(banners).orderBy(desc(banners.priority));
   }
 
-  // Add missing banner functions
-  async getBannerById(id: string): Promise<Banner | undefined> {
-    const [banner] = await db.select().from(banners).where(eq(banners.id, id));
-    return banner || undefined;
-  }
 
-  async getBannersByCollectionId(collectionId: string): Promise<Banner[]> {
-    return await db
-      .select()
-      .from(banners)
-      .where(eq(banners.collectionId, collectionId))
-      .orderBy(desc(banners.priority));
-  }
 
   async updateBanner(bannerId: string, data: Partial<InsertBanner>): Promise<Banner> {
     const [updated] = await db
@@ -514,15 +556,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(collections).orderBy(desc(collections.createdAt));
   }
 
-  // Add missing collection functions
-  async getAllCollections(): Promise<Collection[]> {
-    return await db.select().from(collections).orderBy(desc(collections.createdAt));
-  }
 
-  async getCollectionById(id: string): Promise<Collection | undefined> {
-    const [collection] = await db.select().from(collections).where(eq(collections.id, id));
-    return collection || undefined;
-  }
 
   async updateCollection(collectionId: string, data: Partial<InsertCollection>): Promise<Collection> {
     const [updated] = await db
@@ -537,122 +571,15 @@ export class DatabaseStorage implements IStorage {
     await db.delete(collections).where(eq(collections.id, collectionId));
   }
 
-  // Add missing content functions
-  async getContentsByCollectionId(collectionId: string): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(eq(content.collectionId, collectionId))
-      .orderBy(desc(content.createdAt));
-  }
 
-  async getContentBySlug(slug: string): Promise<Content | undefined> {
-    const [item] = await db
-      .select()
-      .from(content)
-      .where(eq(content.slug, slug));
-    return item || undefined;
-  }
 
-  async getContentByType(type: string): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(eq(content.mediaType, type))
-      .orderBy(desc(content.createdAt));
-  }
 
-  async getContentByGenre(genre: string): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(sql`genres LIKE ${'%' + genre + '%'}`)
-      .orderBy(desc(content.createdAt));
-  }
 
-  async getContentByYear(year: string): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(sql`release_date LIKE ${year + '%'}`)
-      .orderBy(desc(content.createdAt));
-  }
 
-  // Notifications
-  async createNotification(notification: InsertNotification): Promise<Notification> {
-    const [newNotification] = await db.insert(notifications).values(notification as any).returning();
-    return newNotification;
-  }
 
-  async getUserNotifications(userId: string): Promise<Notification[]> {
-    return await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, userId))
-      .orderBy(desc(notifications.createdAt));
-  }
 
-  async getNotificationById(notificationId: string): Promise<Notification | undefined> {
-    const [notification] = await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.id, notificationId));
-    return notification || undefined;
-  }
 
-  async getAllNotifications(): Promise<Notification[]> {
-    return await db
-      .select()
-      .from(notifications)
-      .orderBy(desc(notifications.createdAt));
-  }
 
-  async markNotificationRead(notificationId: string): Promise<void> {
-    await db
-      .update(notifications)
-      .set({ read: true })
-      .where(eq(notifications.id, notificationId));
-  }
-
-  async deleteNotification(notificationId: string): Promise<void> {
-    await db.delete(notifications).where(eq(notifications.id, notificationId));
-  }
-
-  // Add missing notification functions
-  async getNotificationsByUserId(userId: string): Promise<Notification[]> {
-    return await db
-      .select()
-      .from(notifications)
-      .where(eq(notifications.userId, userId))
-      .orderBy(desc(notifications.createdAt));
-  }
-
-  // Add missing user session functions
-  async getUserSessionByToken(token: string): Promise<UserSession | undefined> {
-    const [session] = await db
-      .select()
-      .from(userSessions)
-      .where(eq(userSessions.token, token));
-    return session || undefined;
-  }
-
-  async getUserSessionByUserId(userId: string): Promise<UserSession | undefined> {
-    const [session] = await db
-      .select()
-      .from(userSessions)
-      .where(eq(userSessions.userId, userId))
-      .orderBy(desc(userSessions.sessionStart));
-    return session || undefined;
-  }
-
-  // Add missing view tracking functions
-  async getViewTrackingByUserId(userId: string): Promise<ViewTracking[]> {
-    return await db
-      .select()
-      .from(viewTracking)
-      .where(eq(viewTracking.userId, userId))
-      .orderBy(desc(viewTracking.viewDate));
-  }
 
   // Notifications
   async createNotification(notification: InsertNotification): Promise<Notification> {
@@ -720,24 +647,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   // User Management
-  async updateUser(userId: string, updates: Partial<InsertUser>): Promise<User> {
-    // Validate input
-    if (!userId || typeof userId !== 'string') {
-      throw new Error('Invalid user ID');
-    }
-    
-    const [user] = await db
-      .update(users)
-      .set(updates as any)
-      .where(eq(users.id, userId))
-      .returning();
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
-    
-    return user;
-  }
 
   async updateUserStatus(userId: string, status: 'active' | 'suspended' | 'banned'): Promise<User> {
     // Note: We'll need to add a status field to users table, for now we'll just return the user
@@ -901,11 +810,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBannersByCollectionId(collectionId: string): Promise<Banner[]> {
-    return await db
-      .select()
-      .from(banners)
-      .where(eq(banners.collectionId, collectionId))
-      .orderBy(desc(banners.priority));
+    // Banners don't have collectionId in schema, return empty array
+    return [];
   }
 
   async getAllCollections(): Promise<Collection[]> {
@@ -918,19 +824,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContentsByCollectionId(collectionId: string): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(eq(content.collectionId, collectionId))
-      .orderBy(desc(content.createdAt));
+    // Content doesn't have collectionId in schema, return empty array
+    return [];
   }
 
   async getContentBySlug(slug: string): Promise<Content | undefined> {
-    const [item] = await db
-      .select()
-      .from(content)
-      .where(eq(content.slug, slug));
-    return item || undefined;
+    // Content doesn't have slug in schema, return undefined
+    return undefined;
   }
 
   async getContentByType(type: string): Promise<Content[]> {
@@ -966,11 +866,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserSessionByToken(token: string): Promise<UserSession | undefined> {
-    const [session] = await db
-      .select()
-      .from(userSessions)
-      .where(eq(userSessions.token, token));
-    return session || undefined;
+    // User sessions don't have token in schema, return undefined
+    return undefined;
   }
 
   async getUserSessionByUserId(userId: string): Promise<UserSession | undefined> {

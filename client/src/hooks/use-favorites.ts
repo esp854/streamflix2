@@ -16,7 +16,7 @@ interface FavoriteData {
 }
 
 export function useFavorites() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, token, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const userId = isAuthenticated && user?.id ? user.id : null;
 
@@ -26,7 +26,12 @@ export function useFavorites() {
       queryKey: ["/api/favorites/check", userId, contentId],
       queryFn: async () => {
         if (!userId || !isAuthenticated) return { isFavorite: false };
-        const response = await fetch(`/api/favorites/${userId}/${contentId}`);
+        const response = await fetch(`/api/favorites/${userId}/${contentId}`, {
+          credentials: 'include',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
+        });
         if (!response.ok) return { isFavorite: false };
         return response.json() as Promise<{ isFavorite: boolean }>;
       },
@@ -58,7 +63,9 @@ export function useFavorites() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
+        credentials: 'include',
         body: JSON.stringify(favoriteData),
       });
 
@@ -98,6 +105,10 @@ export function useFavorites() {
       
       const response = await fetch(`/api/favorites/${userId}/${contentId}`, {
         method: "DELETE",
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
       });
 
       if (!response.ok) {
@@ -139,7 +150,12 @@ export function useFavorites() {
 
     try {
       // Check current status
-      const response = await fetch(`/api/favorites/${userId}/${content.id}`);
+      const response = await fetch(`/api/favorites/${userId}/${content.id}`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       const { isFavorite } = await response.json();
 
       if (isFavorite) {
