@@ -1,22 +1,43 @@
-FROM node:20-alpine
+# ---- Étape 1 : Builder le frontend ----
+FROM node:18-alpine AS build-frontend
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copier uniquement ce qui est nécessaire pour vite
+COPY client/package*.json ./client/
+RUN cd client && npm install
+
+# Copier le frontend
+COPY client ./client
+
+# Builder le frontend
+RUN cd client && npm run build
+
+
+# ---- Étape 2 : Builder le backend ----
+FROM node:18-alpine AS build-backend
+
+WORKDIR /app
+
+# Copier les fichiers du backend
+COPY package*.json ./
+RUN npm install
+
+COPY server ./server
+COPY --from=build-frontend /app/client/dist ./dist/public
+
+# Compiler le backend
+RUN npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+
+# ---- Étape finale ----
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY --from=build-backend /app/dist ./dist
 COPY package*.json ./
 
-# Update package-lock.json to match package.json and install dependencies
-RUN npm install --package-lock-only && npm ci --legacy-peer-deps
-
-# Copy all files
-COPY . .
-
-# Build the application
-RUN npm run build
-
-# Expose port (Railway will set PORT environment variable)
 EXPOSE 3000
 
-# Start the application
 CMD ["node", "dist/index.js"]
