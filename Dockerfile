@@ -3,12 +3,11 @@ FROM node:18-alpine AS build-frontend
 
 WORKDIR /app
 
-# Copier seulement package.json et package-lock.json du frontend pour installer les dépendances
-COPY client/package*.json ./client/
-RUN cd client && npm install
-
 # Copier tout le frontend
 COPY client ./client
+
+# Installer les dépendances frontend
+RUN cd client && npm install
 
 # Builder le frontend avec Vite
 RUN cd client && npm run build
@@ -19,8 +18,10 @@ FROM node:18-alpine AS build-backend
 
 WORKDIR /app
 
-# Copier package.json et installer backend
+# Copier package.json et package-lock.json backend
 COPY package*.json ./
+
+# Installer les dépendances backend
 RUN npm install
 
 # Copier le backend
