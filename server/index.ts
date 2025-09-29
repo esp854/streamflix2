@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./vite";
+import { serveStatic, log } from "./static";
 import { apiLimiter, securityHeaders, corsOptions, validateInput, xssProtection } from "./security";
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
