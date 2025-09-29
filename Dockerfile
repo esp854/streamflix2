@@ -1,48 +1,21 @@
-# ---- Étape 1 : Builder le frontend ----
-FROM node:18-alpine AS build-frontend
-
-WORKDIR /app
-
-# Copier tout le frontend
-COPY client ./client
-
-# Installer les dépendances frontend
-RUN cd client && npm install
-
-# Builder le frontend avec Vite
-RUN cd client && npm run build
-
-
-# ---- Étape 2 : Builder le backend ----
-FROM node:18-alpine AS build-backend
-
-WORKDIR /app
-
-# Copier package.json et package-lock.json backend
-COPY package*.json ./
-
-# Installer les dépendances backend
-RUN npm install
-
-# Copier le backend
-COPY server ./server
-
-# Copier le build frontend depuis l'étape précédente
-COPY --from=build-frontend /app/client/dist ./dist/public
-
-# Compiler le backend avec esbuild
-RUN npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
-
-
-# ---- Étape finale : image légère ----
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copier uniquement le nécessaire depuis build-backend
-COPY --from=build-backend /app/dist ./dist
-COPY package*.json ./
+# Copier tout le projet (frontend + backend)
+COPY . .
+
+# Installer les dépendances frontend
+RUN cd client && npm install
+
+# Installer les dépendances backend
+RUN npm install
+
+# Builder le frontend
+RUN cd client && npm run build
+
+# Compiler le backend
+RUN npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
 
 EXPOSE 3000
-
 CMD ["node", "dist/index.js"]
