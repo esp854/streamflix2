@@ -66,9 +66,6 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
-    rollupOptions: {
-      input: path.resolve(__dirname, "client/index.html"),
-    },
   },
   server: {
     fs: {
