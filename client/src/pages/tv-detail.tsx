@@ -400,11 +400,7 @@ export default function TVDetail() {
                         <div className="p-3 sm:p-4 space-y-2">
                           {seasonEpisodes.length > 0 ? (
                             seasonEpisodes.map((episode: any) => (
-                              <Link
-                                key={`${season.season_number}-${episode.episodeNumber}`}
-                                href={`/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber}`}
-                                className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors block"
-                              >
+                              <div key={`${season.season_number}-${episode.episodeNumber}`} className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors">
                                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
                                   {episode.episodeNumber}
                                 </div>
@@ -412,17 +408,20 @@ export default function TVDetail() {
                                   <h5 className="font-medium text-sm sm:text-base line-clamp-1">{episode.title}</h5>
                                   <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">{episode.description}</p>
                                 </div>
-                                <Play className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                              </Link>
+                                <div className="flex space-x-2">
+                                  <Link
+                                    href={`/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber}`}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-primary hover:bg-primary/90 rounded-full transition-colors"
+                                  >
+                                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
+                                  </Link>
+                                </div>
+                              </div>
                             ))
                           ) : (
                             // Fallback to placeholder episodes if no real episodes in DB
                             Array.from({ length: season.episode_count }, (_, i) => (
-                              <Link
-                                key={`${season.season_number}-${i + 1}`}
-                                href={`/watch/tv/${tv.id}/${season.season_number}/${i + 1}`}
-                                className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors block"
-                              >
+                              <div key={`${season.season_number}-${i + 1}`} className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors">
                                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
                                   {i + 1}
                                 </div>
@@ -430,8 +429,15 @@ export default function TVDetail() {
                                   <h5 className="font-medium text-sm sm:text-base line-clamp-1">Épisode {i + 1}</h5>
                                   <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">Résumé de l'épisode à venir...</p>
                                 </div>
-                                <Play className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
-                              </Link>
+                                <div className="flex space-x-2">
+                                  <Link
+                                    href={`/watch/tv/${tv.id}/${season.season_number}/${i + 1}`}
+                                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-primary hover:bg-primary/90 rounded-full transition-colors"
+                                  >
+                                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
+                                  </Link>
+                                </div>
+                              </div>
                             ))
                           )}
                         </div>

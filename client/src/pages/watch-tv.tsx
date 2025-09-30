@@ -596,6 +596,21 @@ export default function WatchTV() {
     }
   }, []);
 
+  // Function to skip intro (jump 90 seconds forward)
+  const skipIntro = useCallback(() => {
+    if (!videoRef.current || !isMountedRef.current) return;
+    
+    const newTime = Math.min(duration, currentTime + 90);
+    
+    if (isYouTubeVideo && youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(newTime, true);
+    } else {
+      videoRef.current.currentTime = newTime;
+    }
+    
+    setCurrentTime(newTime);
+  }, [currentTime, duration, isYouTubeVideo]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -689,31 +704,27 @@ export default function WatchTV() {
       {/* Video container */}
       <div className="relative w-full h-screen">
         {/* Zupload Video Player */}
-        {isZuploadVideo && videoUrl ? (
-          <div className="w-full h-full">
-            <ZuploadVideoPlayer
-              videoUrl={videoUrl}
-              title={tvDetails.name}
-              onVideoError={(error) => setVideoError(error)}
-            />
-          </div>
-        ) : (
-          // Other video types (YouTube, Odysee, etc.) or fallback message
-          <>
-            {/* Video player has been removed for non-Zupload videos */}
-            <div className="w-full h-screen flex items-center justify-center bg-black">
-              <div className="text-center p-8">
-                <div className="text-4xl mb-4">📺</div>
-                <h2 className="text-2xl font-bold mb-2">Lecteur de série non disponible</h2>
-                <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
-                <p className="text-gray-500 text-sm mb-6">Seules les vidéos Zupload sont actuellement supportées.</p>
-                <Button onClick={(e) => handleGoHome(e)} variant="default">
-                  <Home className="w-4 h-4 mr-2" />
-                  Retour à l'accueil
-                </Button>
-              </div>
-            </div>
-          </>
+        {isZuploadVideo && videoUrl && (
+          <ZuploadVideoPlayer 
+            videoUrl={videoUrl}
+            title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
+            onVideoEnd={goToNextEpisode}
+            onNextEpisode={goToNextEpisode}
+            onSkipIntro={skipIntro}
+            currentSeason={currentSeason}
+            currentEpisode={currentEpisode}
+            totalSeasons={tvDetails.number_of_seasons || 1}
+            totalEpisodes={seasonDetails?.episodes?.length || 10}
+            onSeasonChange={(season) => {
+              const newUrl = `/watch/tv/${tvId}/${season}/${currentEpisode}`;
+              window.location.href = newUrl;
+            }}
+            onEpisodeChange={(episode) => {
+              const newUrl = `/watch/tv/${tvId}/${currentSeason}/${episode}`;
+              window.location.href = newUrl;
+            }}
+            onPreviousEpisode={goToPreviousEpisode}
+          />
         )}
         
         {/* Buffering Indicator */}
@@ -738,8 +749,8 @@ export default function WatchTV() {
           Accueil
         </Button>
 
-        {/* Controls Overlay - show for all video types except Odysee and Zupload */}
-        {!isOdyseeVideo && !isZuploadVideo && (
+        {/* Controls Overlay - show for all video types except Odysee */}
+        {!isOdyseeVideo && (
           <div
             className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => { // Toggle controls on click/tap for mobile
@@ -1018,8 +1029,8 @@ export default function WatchTV() {
           </div>
         )}
 
-        {/* Keyboard Shortcuts Help - show for all video types except Odysee and Zupload on desktop */}
-        {!isOdyseeVideo && !isZuploadVideo && !isMobile && (
+        {/* Keyboard Shortcuts Help - show for all video types except Odysee on desktop */}
+        {!isOdyseeVideo && !isMobile && (
           <div className="absolute bottom-20 left-4 text-white text-xs opacity-50">
             <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Plein écran) • N (Épisode suivant) • P (Épisode précédent)</p>
           </div>
