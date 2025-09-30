@@ -709,21 +709,6 @@ export default function WatchTV() {
             videoUrl={videoUrl}
             title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
             onVideoEnd={goToNextEpisode}
-            onNextEpisode={goToNextEpisode}
-            onSkipIntro={skipIntro}
-            currentSeason={currentSeason}
-            currentEpisode={currentEpisode}
-            totalSeasons={tvDetails.number_of_seasons || 1}
-            totalEpisodes={seasonDetails?.episodes?.length || 10}
-            onSeasonChange={(season) => {
-              const newUrl = `/watch/tv/${tvId}/${season}/${currentEpisode}`;
-              window.location.href = newUrl;
-            }}
-            onEpisodeChange={(episode) => {
-              const newUrl = `/watch/tv/${tvId}/${currentSeason}/${episode}`;
-              window.location.href = newUrl;
-            }}
-            onPreviousEpisode={goToPreviousEpisode}
           />
         )}
         
