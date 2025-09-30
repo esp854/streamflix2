@@ -2250,6 +2250,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Données d'épisode incomplètes" });
       }
       
+      // Decode HTML entities in the URL if present
+      if (episodeData.odyseeUrl) {
+        try {
+          // Simple HTML entity decoding
+          episodeData.odyseeUrl = episodeData.odyseeUrl
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#x2F;/g, '/')
+            .replace(/&#39;/g, "'");
+        } catch (e) {
+          // If we can't decode, just use the original URL
+        }
+      }
+      
       const episode = await storage.createEpisode(episodeData);
       res.json(episode);
     } catch (error) {
@@ -2265,6 +2281,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!episodeId) {
         return res.status(400).json({ error: "ID de l'épisode requis" });
+      }
+      
+      // Decode HTML entities in the URL if present
+      if (updateData.odyseeUrl) {
+        try {
+          // Simple HTML entity decoding
+          updateData.odyseeUrl = updateData.odyseeUrl
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#x2F;/g, '/')
+            .replace(/&#39;/g, "'");
+        } catch (e) {
+          // If we can't decode, just use the original URL
+        }
       }
       
       const episode = await storage.updateEpisode(episodeId, updateData);
@@ -4477,6 +4509,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Cet épisode existe déjà pour cette saison" });
       }
       
+      // Decode HTML entities in the URL
+      let cleanOdyseeUrl = odyseeUrl || '';
+      try {
+        // Simple HTML entity decoding
+        cleanOdyseeUrl = odyseeUrl
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x2F;/g, '/')
+          .replace(/&#39;/g, "'");
+      } catch (e) {
+        // If we can't decode, just use the original URL
+        cleanOdyseeUrl = odyseeUrl || '';
+      }
+      
       // Create episode
       const episodeData = {
         contentId,
@@ -4484,7 +4532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         episodeNumber,
         title,
         description: description || '',
-        odyseeUrl: odyseeUrl || '',
+        odyseeUrl: cleanOdyseeUrl,
         releaseDate: releaseDate || '',
         active: true
       };
