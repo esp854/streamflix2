@@ -54,7 +54,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           // Separate vendor chunks for better caching
-          vendor: ['react', 'react-dom', 'react-router'],
+          vendor: ['react', 'react-dom', 'wouter'],
           ui: ['@/components/ui'],
           utils: ['@/lib/utils', '@/lib/tmdb'],
           hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
@@ -81,7 +81,7 @@ export default defineConfig({
   },
   // Optimize dependencies
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router'],
+    include: ['react', 'react-dom', 'wouter'],
     exclude: ['chunk-IPDEAFVS']
   }
 });

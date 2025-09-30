@@ -156,7 +156,6 @@ export default function Navbar() {
     { href: "/", label: "Accueil", active: location === "/" },
     { href: "/category/28", label: "Films", active: location.startsWith("/category") },
     { href: "/series", label: "Séries", active: location === "/series" },
-    { href: "/continue-watching", label: "Continuer", active: location === "/continue-watching" },
     { href: "/favorites", label: "Ma Liste", active: location === "/favorites" },
     { href: "/trending", label: "Tendances", active: location === "/trending" },
   ];
@@ -516,16 +515,6 @@ export default function Navbar() {
           >
             <Tv className="w-5 h-5" />
             <span className="text-xs">Séries</span>
-          </Link>
-
-          <Link
-            href="/continue-watching"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-              location === "/continue-watching" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Play className="w-5 h-5" />
-            <span className="text-xs">Continuer</span>
           </Link>
 
           <Link
