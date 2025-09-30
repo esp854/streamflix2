@@ -67,7 +67,9 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
-    const { setupVite } = await import("./vite");
+    // Use eval to avoid static analysis of vite imports
+    const viteModule = await eval('import("./vite")');
+    const { setupVite } = viteModule;
     await setupVite(app, server);
   } else {
     serveStatic(app);

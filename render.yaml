@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: streamflix
+    runtime: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TMDB_API_KEY
+        sync: false  # À configurer manuellement dans Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          type: postgresql
+          property: connectionString
+      - key: CLIENT_URL
+        sync: false  # Sera défini automatiquement par Render
+      - key: BASE_URL
+        sync: false  # Sera défini automatiquement par Render
+
+databases:
+  - name: streamflix-db
+    databaseName: streamflix
+    user: streamflix

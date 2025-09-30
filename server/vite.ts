@@ -5,6 +5,10 @@ import { type Server } from "http";
 import { nanoid } from "nanoid";
 
 export async function setupVite(app: Express, server: Server) {
+  if (process.env.NODE_ENV !== "development") {
+    throw new Error("Vite setup is only available in development mode");
+  }
+
   const { createServer: createViteServer, createLogger } = await import("vite");
   const viteConfig = (await import("../client/vite.config")).default;
 
