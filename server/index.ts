@@ -6,6 +6,12 @@ import { apiLimiter, securityHeaders, corsOptions, validateInput, xssProtection 
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
+// Check database configuration at startup
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is not set. The application cannot start without a database connection.');
+  process.exit(1);
+}
+
 const app = express();
 
 // Apply security middleware
