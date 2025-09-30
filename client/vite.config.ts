@@ -49,6 +49,18 @@ export default defineConfig({
     outDir: "../dist/public",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
+    // Optimize bundle splitting
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          vendor: ['react', 'react-dom', 'react-router'],
+          ui: ['@/components/ui'],
+          utils: ['@/lib/utils', '@/lib/tmdb'],
+          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
+        }
+      }
+    }
   },
   server: {
     fs: {
@@ -67,4 +79,9 @@ export default defineConfig({
       }
     }
   },
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router'],
+    exclude: ['chunk-IPDEAFVS']
+  }
 });

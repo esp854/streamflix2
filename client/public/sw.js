@@ -1,30 +1,41 @@
 // Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.0.0';
-const STATIC_CACHE = 'streamflix-static-v1.0.0';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.0.0';
+const CACHE_NAME = 'streamflix-v1.1.0';
+const STATIC_CACHE = 'streamflix-static-v1.1.0';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.1.0';
+const IMAGE_CACHE = 'streamflix-images-v1.1.0';
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
   '/',
-  '/manifest.json'
+  '/manifest.json',
+  '/index.html',
+  '/src/main.tsx',
+  '/src/App.tsx'
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('[SW] Install event');
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS).catch((error) => {
-          console.error('[SW] Failed to cache static assets:', error);
-          // Continue installation even if caching fails
+    Promise.all([
+      caches.open(STATIC_CACHE)
+        .then((cache) => {
+          console.log('[SW] Caching static assets');
+          return cache.addAll(STATIC_ASSETS).catch((error) => {
+            console.error('[SW] Failed to cache static assets:', error);
+            // Continue installation even if caching fails
+            return Promise.resolve();
+          });
+        }),
+      // Pre-cache critical CSS/JS chunks
+      caches.open(DYNAMIC_CACHE)
+        .then((cache) => {
+          // Add critical resources that should be cached during install
           return Promise.resolve();
-        });
-      })
-      .then(() => {
-        return self.skipWaiting();
-      })
+        })
+    ]).then(() => {
+      return self.skipWaiting();
+    })
   );
 });
 
@@ -35,7 +46,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE) {
             console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -59,8 +70,37 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
-  // Skip TMDB image requests entirely - let the browser handle them directly
+  // Handle image requests with specific image cache
   if (url.hostname === 'image.tmdb.org') {
+    event.respondWith(
+      caches.match(request)
+        .then((cachedResponse) => {
+          // Return cached response if available
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // Fetch from network and cache
+          return fetch(request)
+            .then((response) => {
+              if (response && response.status === 200) {
+                const responseClone = response.clone();
+                caches.open(IMAGE_CACHE)
+                  .then((cache) => {
+                    cache.put(request, responseClone);
+                  })
+                  .catch((error) => {
+                    console.error('[SW] Failed to cache image:', error);
+                  });
+              }
+              return response;
+            })
+            .catch((error) => {
+              console.error('[SW] Image fetch failed:', error);
+              return new Response(null, { status: 503, statusText: 'Offline' });
+            });
+        })
+    );
     return;
   }
 
@@ -106,51 +146,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle static assets and pages
+  // Handle static assets and pages with stale-while-revalidate strategy
   event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        // Return cached response if available
-        if (cachedResponse) {
+    caches.open(DYNAMIC_CACHE).then((cache) => {
+      return cache.match(request).then((cachedResponse) => {
+        // Fetch fresh version in background for non-critical updates
+        const networkResponse = fetch(request).then((response) => {
+          // Cache successful responses
+          if (response && response.status === 200 && response.type === 'basic') {
+            cache.put(request, response.clone());
+          }
+          return response;
+        }).catch(() => {
+          // If network fails, return cached response if available
           return cachedResponse;
-        }
+        });
 
-        // Fetch from network
-        return fetch(request)
-          .then((response) => {
-            // Validate response before caching
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Cache the response
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE)
-              .then((cache) => {
-                cache.put(request, responseClone);
-              })
-              .catch((error) => {
-                console.error('[SW] Failed to cache response:', error);
-              });
-
-            return response;
-          })
-          .catch((error) => {
-            console.error('[SW] Fetch failed:', error);
-            // Return offline fallback for navigation requests
-            if (request.mode === 'navigate') {
-              return caches.match('/').then((cachedResponse) => {
-                return cachedResponse || new Response('Offline', { status: 503, statusText: 'Offline' });
-              });
-            }
-            // For other requests, return a basic error response
-            return new Response(null, { status: 503, statusText: 'Offline' });
-          });
-      })
-      .catch((error) => {
-        console.error('[SW] Cache match failed:', error);
-        return new Response(null, { status: 503, statusText: 'Offline' });
-      })
+        // Return cached version immediately if available, otherwise wait for network
+        return cachedResponse || networkResponse;
+      });
+    }).catch((error) => {
+      console.error('[SW] Cache operation failed:', error);
+      // Fallback to network if cache operations fail
+      return fetch(request);
+    })
   );
 });
 
