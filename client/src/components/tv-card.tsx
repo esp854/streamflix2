@@ -109,15 +109,15 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
   };
 
   const sizeClasses = {
-    small: "w-40 md:w-48",
-    medium: "w-48 md:w-56",
-    large: "w-56 md:w-64",
+    small: "w-32 sm:w-40 md:w-48",
+    medium: "w-40 sm:w-48 md:w-56",
+    large: "w-48 sm:w-56 md:w-64",
   };
 
   const heightClasses = {
-    small: "h-60 md:h-72",
-    medium: "h-72 md:h-80",
-    large: "h-80 md:h-96",
+    small: "h-48 sm:h-60 md:h-72",
+    medium: "h-60 sm:h-72 md:h-80",
+    large: "h-72 sm:h-80 md:h-96",
   };
 
   const genres = series.genre_ids?.slice(0, 2).map(id => TV_GENRE_MAP[id]).filter(Boolean) || [];

@@ -195,7 +195,7 @@ export default function Favorites() {
         </div>
 
         {/* Movies Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" data-testid="favorites-grid">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" data-testid="favorites-grid">
           {favorites.map((favorite) => (
             <FavoriteMovieCard
               key={favorite.id}
@@ -205,6 +205,7 @@ export default function Favorites() {
             />
           ))}
         </div>
+
       </div>
     </div>
   );

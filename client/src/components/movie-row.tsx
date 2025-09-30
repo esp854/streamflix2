@@ -108,7 +108,7 @@ export default function MovieRow({ title, movies, isLoading }: MovieRowProps) {
         {/* Movie container */}
         <div
           ref={scrollContainerRef}
-          className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4"
+          className="flex space-x-3 sm:space-x-4 overflow-x-auto scrollbar-hide pb-4"
           data-testid="movie-container"
         >
           {movies.map((movie) => (
