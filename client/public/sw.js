@@ -8,9 +8,7 @@ const IMAGE_CACHE = 'streamflix-images-v1.1.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/index.html',
-  '/src/main.tsx',
-  '/src/App.tsx'
+  '/index.html'
 ];
 
 // Install event - cache static assets
@@ -146,30 +144,84 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle static assets and pages with stale-while-revalidate strategy
-  event.respondWith(
-    caches.open(DYNAMIC_CACHE).then((cache) => {
-      return cache.match(request).then((cachedResponse) => {
-        // Fetch fresh version in background for non-critical updates
-        const networkResponse = fetch(request).then((response) => {
+  // Handle static assets (JS, CSS, etc.) - try network first
+  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'font' || request.destination === 'image') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
           // Cache successful responses
-          if (response && response.status === 200 && response.type === 'basic') {
-            cache.put(request, response.clone());
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(DYNAMIC_CACHE)
+              .then((cache) => {
+                cache.put(request, responseClone);
+              })
+              .catch((error) => {
+                console.error('[SW] Failed to cache asset:', error);
+              });
           }
           return response;
-        }).catch(() => {
-          // If network fails, return cached response if available
-          return cachedResponse;
-        });
+        })
+        .catch((error) => {
+          console.error('[SW] Asset fetch failed:', error);
+          // Try to get from cache
+          return caches.match(request);
+        })
+    );
+    return;
+  }
 
-        // Return cached version immediately if available, otherwise wait for network
-        return cachedResponse || networkResponse;
-      });
-    }).catch((error) => {
-      console.error('[SW] Cache operation failed:', error);
-      // Fallback to network if cache operations fail
-      return fetch(request);
-    })
+  // Handle navigation requests (HTML pages) with stale-while-revalidate strategy
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      caches.open(DYNAMIC_CACHE).then((cache) => {
+        return cache.match('/index.html').then((cachedResponse) => {
+          // Fetch fresh version in background
+          const networkResponse = fetch(request).then((response) => {
+            // Cache successful responses
+            if (response && response.status === 200) {
+              cache.put('/index.html', response.clone());
+            }
+            return response;
+          }).catch(() => {
+            // If network fails, return cached response if available
+            return cachedResponse;
+          });
+
+          // Return cached version immediately if available, otherwise wait for network
+          return cachedResponse || networkResponse;
+        });
+      }).catch((error) => {
+        console.error('[SW] Cache operation failed:', error);
+        // Fallback to network if cache operations fail
+        return fetch(request);
+      })
+    );
+    return;
+  }
+
+  // For other requests, try network first, then cache
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        // Cache successful responses
+        if (response && response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(DYNAMIC_CACHE)
+            .then((cache) => {
+              cache.put(request, responseClone);
+            })
+            .catch((error) => {
+              console.error('[SW] Failed to cache response:', error);
+            });
+        }
+        return response;
+      })
+      .catch((error) => {
+        console.error('[SW] Fetch failed:', error);
+        // Try to get from cache
+        return caches.match(request);
+      })
   );
 });
 

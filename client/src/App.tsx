@@ -32,6 +32,7 @@ import ZuploadEpisodeTest from "@/pages/zupload-episode-test";
 import ZuploadDirectTest from "@/pages/zupload-direct-test";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthModal from "@/components/auth/auth-modal";
+import SplashScreen from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 
@@ -114,6 +115,20 @@ function App() {
   const [location] = useLocation();
   const isWatchPage = location.startsWith("/watch/");
   const isAdminPage = location === "/admin";
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // Simulate a delay for the splash screen
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen onAnimationComplete={() => setShowSplash(false)} />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
