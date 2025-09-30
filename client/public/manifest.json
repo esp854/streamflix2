@@ -24,9 +24,6 @@
   },
   "protocol_handlers": [],
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
   "icons": [
     {
       "src": "/icon-192x192.png",
@@ -46,37 +43,19 @@
       "name": "Films Populaires",
       "short_name": "Films",
       "description": "Découvrez les films les plus populaires",
-      "url": "/category/28",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "url": "/category/28"
     },
     {
       "name": "Séries TV",
       "short_name": "Séries",
       "description": "Parcourez les meilleures séries",
-      "url": "/series",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "url": "/series"
     },
     {
       "name": "Ma Liste",
       "short_name": "Favoris",
       "description": "Vos films et séries préférés",
-      "url": "/favorites",
-      "icons": [
-        {
-          "src": "/icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
+      "url": "/favorites"
     }
   ],
   "screenshots": [

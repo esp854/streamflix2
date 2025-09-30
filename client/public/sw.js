@@ -6,9 +6,8 @@ const DYNAMIC_CACHE = 'streamflix-dynamic-v1.0.0';
 // Resources to cache immediately
 const STATIC_ASSETS = [
   '/',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+  '/manifest.json'
+  // Removed icon references due to invalid files
 ];
 
 // Install event - cache static assets
@@ -18,7 +17,11 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        return cache.addAll(STATIC_ASSETS).catch((error) => {
+          console.error('[SW] Failed to cache static assets:', error);
+          // Continue installation even if caching fails
+          return Promise.resolve();
+        });
       })
       .then(() => {
         return self.skipWaiting();
@@ -37,6 +40,7 @@ self.addEventListener('activate', (event) => {
             console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
+          return Promise.resolve();
         })
       );
     }).then(() => {
@@ -62,12 +66,15 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           console.log('[SW] API response:', response.status, response.type, url.href);
-          // Cache successful API responses
-          if (response.status === 200) {
+          // Only cache successful API responses with a valid response
+          if (response && response.status === 200 && response.type === 'cors') {
             const responseClone = response.clone();
             caches.open(DYNAMIC_CACHE)
               .then((cache) => {
                 cache.put(request, responseClone);
+              })
+              .catch((error) => {
+                console.error('[SW] Failed to cache API response:', error);
               });
           }
           return response;
@@ -75,7 +82,9 @@ self.addEventListener('fetch', (event) => {
         .catch((error) => {
           console.log('[SW] API fetch error:', error, url.href);
           // Return cached API response if available
-          return caches.match(request);
+          return caches.match(request).then((cachedResponse) => {
+            return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
+          });
         })
     );
     return;
@@ -85,13 +94,15 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
+        // Return cached response if available
         if (cachedResponse) {
           return cachedResponse;
         }
 
+        // Fetch from network
         return fetch(request)
           .then((response) => {
-            // Don't cache non-successful responses
+            // Validate response before caching
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
@@ -101,16 +112,28 @@ self.addEventListener('fetch', (event) => {
             caches.open(DYNAMIC_CACHE)
               .then((cache) => {
                 cache.put(request, responseClone);
+              })
+              .catch((error) => {
+                console.error('[SW] Failed to cache response:', error);
               });
 
             return response;
           })
-          .catch(() => {
+          .catch((error) => {
+            console.error('[SW] Fetch failed:', error);
             // Return offline fallback for navigation requests
             if (request.mode === 'navigate') {
-              return caches.match('/');
+              return caches.match('/').then((cachedResponse) => {
+                return cachedResponse || new Response('Offline', { status: 503, statusText: 'Offline' });
+              });
             }
+            // For other requests, return a basic error response
+            return new Response(null, { status: 503, statusText: 'Offline' });
           });
+      })
+      .catch((error) => {
+        console.error('[SW] Cache match failed:', error);
+        return new Response(null, { status: 503, statusText: 'Offline' });
       })
   );
 });
@@ -132,8 +155,7 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png',
+      // Removed icon references due to invalid files
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),

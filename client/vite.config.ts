@@ -2,8 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "node:url";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import type { ViteDevServer } from 'vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cspMiddleware = () => {
   return {
     name: 'csp-middleware',
-    configureServer(server: ViteDevServer) {
+    configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
         // Add CSP header to allow Zupload domains
         res.setHeader(
@@ -22,7 +20,7 @@ const cspMiddleware = () => {
           `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com https://translate.googleapis.com; ` +
           `img-src 'self' data: https:; ` +
           `font-src 'self' data: https://fonts.gstatic.com; ` +
-          `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com https://fonts.googleapis.com https://i.pinimg.com https://fonts.gstatic.com; ` +
+          `connect-src 'self' ws://localhost:5173 ws://127.0.0.1:5000 https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com https://fonts.googleapis.com https://i.pinimg.com https://fonts.gstatic.com; ` +
           `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.io https://www.paypal.com https://www.sandbox.paypal.com; ` +
           `media-src 'self' blob: https:; ` +
           `worker-src 'self' blob:; ` +
@@ -37,12 +35,8 @@ const cspMiddleware = () => {
 export default defineConfig({
   plugins: [
     react(),
-    cspMiddleware(),
-    // runtimeErrorOverlay(), // Temporairement désactivé pour résoudre l'erreur DOM
+    cspMiddleware()
   ],
-  optimizeDeps: {
-    exclude: ['chunk-IPDEAFVS']
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -63,7 +57,7 @@ export default defineConfig({
     },
     hmr: {
       overlay: false, // Désactive l'overlay d'erreur HMR
-      port: parseInt(process.env.PORT || '5000', 10)
+      port: parseInt(process.env.PORT || '5173', 10) // Correction du port HMR
     },
     proxy: {
       '/api': {
