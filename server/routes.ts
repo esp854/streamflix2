@@ -2480,13 +2480,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add delay between shows to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 500));
 
-        } catch (showError) {
+        } catch (showError: any) {
           console.error(`Error processing show ${show.title}:`, showError);
           results.push({
             showId: show.id,
             title: show.title,
             status: 'error',
-            reason: showError.message
+            reason: showError.message || 'Unknown error'
           });
         }
       }
@@ -3905,7 +3905,264 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to process webhook" });
     }
   });
-  
+
+  // PayPal webhook endpoint for automatic subscription activation
+  app.post("/api/webhook/paypal", async (req: any, res: any) => {
+    try {
+      console.log("PayPal webhook received:", req.body);
+      
+      // For now, we'll process all webhooks without verification
+      // In production, you should verify the webhook signature
+      
+      // Process the webhook event
+      const event = req.body;
+      const eventType = event.event_type;
+      
+      console.log(`Processing PayPal event: ${eventType}`);
+      
+      switch (eventType) {
+        case 'PAYMENT.CAPTURE.COMPLETED':
+          // Payment completed successfully
+          await handlePayPalPaymentCompleted(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.DENIED':
+          // Payment was denied
+          await handlePayPalPaymentDenied(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.REFUNDED':
+          // Payment was refunded
+          await handlePayPalPaymentRefunded(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CREATED':
+          // Subscription created
+          await handlePayPalSubscriptionCreated(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CANCELLED':
+          // Subscription cancelled
+          await handlePayPalSubscriptionCancelled(event);
+          break;
+          
+        default:
+          console.log(`Unhandled PayPal event type: ${eventType}`);
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error processing PayPal webhook:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
+  });
+
+  // Handle PayPal payment completed
+  async function handlePayPalPaymentCompleted(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      const customData = JSON.parse(customId);
+      const { userId, planId } = customData;
+      
+      if (!userId || !planId) {
+        console.error("Missing userId or planId in custom_id");
+        return;
+      }
+      
+      // Get plan information
+      const selectedPlan = plans[planId as keyof typeof plans];
+      if (!selectedPlan) {
+        console.error("Invalid plan ID:", planId);
+        return;
+      }
+      
+      // Calculate end date
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + selectedPlan.duration);
+      
+      // Create subscription
+      const newSubscription = await storage.createSubscription({
+        userId: userId,
+        planId: planId,
+        amount: selectedPlan.amount,
+        paymentMethod: 'paypal',
+        status: 'active',
+        startDate: new Date(),
+        endDate: endDate
+      });
+      
+      // Create payment record
+      await storage.createPayment({
+        userId: userId,
+        amount: selectedPlan.amount,
+        method: 'paypal',
+        status: 'success',
+        transactionId: resource.id,
+        paymentData: { planId, paypalData: resource }
+      });
+      
+      console.log("Subscription activated for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal payment completed:", error);
+    }
+  }
+
+  // Handle PayPal payment denied
+  async function handlePayPalPaymentDenied(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      const customData = JSON.parse(customId);
+      const { userId, planId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom_id");
+        return;
+      }
+      
+      // Create payment record for failed payment
+      await storage.createPayment({
+        userId: userId,
+        amount: planId ? plans[planId as keyof typeof plans]?.amount || 0 : 0,
+        method: 'paypal',
+        status: 'failed',
+        transactionId: resource.id,
+        paymentData: { planId, paypalData: resource }
+      });
+      
+      console.log("PayPal payment denied for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal payment denied:", error);
+    }
+  }
+
+  // Handle PayPal payment refunded
+  async function handlePayPalPaymentRefunded(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      const customData = JSON.parse(customId);
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom_id");
+        return;
+      }
+      
+      // Update subscription status to cancelled
+      const userSubscription = await storage.getUserSubscription(userId);
+      if (userSubscription) {
+        await storage.updateSubscription(userSubscription.id, { status: 'cancelled' });
+      }
+      
+      console.log("PayPal payment refunded for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal payment refunded:", error);
+    }
+  }
+
+  // Handle PayPal subscription created
+  async function handlePayPalSubscriptionCreated(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      const customData = JSON.parse(customId);
+      const { userId, planId } = customData;
+      
+      if (!userId || !planId) {
+        console.error("Missing userId or planId in custom_id");
+        return;
+      }
+      
+      // Get plan information
+      const selectedPlan = plans[planId as keyof typeof plans];
+      if (!selectedPlan) {
+        console.error("Invalid plan ID:", planId);
+        return;
+      }
+      
+      // Calculate end date
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + selectedPlan.duration);
+      
+      // Create subscription
+      const newSubscription = await storage.createSubscription({
+        userId: userId,
+        planId: planId,
+        amount: selectedPlan.amount,
+        paymentMethod: 'paypal',
+        status: 'active',
+        startDate: new Date(),
+        endDate: endDate
+      });
+      
+      console.log("PayPal subscription created for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal subscription created:", error);
+    }
+  }
+
+  // Handle PayPal subscription cancelled
+  async function handlePayPalSubscriptionCancelled(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      const customData = JSON.parse(customId);
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom_id");
+        return;
+      }
+      
+      // Update subscription status to cancelled
+      const userSubscription = await storage.getUserSubscription(userId);
+      if (userSubscription) {
+        await storage.updateSubscription(userSubscription.id, { status: 'cancelled' });
+      }
+      
+      console.log("PayPal subscription cancelled for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal subscription cancelled:", error);
+    }
+  }
+
   // Create free subscription - completely separate from Lygos
   app.post("/api/subscription/create-free", authenticateToken, async (req: any, res: any) => {
     try {

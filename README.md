@@ -34,6 +34,27 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
    npx drizzle-kit push
    ```
 
+## Configuration PayPal
+
+Pour configurer les paiements PayPal et les webhooks :
+
+1. Créer une application PayPal sur https://developer.paypal.com/
+2. Obtenir le Client ID et Client Secret
+3. Configurer les variables d'environnement :
+   ```
+   PAYPAL_CLIENT_ID=votre_client_id
+   PAYPAL_CLIENT_SECRET=votre_client_secret
+   PAYPAL_MODE=sandbox # ou 'live' pour la production
+   PAYPAL_WEBHOOK_ID=votre_webhook_id # Obtenu après création du webhook
+   ```
+4. Créer un webhook PayPal avec l'URL : `https://votre-domaine.com/api/webhook/paypal`
+5. Sélectionner les événements suivants :
+   - PAYMENT.CAPTURE.COMPLETED
+   - PAYMENT.CAPTURE.DENIED
+   - PAYMENT.CAPTURE.REFUNDED
+   - BILLING.SUBSCRIPTION.CREATED
+   - BILLING.SUBSCRIPTION.CANCELLED
+
 ## Configuration Email
 
 Pour que les utilisateurs reçoivent des emails de bienvenue lors de l'inscription :

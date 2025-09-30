@@ -353,7 +353,8 @@ export class PaymentService {
             currency_code: 'USD',
             value: usdAmount
           },
-          description: `Abonnement ${selectedPlan.name} - ${selectedPlan.amount} FCFA (${usdAmount} USD)`
+          description: `Abonnement ${selectedPlan.name} - ${selectedPlan.amount} FCFA (${usdAmount} USD)`,
+          custom_id: JSON.stringify({ userId, planId }) // Add custom data for webhook identification
         }]
       };
 
@@ -397,6 +398,44 @@ export class PaymentService {
     } catch (error: any) {
       console.error("Error creating PayPal payment:", error);
       throw new Error(`Erreur lors de la création du paiement PayPal: ${error.message}`);
+    }
+  }
+
+  // Verify PayPal webhook signature
+  async verifyPayPalWebhook(req: any): Promise<boolean> {
+    try {
+      const accessToken = await this.getPayPalAccessToken();
+      
+      const verificationData = {
+        transmission_id: req.headers['paypal-transmission-id'],
+        transmission_time: req.headers['paypal-transmission-time'],
+        cert_url: req.headers['paypal-cert-url'],
+        auth_algo: req.headers['paypal-auth-algo'],
+        transmission_sig: req.headers['paypal-transmission-sig'],
+        webhook_id: process.env.PAYPAL_WEBHOOK_ID || 'WEBHOOK_ID', // You need to set this in your .env file
+        webhook_event: req.body
+      };
+
+      const response = await fetch(`${this.getPayPalBaseUrl()}/v1/notifications/verify-webhook-signature`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(verificationData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PayPal webhook verification failed:', errorText);
+        return false;
+      }
+
+      const verificationResult = await response.json();
+      return verificationResult.verification_status === 'SUCCESS';
+    } catch (error) {
+      console.error('Error verifying PayPal webhook:', error);
+      return false;
     }
   }
 
