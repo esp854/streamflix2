@@ -69,6 +69,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip requests to blocked domains
+  if (url.hostname === 'overbridgenet.com') {
+    console.log('[SW] Blocking request to blocked domain:', url.href);
+    event.respondWith(new Response(null, { status: 403, statusText: 'Forbidden' }));
+    return;
+  }
+
   // Handle API requests differently
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(

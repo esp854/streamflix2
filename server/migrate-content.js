@@ -1,14 +1,9 @@
-#!/usr/bin/env tsx
 import { config } from "dotenv";
-import { join, dirname } from "path";
-import { readdir } from "fs/promises";
 import { Pool } from 'pg';
-import { pathToFileURL } from 'url';
-import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
-// Obtenir __dirname dans un module ES
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Pour utiliser require dans un module ES
+const require = createRequire(import.meta.url);
 
 // Charger les variables d'environnement
 config();
@@ -25,46 +20,10 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-async function runMigrations() {
-  console.log("🚀 Démarrage des migrations...");
+async function runMigration() {
+  console.log("🚀 Démarrage de la migration pour créer les tables content et episodes...");
   
   try {
-    // Obtenir la liste des fichiers de migration
-    const migrationsDir = join(__dirname, 'migrations');
-    const files = await readdir(migrationsDir);
-    
-    // Trier les fichiers par ordre alphabétique
-    const sortedFiles = files.sort();
-    
-    console.log(`📁 ${sortedFiles.length} fichiers de migration trouvés`);
-    
-    // Exécuter chaque migration
-    for (const file of sortedFiles) {
-      if (file.endsWith('.ts')) {
-        console.log(`⏳ Exécution de la migration: ${file}`);
-        
-        try {
-          // Importer dynamiquement le script de migration
-          const migrationPath = join(migrationsDir, file);
-          const migration = await import(pathToFileURL(migrationPath).toString());
-          
-          // Exécuter la fonction up si elle existe
-          if (typeof migration.up === 'function') {
-            await migration.up(pool);
-            console.log(`✅ Migration ${file} terminée avec succès`);
-          } else {
-            console.log(`⚠️  Aucune fonction 'up' trouvée dans ${file}`);
-          }
-        } catch (error) {
-          console.error(`❌ Erreur lors de l'exécution de la migration ${file}:`, error);
-          throw error;
-        }
-      }
-    }
-    
-    // Ajout spécifique pour créer les tables content et episodes si elles n'existent pas
-    console.log("⏳ Vérification et création des tables content et episodes...");
-    
     // Création de la table content
     await pool.query(`
       CREATE TABLE IF NOT EXISTS content (
@@ -124,11 +83,9 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS episodes_season_episode_idx ON episodes(season_number, episode_number);
     `);
 
-    console.log("✅ Tables 'content' et 'episodes' vérifiées/créées avec succès!");
-    
-    console.log("🎉 Toutes les migrations ont été exécutées avec succès!");
+    console.log("✅ Tables 'content' et 'episodes' créées avec succès!");
   } catch (error) {
-    console.error("❌ Erreur lors des migrations:", error);
+    console.error("❌ Erreur lors de la migration:", error);
     throw error;
   } finally {
     // Fermer la connexion
@@ -136,10 +93,9 @@ async function runMigrations() {
   }
 }
 
-// Exécuter les migrations si ce fichier est exécuté directement
-const isDirectExecution = import.meta.url === pathToFileURL(process.argv[1]).toString();
-if (isDirectExecution) {
-  runMigrations().catch(console.error);
+// Exécuter la migration si ce fichier est exécuté directement
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runMigration().catch(console.error);
 }
 
-export { runMigrations };
+export { runMigration };

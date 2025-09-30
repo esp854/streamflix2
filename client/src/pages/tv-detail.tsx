@@ -2,7 +2,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import React from "react";
 import { tmdbService } from "@/lib/tmdb";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -59,6 +59,26 @@ export default function TVDetail() {
     },
     enabled: !!tvDetails?.genres?.[0]?.id,
   });
+
+  // Group episodes by season from database using useMemo correctly
+  const episodesBySeason = useMemo(() => {
+    if (!episodesData?.episodes) return {};
+
+    const grouped: { [seasonNumber: number]: any[] } = {};
+    episodesData.episodes.forEach((episode: any) => {
+      if (!grouped[episode.seasonNumber]) {
+        grouped[episode.seasonNumber] = [];
+      }
+      grouped[episode.seasonNumber].push(episode);
+    });
+
+    // Sort episodes within each season
+    Object.keys(grouped).forEach(season => {
+      grouped[parseInt(season)].sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+    });
+
+    return grouped;
+  }, [episodesData]);
 
   const handleToggleFavorite = async () => {
     if (tvDetails) {
@@ -174,26 +194,6 @@ export default function TVDetail() {
       return newSet;
     });
   };
-
-  // Group episodes by season from database
-  const episodesBySeason = React.useMemo(() => {
-    if (!episodesData?.episodes) return {};
-
-    const grouped: { [seasonNumber: number]: any[] } = {};
-    episodesData.episodes.forEach((episode: any) => {
-      if (!grouped[episode.seasonNumber]) {
-        grouped[episode.seasonNumber] = [];
-      }
-      grouped[episode.seasonNumber].push(episode);
-    });
-
-    // Sort episodes within each season
-    Object.keys(grouped).forEach(season => {
-      grouped[parseInt(season)].sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
-    });
-
-    return grouped;
-  }, [episodesData]);
 
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
