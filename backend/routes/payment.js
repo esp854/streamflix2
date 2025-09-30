@@ -3,6 +3,8 @@ import axios from "axios";
 const router = express.Router();
 
 const API_KEY = process.env.LYGOS_API_KEY || "VOTRE_API_KEY_LYGOS"; // remplace par ta clé secrète
+const LYGOS_SUCCESS_URL = process.env.LYGOS_SUCCESS_URL || "https://streamflix2-o7vx.onrender.com/success";
+const LYGOS_CANCEL_URL = process.env.LYGOS_CANCEL_URL || "https://streamflix2-o7vx.onrender.com/cancel";
 
 // Tous les plans disponibles
 const plans = [
@@ -31,8 +33,8 @@ router.post("/create-payment", async (req, res) => {
         shop_name: "StreamFlix",
         order_id,
         message: `Paiement pour ${plan.name}`,
-        success_url: "https://tonsite.com/success",
-        failure_url: "https://tonsite.com/cancel"
+        success_url: LYGOS_SUCCESS_URL,
+        failure_url: LYGOS_CANCEL_URL
       },
       { headers: { Authorization: `Bearer ${API_KEY}` } }
     );

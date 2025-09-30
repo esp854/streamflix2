@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /private/
+
+Sitemap: https://streamflix2-o7vx.onrender.com/sitemap.xml
+
+Host: streamflix2-o7vx.onrender.com

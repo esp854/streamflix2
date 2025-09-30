@@ -12,6 +12,7 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
 - 📱 Interface responsive
 - 🔍 Recherche et filtrage de contenu
 - 🛡️ Sécurité avancée (CSRF, rate limiting, etc.)
+- 📈 SEO optimisé (balises meta, sitemap, robots.txt)
 
 ## Configuration requise
 
@@ -72,6 +73,24 @@ Pour que les utilisateurs reçoivent des emails de bienvenue lors de l'inscripti
 - `npx tsx server/test-email.ts` - Envoie un email de test complet
 - `npx tsx server/advanced-diagnostics.ts` - Tests approfondis de diagnostic
 - `npx tsx server/final-diagnostic.ts` - Diagnostic final avec logs détaillés
+
+## Optimisation SEO
+
+StreamFlix est entièrement optimisé pour le référencement naturel avec :
+
+- Balises meta optimisées (description, keywords, author, etc.)
+- Balises Open Graph pour le partage sur les réseaux sociaux
+- Balises Twitter Card pour le partage sur Twitter
+- Données structurées (JSON-LD) pour améliorer l'affichage dans les résultats de recherche
+- Fichier sitemap.xml pour aider les moteurs de recherche à indexer le contenu
+- Fichier robots.txt pour guider l'exploration par les robots
+- URLs canoniques pour éviter le contenu dupliqué
+- Préconnexion aux domaines externes pour améliorer les performances
+
+Les fichiers SEO se trouvent dans le dossier `client/public/` :
+- `index.html` - Contient toutes les balises meta et données structurées
+- `robots.txt` - Instructions pour les robots d'indexation
+- `sitemap.xml` - Carte du site pour les moteurs de recherche
 
 ## Démarrage
 

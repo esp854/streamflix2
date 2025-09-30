@@ -35,6 +35,8 @@ export class PaymentService {
   private paypalClientSecret: string;
   private paypalMode: string;
   private clientUrl: string;
+  private lygosSuccessUrl: string;
+  private lygosCancelUrl: string;
 
   constructor() {
     this.lygosApiKey = process.env.LYGOS_API_KEY || '';
@@ -52,6 +54,8 @@ export class PaymentService {
     this.paypalClientSecret = process.env.PAYPAL_CLIENT_SECRET || '';
     this.paypalMode = process.env.PAYPAL_MODE || 'sandbox';
     this.clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    this.lygosSuccessUrl = process.env.LYGOS_SUCCESS_URL || `${this.clientUrl}/subscription?payment=success`;
+    this.lygosCancelUrl = process.env.LYGOS_CANCEL_URL || `${this.clientUrl}/subscription?payment=failed`;
   }
 
   // Check if the payment service is properly configured
@@ -161,8 +165,8 @@ export class PaymentService {
         shop_name: `StreamFlix - Plan ${selectedPlan.name}`,
         order_id: `subscription_${userId}_${planId}_${Date.now()}`,
         message: description,
-        success_url: `${this.clientUrl}/subscription?payment=success`,
-        failure_url: `${this.clientUrl}/subscription?payment=failed`,
+        success_url: this.lygosSuccessUrl,
+        failure_url: this.lygosCancelUrl,
         customer: {
           name: customerInfo.name,
           email: customerInfo.email,
