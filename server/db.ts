@@ -7,7 +7,10 @@ import * as schema from "@shared/schema";
 config();
 
 // Use the DATABASE_URL from environment variables
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:1234@localhost:5432/streamkji?sslmode=disable';
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
 
 export const pool = new Pool({
   connectionString: databaseUrl,
