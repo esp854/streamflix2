@@ -26,10 +26,10 @@ const cspMiddleware = () => {
           `img-src 'self' data: https:; ` +
           `font-src 'self' data: https://fonts.gstatic.com; ` +
           `connect-src 'self' https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com https://fonts.googleapis.com https://i.pinimg.com https://fonts.gstatic.com; ` +
-          `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.io https://www.paypal.com https://www.sandbox.paypal.com; ` +
+          `frame-src 'self' https://odysee.com https://player.twitch.tv https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://zupload.cc https://zupload.co https://zupload.io https://*.zupload.cc https://*.zupload.co https://*.zupload.io https://www.paypal.com https://www.sandbox.paypal.com; ` +
           `media-src 'self' blob: https:; ` +
           `worker-src 'self' blob:; ` +
-          `child-src 'self' blob: https://zupload.cc https://zupload.io;`
+          `child-src 'self' blob: https://zupload.cc https://zupload.co https://zupload.io https://*.zupload.cc https://*.zupload.co https://*.zupload.io;`
         );
         next();
       });

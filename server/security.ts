@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import cors from 'cors';
+import * as cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { storage } from './storage';
@@ -63,7 +63,7 @@ export const securityHeaders = helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com", "https://www.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "https:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://player.vimeo.com"],
-      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://zupload.co"],
+      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://zupload.co", "https://zupload.cc", "https://zupload.io", "https://*.zupload.co", "https://*.zupload.cc", "https://*.zupload.io"],
       frameAncestors: ["'self'"],
       upgradeInsecureRequests: [],
     },
@@ -80,7 +80,7 @@ export const securityHeaders = helmet({
 });
 
 // CORS configuration
-export const corsOptions: cors.CorsOptions = {
+export const corsOptions = {
   origin: process.env.CLIENT_URL || ['http://localhost:5173', 'https://odysee.com', 'https://www.youtube.com', 'https://player.twitch.tv', 'https://player.vimeo.com', 'https://translate.googleapis.com'],
   credentials: true,
   optionsSuccessStatus: 200
