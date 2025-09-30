@@ -59,6 +59,16 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
+  // Skip TMDB image requests entirely - let the browser handle them directly
+  if (url.hostname === 'image.tmdb.org') {
+    return;
+  }
+
+  // Skip TMDB API requests as well
+  if (url.hostname === 'api.themoviedb.org') {
+    return;
+  }
+
   // Handle API requests differently
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
@@ -83,22 +93,6 @@ self.addEventListener('fetch', (event) => {
           // Return cached API response if available
           return caches.match(request).then((cachedResponse) => {
             return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
-          });
-        })
-    );
-    return;
-  }
-
-  // Handle TMDB image requests - allow them to bypass cache to avoid CSP issues
-  if (url.hostname === 'image.tmdb.org') {
-    event.respondWith(
-      fetch(request)
-        .catch((error) => {
-          console.error('[SW] TMDB image fetch failed:', error);
-          // Return a transparent 1x1 pixel GIF as fallback
-          const gif = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-          return new Response(gif, {
-            headers: { 'Content-Type': 'image/gif' }
           });
         })
     );
