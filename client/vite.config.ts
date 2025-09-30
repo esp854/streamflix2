@@ -55,7 +55,6 @@ export default defineConfig({
         manualChunks: {
           // Separate vendor chunks for better caching
           vendor: ['react', 'react-dom', 'wouter'],
-          ui: ['@/components/ui'],
           utils: ['@/lib/utils', '@/lib/tmdb'],
           hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
         }
