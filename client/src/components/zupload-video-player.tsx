@@ -46,16 +46,24 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       const timer = setTimeout(() => {
         setShowAd(false);
         setAdSkipped(true);
+        // Réinitialiser l'état de chargement après la fin de la pub
+        setIsLoading(true);
       }, 30000); // 30 seconds ad
       return () => clearTimeout(timer);
     } else {
       setShowAd(false);
+      // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
+      if (!isAuthenticated || adSkipped) {
+        setIsLoading(true);
+      }
     }
   }, [isAuthenticated, adSkipped]);
 
   const skipAd = () => {
     setShowAd(false);
     setAdSkipped(true);
+    // Réinitialiser l'état de chargement après avoir passé la pub
+    setIsLoading(true);
   };
 
   // Modified video URL to include branding removal parameters and disable download
