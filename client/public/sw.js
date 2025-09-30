@@ -7,7 +7,6 @@ const DYNAMIC_CACHE = 'streamflix-dynamic-v1.0.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json'
-  // Removed icon references due to invalid files
 ];
 
 // Install event - cache static assets
@@ -90,6 +89,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Handle TMDB image requests - allow them to bypass cache to avoid CSP issues
+  if (url.hostname === 'image.tmdb.org') {
+    event.respondWith(
+      fetch(request)
+        .catch((error) => {
+          console.error('[SW] TMDB image fetch failed:', error);
+          // Return a transparent 1x1 pixel GIF as fallback
+          const gif = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+          return new Response(gif, {
+            headers: { 'Content-Type': 'image/gif' }
+          });
+        })
+    );
+    return;
+  }
+
   // Handle static assets and pages
   event.respondWith(
     caches.match(request)
@@ -155,7 +170,6 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      // Removed icon references due to invalid files
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
