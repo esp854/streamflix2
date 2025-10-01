@@ -832,7 +832,17 @@ function AdminDashboard() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all content-related queries
       queryClient.invalidateQueries({ queryKey: ["/api/admin/content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmdb/popular"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmdb/genre"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      
+      // Clear service worker cache for API responses
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ command: 'CLEAR_API_CACHE' });
+      }
+      
       toast({
         title: "Contenu supprimé",
         description: "Le contenu a été supprimé avec succès.",

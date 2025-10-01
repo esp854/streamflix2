@@ -52,7 +52,7 @@ export class PaymentService {
     this.lygosApiBaseUrl = baseUrl;
     this.paypalClientId = process.env.PAYPAL_CLIENT_ID || '';
     this.paypalClientSecret = process.env.PAYPAL_CLIENT_SECRET || '';
-    this.paypalMode = process.env.PAYPAL_MODE || 'sandbox';
+    this.paypalMode = process.env.PAYPAL_MODE || 'live';
     this.clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     this.lygosSuccessUrl = process.env.LYGOS_SUCCESS_URL || `${this.clientUrl}/subscription?payment=success`;
     this.lygosCancelUrl = process.env.LYGOS_CANCEL_URL || `${this.clientUrl}/subscription?payment=failed`;

@@ -116,6 +116,29 @@ self.addEventListener('fetch', (event) => {
 
   // Handle API requests differently
   if (url.pathname.startsWith('/api/')) {
+    // For content-related API endpoints, bypass cache to ensure fresh data
+    if (url.pathname.includes('/api/tmdb/') || url.pathname.includes('/api/content')) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            console.log('[SW] API response (bypass cache):', response.status, response.type, url.href);
+            return response;
+          })
+          .catch((error) => {
+            console.log('[SW] API fetch error:', error, url.href);
+            // Try to get from cache only for non-content APIs
+            if (!url.pathname.includes('/api/tmdb/') && !url.pathname.includes('/api/content')) {
+              return caches.match(request).then((cachedResponse) => {
+                return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
+              });
+            }
+            throw error;
+          })
+      );
+      return;
+    }
+    
+    // For other API requests, use normal caching
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -234,6 +257,13 @@ self.addEventListener('sync', (event) => {
   }
 });
 
+// Message handler for cache invalidation
+self.addEventListener('message', (event) => {
+  if (event.data.command === 'CLEAR_API_CACHE') {
+    clearAPICache();
+  }
+});
+
 // Push notifications
 self.addEventListener('push', (event) => {
   console.log('[SW] Push received:', event);
@@ -290,4 +320,18 @@ async function syncContent() {
   } catch (error) {
     console.error('[SW] Content sync failed:', error);
   }
+}
+
+// Add a function to clear specific cached API responses
+function clearAPICache() {
+  caches.open(DYNAMIC_CACHE).then(cache => {
+    // Delete all API responses from cache
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        if (request.url.includes('/api/')) {
+          cache.delete(request);
+        }
+      });
+    });
+  });
 }

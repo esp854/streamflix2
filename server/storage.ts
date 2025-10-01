@@ -765,8 +765,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteContent(contentId: string): Promise<void> {
     await db
-      .update(content)
-      .set({ active: false, updatedAt: new Date() })
+      .delete(content)
       .where(eq(content.id, contentId));
   }
 
