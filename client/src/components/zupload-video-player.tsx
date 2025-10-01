@@ -178,104 +178,102 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Custom Controls Overlay for Zupload */}
-      {showControls && !showAd && (
-        <div className="absolute inset-0 z-20 pointer-events-none">
-          {/* Top Controls - Season and Episode Selection */}
-          <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-2">
-              {onSeasonChange && (
-                <Select 
-                  value={currentSeason.toString()} 
-                  onValueChange={(value) => onSeasonChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-24 bg-black/70 text-white border-white/20">
-                    <SelectValue placeholder="Saison" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                      <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                        S{seasonNum}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              
-              {onEpisodeChange && (
-                <Select 
-                  value={currentEpisode.toString()} 
-                  onValueChange={(value) => onEpisodeChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-24 bg-black/70 text-white border-white/20">
-                    <SelectValue placeholder="Épisode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                      <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                        E{episodeNum}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+      {/* Custom Controls Overlay for Zupload - Always visible but with transparency */}
+      <div className="absolute inset-0 z-20 pointer-events-none">
+        {/* Top Controls - Season and Episode Selection */}
+        <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-2">
+            {onSeasonChange && (
+              <Select 
+                value={currentSeason.toString()} 
+                onValueChange={(value) => onSeasonChange(parseInt(value))}
+              >
+                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs md:text-sm">
+                  <SelectValue placeholder="S" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                      S{seasonNum}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             
-            <div className="flex space-x-2">
-              {onSkipIntro && (
-                <button
-                  onClick={onSkipIntro}
-                  className="bg-black/70 text-white px-3 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-sm"
-                >
-                  <RotateCw className="w-4 h-4 mr-1" />
-                  Passer l'intro
-                </button>
-              )}
-              
-              {onNextEpisode && (
-                <button
-                  onClick={onNextEpisode}
-                  className="bg-black/70 text-white px-3 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-sm"
-                >
-                  <SkipForward className="w-4 h-4 mr-1" />
-                  Épisode suivant
-                </button>
-              )}
-            </div>
+            {onEpisodeChange && (
+              <Select 
+                value={currentEpisode.toString()} 
+                onValueChange={(value) => onEpisodeChange(parseInt(value))}
+              >
+                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs md:text-sm">
+                  <SelectValue placeholder="E" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                      E{episodeNum}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           
-          {/* Middle Controls - Previous/Next Episode Navigation */}
-          <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-2">
-              {onPreviousEpisode && (
-                <Button
-                  onClick={onPreviousEpisode}
-                  variant="ghost"
-                  size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
-                  disabled={currentEpisode <= 1}
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </Button>
-              )}
-            </div>
+          <div className="flex space-x-1 md:space-x-2">
+            {onSkipIntro && (
+              <button
+                onClick={onSkipIntro}
+                className="bg-black/70 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs md:text-sm"
+              >
+                <RotateCw className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                <span className="hidden md:inline">Passer l'intro</span>
+              </button>
+            )}
             
-            <div className="flex items-center space-x-2">
-              {onNextEpisode && (
-                <Button
-                  onClick={onNextEpisode}
-                  variant="ghost"
-                  size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
-                  disabled={currentEpisode >= totalEpisodes}
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
-              )}
-            </div>
+            {onNextEpisode && (
+              <button
+                onClick={onNextEpisode}
+                className="bg-black/70 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs md:text-sm"
+              >
+                <SkipForward className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                <span className="hidden md:inline">Épisode suivant</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
+        
+        {/* Middle Controls - Previous/Next Episode Navigation */}
+        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-2">
+            {onPreviousEpisode && (
+              <Button
+                onClick={onPreviousEpisode}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 md:w-10 md:h-10 rounded-full"
+                disabled={currentEpisode <= 1}
+              >
+                <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {onNextEpisode && (
+              <Button
+                onClick={onNextEpisode}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 md:w-10 md:h-10 rounded-full"
+                disabled={currentEpisode >= totalEpisodes}
+              >
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Overlay to block clicks in the top-right area (likely download button region) */}
       {!showAd && (

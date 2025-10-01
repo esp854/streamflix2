@@ -737,16 +737,15 @@ export default function WatchTV() {
           </div>
         )}
 
-        {/* Home Button - Fixed at top-left edge */}
+        {/* Home Button - Fixed at top-left edge but moved down to avoid overlapping with Zupload controls */}
         <Button
           onClick={(e) => handleGoHome(e)}
           variant="ghost"
           size="sm"
-          className="absolute top-2 left-2 z-50 bg-black/70 text-white hover:bg-black/90 transition-all duration-200 border border-white/20 backdrop-blur-sm"
+          className="absolute top-16 left-4 z-50 bg-black/70 text-white hover:bg-black/90 transition-all duration-200 border border-white/20 backdrop-blur-sm w-8 h-8 md:w-10 md:h-10"
           title="Retour à l'accueil"
         >
-          <Home className="w-4 h-4 mr-2" />
-          Accueil
+          <Home className="w-4 h-4 md:w-5 md:h-5" />
         </Button>
 
         {/* Controls Overlay - show for all video types except Odysee and Zupload */}
