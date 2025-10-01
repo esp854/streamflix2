@@ -458,61 +458,60 @@ export default function Navbar() {
         onClose={() => setAuthModalOpen(false)}
         defaultTab={authModalTab}
       />
-    </nav>
-    
-    {/* Mobile Bottom Navigation - Déplacé en dehors de l'élément nav pour éviter les conflits de positionnement */}
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
-      <div className="flex items-center justify-around py-2 px-4">
-        <Link
-          href="/"
-          className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-            location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Home className="w-5 h-5" />
-          <span className="text-xs">Accueil</span>
-        </Link>
 
-        <Link
-          href="/category/28"
-          className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-            location.startsWith("/category") ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Film className="w-5 h-5" />
-          <span className="text-xs">Films</span>
-        </Link>
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border" 
+           style={{ 
+             position: 'fixed', 
+             bottom: '0', 
+             left: '0', 
+             right: '0', 
+             zIndex: '50',
+             backgroundColor: 'hsl(0 0% 8% / 0.95)',
+             borderTop: '1px solid hsl(0 0% 25%)'
+           }}>
+        <div className="flex items-center justify-around py-2 px-4">
+          <Link
+            href="/"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-xs">Accueil</span>
+          </Link>
 
-        <Link
-          href="/series"
-          className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-            location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Tv className="w-5 h-5" />
-          <span className="text-xs">Séries</span>
-        </Link>
+          <Link
+            href="/category/28"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location.startsWith("/category") ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Film className="w-5 h-5" />
+            <span className="text-xs">Films</span>
+          </Link>
 
-        <Link
-          href="/favorites"
-          className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-            location === "/favorites" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Heart className="w-5 h-5" />
-          <span className="text-xs">Favoris</span>
-        </Link>
+          <Link
+            href="/series"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Tv className="w-5 h-5" />
+            <span className="text-xs">Séries</span>
+          </Link>
 
-        <Link
-          href="/trending"
-          className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${
-            location === "/trending" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-xs">Tendance</span>
-        </Link>
+          <Link
+            href="/favorites"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/favorites" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Heart className="w-5 h-5" />
+            <span className="text-xs">Favoris</span>
+          </Link>
+
+          <Link
+            href="/trending"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/trending" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <TrendingUp className="w-5 h-5" />
+            <span className="text-xs">Tendance</span>
+          </Link>
+        </div>
       </div>
-    </div>
+    </nav>
   );
 }
