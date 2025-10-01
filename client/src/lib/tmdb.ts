@@ -462,25 +462,6 @@ class TMDBService {
     console.log("TMDB cache cleared");
   }
   
-  // Clear specific cache entries (useful when content is deleted)
-  clearContentCache(): void {
-    // Clear popular movies cache
-    this.cache.clearKey("popular");
-    
-    // Clear genre caches (action, comedy, horror)
-    this.cache.clearKey("genre-28");  // Action
-    this.cache.clearKey("genre-35");  // Comedy
-    this.cache.clearKey("genre-27");  // Horror
-    
-    // Clear TV show caches
-    this.cache.clearKey("tv-popular");
-    this.cache.clearKey("tv-top-rated");
-    this.cache.clearKey("tv-on-the-air");
-    this.cache.clearKey("tv-airing-today");
-    
-    console.log("TMDB content cache cleared");
-  }
-  
   // New method to fetch featured content with links
   async getFeaturedContent(): Promise<{movies: TMDBMovie[], tvShows: TMDBTVSeries[]}> {
     const cacheKey = "featured-content";
@@ -500,6 +481,7 @@ class TMDBService {
       
       // Cache the result
       this.cache.set(cacheKey, data);
+      console.log("Fetched and cached featured content:", data);
       return data;
     } catch (error) {
       console.error("Error fetching featured content:", error);
@@ -526,11 +508,35 @@ class TMDBService {
       
       // Cache the result
       this.cache.set(cacheKey, data);
+      console.log("Fetched and cached content with links:", data);
       return data;
     } catch (error) {
       console.error("Error fetching content with links:", error);
       return [];
     }
+  }
+  
+  // Method to clear specific cache entries (useful when content is deleted)
+  clearContentCache(): void {
+    // Clear popular movies cache
+    this.cache.clearKey("popular");
+    
+    // Clear genre caches (action, comedy, horror)
+    this.cache.clearKey("genre-28");  // Action
+    this.cache.clearKey("genre-35");  // Comedy
+    this.cache.clearKey("genre-27");  // Horror
+    
+    // Clear TV show caches
+    this.cache.clearKey("tv-popular");
+    this.cache.clearKey("tv-top-rated");
+    this.cache.clearKey("tv-on-the-air");
+    this.cache.clearKey("tv-airing-today");
+    
+    // Clear featured content caches
+    this.cache.clearKey("featured-content");
+    this.cache.clearKey("content-with-links");
+    
+    console.log("TMDB content cache cleared");
   }
 }
 

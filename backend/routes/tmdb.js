@@ -852,7 +852,7 @@ router.get("/tmdb/featured-content", async (req, res) => {
       vote_average: 7.0, // Default rating
       poster_path: item.posterPath || '',
       backdrop_path: item.backdropPath || '',
-      genre_ids: [], // We could populate this from item.genres if needed
+      genre_ids: item.genres ? item.genres.map(g => parseInt(g)).filter(g => !isNaN(g)) : [],
       media_type: 'movie'
     }));
     
@@ -864,7 +864,7 @@ router.get("/tmdb/featured-content", async (req, res) => {
       vote_average: 7.0, // Default rating
       poster_path: item.posterPath || '',
       backdrop_path: item.backdropPath || '',
-      genre_ids: [], // We could populate this from item.genres if needed
+      genre_ids: item.genres ? item.genres.map(g => parseInt(g)).filter(g => !isNaN(g)) : [],
       media_type: 'tv'
     }));
     
@@ -904,7 +904,7 @@ router.get("/tmdb/content-with-links", async (req, res) => {
       vote_average: 7.0, // Default rating
       poster_path: item.posterPath || '',
       backdrop_path: item.backdropPath || '',
-      genre_ids: [], // We could populate this from item.genres if needed
+      genre_ids: item.genres ? item.genres.map(g => parseInt(g)).filter(g => !isNaN(g)) : [],
       media_type: item.mediaType
     }));
     

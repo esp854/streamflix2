@@ -264,6 +264,39 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Add a function to clear specific cached API responses
+function clearAPICache() {
+  caches.open(DYNAMIC_CACHE).then(cache => {
+    // Delete all API responses from cache
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        if (request.url.includes('/api/')) {
+          cache.delete(request);
+        }
+      });
+    });
+  });
+  
+  // Also clear image cache when content is deleted
+  caches.open(IMAGE_CACHE).then(cache => {
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        // Clear all cached images to ensure fresh data
+        cache.delete(request);
+      });
+    });
+  });
+  
+  // Clear static cache as well to ensure complete refresh
+  caches.open(STATIC_CACHE).then(cache => {
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        cache.delete(request);
+      });
+    });
+  });
+}
+
 // Push notifications
 self.addEventListener('push', (event) => {
   console.log('[SW] Push received:', event);
@@ -320,28 +353,4 @@ async function syncContent() {
   } catch (error) {
     console.error('[SW] Content sync failed:', error);
   }
-}
-
-// Add a function to clear specific cached API responses
-function clearAPICache() {
-  caches.open(DYNAMIC_CACHE).then(cache => {
-    // Delete all API responses from cache
-    cache.keys().then(keys => {
-      keys.forEach(request => {
-        if (request.url.includes('/api/')) {
-          cache.delete(request);
-        }
-      });
-    });
-  });
-  
-  // Also clear image cache when content is deleted
-  caches.open(IMAGE_CACHE).then(cache => {
-    cache.keys().then(keys => {
-      keys.forEach(request => {
-        // Clear all cached images to ensure fresh data
-        cache.delete(request);
-      });
-    });
-  });
 }

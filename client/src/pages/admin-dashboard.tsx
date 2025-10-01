@@ -854,6 +854,7 @@ function AdminDashboard() {
       });
     },
     onError: (error: any) => {
+      console.error("Error deleting content:", error);
       toast({
         title: "Erreur",
         description: error.message || "Impossible de supprimer le contenu.",
