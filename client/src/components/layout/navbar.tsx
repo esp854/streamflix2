@@ -160,316 +160,309 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border" data-testid="navbar">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="text-2xl font-bold text-primary flex items-center" data-testid="logo-link">
-              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              StreamFlix
-            </Link>
+    <div className="relative">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border" data-testid="navbar">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center space-x-8">
+              <Link href="/" className="text-2xl font-bold text-primary flex items-center" data-testid="logo-link">
+                <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                StreamFlix
+              </Link>
+              
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex space-x-6">
+                {navigationLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`font-medium transition-colors duration-200 ${
+                      link.active
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`nav-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
             
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex space-x-6">
-              {navigationLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`font-medium transition-colors duration-200 ${
-                    link.active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  data-testid={`nav-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+            {/* Right side actions */}
+            <div className="flex items-center space-x-4">
+              {/* Search */}
+              {!searchOpen ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchOpen(true)}
+                  className="text-muted-foreground hover:text-foreground"
+                  data-testid="search-toggle"
                 >
-                  {link.label}
-                </Link>
-              ))}
+                  <Search className="h-5 w-5" />
+                </Button>
+              ) : (
+                <form onSubmit={handleSearch} className="flex items-center space-x-2" onBlur={handleSearchBlur}>
+                  <Input
+                    name="query"
+                    placeholder="Rechercher des films..."
+                    className="w-64"
+                    autoFocus
+                    data-testid="search-input"
+                  />
+                  <Button type="submit" size="sm" variant="secondary">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
+              )}
+              
+              {/* Notifications */}
+              {isAuthenticated && (
+                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground relative"
+                      data-testid="notifications-button"
+                      onClick={() => setNotificationsOpen(!notificationsOpen)}
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <div className="border-b p-4 flex justify-between items-center">
+                      <div>
+                        <h3 className="font-medium">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <p className="text-sm text-muted-foreground">{unreadCount} non lues</p>
+                        )}
+                      </div>
+                      {unreadCount > 0 && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={markAllAsRead}
+                          className="text-xs h-8"
+                        >
+                          <CheckCheck className="h-3 w-3 mr-1" />
+                          Tout marquer comme lu
+                        </Button>
+                      )}
+                    </div>
+                    <ScrollArea className="h-80">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-muted-foreground">
+                          Aucune notification
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {notifications.map((notification) => (
+                            <div 
+                              key={notification.id} 
+                              className={`p-4 hover:bg-muted/50 ${!notification.read ? 'bg-muted/30' : ''}`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-medium text-sm">{notification.title}</h4>
+                                {!notification.read && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsRead(notification.id);
+                                    }}
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {format(new Date(notification.createdAt), 'dd MMM yyyy', { locale: fr })}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              )}
+              
+              {/* PWA Install Button */}
+              <PWAInstallButton />
+
+              {/* User Menu */}
+              {isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2" data-testid="user-menu-trigger">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary-foreground">
+                          {user?.username.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="hidden md:block text-sm font-medium">{user?.username}</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="w-full" data-testid="user-menu-profile">
+                        <User className="h-4 w-4 mr-2" />
+                        Mon Profil
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/subscription" className="w-full text-yellow-600" data-testid="user-menu-subscription">
+                        <Crown className="h-4 w-4 mr-2" />
+                        Abonnements Premium
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/favorites" className="w-full" data-testid="user-menu-favorites">
+                        <Bell className="h-4 w-4 mr-2" />
+                        Ma Liste
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/help" className="w-full" data-testid="user-menu-help">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Centre d'Aide
+                      </Link>
+                    </DropdownMenuItem>
+                    {user?.role === "admin" && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="w-full" data-testid="user-menu-admin">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Administration
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={logout}
+                      className="text-red-600 focus:text-red-600" 
+                      data-testid="user-menu-logout"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Se déconnecter
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  {/* Desktop: Show text, Mobile: Show icons only */}
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setAuthModalTab("login");
+                      setAuthModalOpen(true);
+                    }}
+                    data-testid="login-button"
+                    className="hidden sm:flex"
+                  >
+                    Connexion
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setAuthModalTab("register");
+                      setAuthModalOpen(true);
+                    }}
+                    data-testid="register-button"
+                    className="hidden sm:flex"
+                  >
+                    Inscription
+                  </Button>
+                  
+                  {/* Mobile: Icon buttons */}
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAuthModalTab("login");
+                      setAuthModalOpen(true);
+                    }}
+                    className="sm:hidden"
+                    title="Connexion"
+                    data-testid="mobile-login-button"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAuthModalTab("register");
+                      setAuthModalOpen(true);
+                    }}
+                    className="sm:hidden"
+                    title="Inscription"
+                    data-testid="mobile-register-button"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Mobile Menu */}
+              {/* Supprimé selon les spécifications du projet : seule la navigation bottom doit être utilisée */}
             </div>
           </div>
-          
-          {/* Right side actions */}
-          <div className="flex items-center space-x-4">
-            {/* Search */}
-            {!searchOpen ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchOpen(true)}
-                className="text-muted-foreground hover:text-foreground"
-                data-testid="search-toggle"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-            ) : (
-              <form onSubmit={handleSearch} className="flex items-center space-x-2" onBlur={handleSearchBlur}>
+        </div>
+        
+        {/* Search Overlay for mobile */}
+        {searchOpen && (
+          <div className="md:hidden bg-background border-b border-border" data-testid="mobile-search-overlay">
+            <div className="px-4 py-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <h3 className="text-lg font-medium flex-1">Rechercher</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setSearchOpen(false)}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <form onSubmit={handleSearch} className="flex items-center space-x-2">
                 <Input
                   name="query"
-                  placeholder="Rechercher des films..."
-                  className="w-64"
+                  placeholder="Rechercher des films, séries..."
+                  className="flex-1"
                   autoFocus
-                  data-testid="search-input"
+                  data-testid="mobile-search-input"
                 />
                 <Button type="submit" size="sm" variant="secondary">
                   <Search className="h-4 w-4" />
                 </Button>
               </form>
-            )}
-            
-            {/* Notifications */}
-            {isAuthenticated && (
-              <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-foreground relative"
-                    data-testid="notifications-button"
-                    onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  >
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" align="end">
-                  <div className="border-b p-4 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium">Notifications</h3>
-                      {unreadCount > 0 && (
-                        <p className="text-sm text-muted-foreground">{unreadCount} non lues</p>
-                      )}
-                    </div>
-                    {unreadCount > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={markAllAsRead}
-                        className="text-xs h-8"
-                      >
-                        <CheckCheck className="h-3 w-3 mr-1" />
-                        Tout marquer comme lu
-                      </Button>
-                    )}
-                  </div>
-                  <ScrollArea className="h-80">
-                    {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground">
-                        Aucune notification
-                      </div>
-                    ) : (
-                      <div className="divide-y">
-                        {notifications.map((notification) => (
-                          <div 
-                            key={notification.id} 
-                            className={`p-4 hover:bg-muted/50 ${!notification.read ? 'bg-muted/30' : ''}`}
-                          >
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-medium text-sm">{notification.title}</h4>
-                              {!notification.read && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    markAsRead(notification.id);
-                                  }}
-                                >
-                                  <Check className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {format(new Date(notification.createdAt), 'dd MMM yyyy', { locale: fr })}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </PopoverContent>
-              </Popover>
-            )}
-            
-            {/* PWA Install Button */}
-            <PWAInstallButton />
-
-            {/* User Menu */}
-            {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2" data-testid="user-menu-trigger">
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary-foreground">
-                        {user?.username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="hidden md:block text-sm font-medium">{user?.username}</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="w-full" data-testid="user-menu-profile">
-                      <User className="h-4 w-4 mr-2" />
-                      Mon Profil
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/subscription" className="w-full text-yellow-600" data-testid="user-menu-subscription">
-                      <Crown className="h-4 w-4 mr-2" />
-                      Abonnements Premium
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/favorites" className="w-full" data-testid="user-menu-favorites">
-                      <Bell className="h-4 w-4 mr-2" />
-                      Ma Liste
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/help" className="w-full" data-testid="user-menu-help">
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      Centre d'Aide
-                    </Link>
-                  </DropdownMenuItem>
-                  {user?.role === "admin" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin" className="w-full" data-testid="user-menu-admin">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Administration
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={logout}
-                    className="text-red-600 focus:text-red-600" 
-                    data-testid="user-menu-logout"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Se déconnecter
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="flex items-center space-x-2">
-                {/* Desktop: Show text, Mobile: Show icons only */}
-                <Button 
-                  variant="ghost" 
-                  onClick={() => {
-                    setAuthModalTab("login");
-                    setAuthModalOpen(true);
-                  }}
-                  data-testid="login-button"
-                  className="hidden sm:flex"
-                >
-                  Connexion
-                </Button>
-                <Button 
-                  onClick={() => {
-                    setAuthModalTab("register");
-                    setAuthModalOpen(true);
-                  }}
-                  data-testid="register-button"
-                  className="hidden sm:flex"
-                >
-                  Inscription
-                </Button>
-                
-                {/* Mobile: Icon buttons */}
-                <Button 
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setAuthModalTab("login");
-                    setAuthModalOpen(true);
-                  }}
-                  className="sm:hidden"
-                  title="Connexion"
-                  data-testid="mobile-login-button"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setAuthModalTab("register");
-                    setAuthModalOpen(true);
-                  }}
-                  className="sm:hidden"
-                  title="Inscription"
-                  data-testid="mobile-register-button"
-                >
-                  <UserPlus className="h-5 w-5" />
-                </Button>
-              </div>
-            )}
-
-            {/* Mobile Menu */}
-
-          </div>
-        </div>
-      </div>
-      
-      {/* Search Overlay for mobile */}
-      {searchOpen && (
-        <div className="md:hidden bg-background border-b border-border" data-testid="mobile-search-overlay">
-          <div className="px-4 py-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <h3 className="text-lg font-medium flex-1">Rechercher</h3>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setSearchOpen(false)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
-            <form onSubmit={handleSearch} className="flex items-center space-x-2">
-              <Input
-                name="query"
-                placeholder="Rechercher des films, séries..."
-                className="flex-1"
-                autoFocus
-                data-testid="mobile-search-input"
-              />
-              <Button type="submit" size="sm" variant="secondary">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
           </div>
-        </div>
-      )}
+        )}
+        
+        {/* Authentication Modal */}
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          defaultTab={authModalTab}
+        />
+      </nav>
       
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        defaultTab={authModalTab}
-      />
-
-      {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border" 
-           style={{ 
-             position: 'fixed', 
-             bottom: '0', 
-             left: '0', 
-             right: '0', 
-             zIndex: '50',
-             backgroundColor: 'hsl(0 0% 8% / 0.95)',
-             borderTop: '1px solid hsl(0 0% 25%)'
-           }}>
+      {/* Mobile Bottom Navigation - Déplacé en dehors de l'élément nav pour éviter les conflits de positionnement */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
         <div className="flex items-center justify-around py-2 px-4">
           <Link
             href="/"
@@ -512,6 +505,6 @@ export default function Navbar() {
           </Link>
         </div>
       </div>
-    </nav>
+    </div>
   );
 }
