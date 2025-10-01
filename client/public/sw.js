@@ -334,4 +334,14 @@ function clearAPICache() {
       });
     });
   });
+  
+  // Also clear image cache when content is deleted
+  caches.open(IMAGE_CACHE).then(cache => {
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        // Clear all cached images to ensure fresh data
+        cache.delete(request);
+      });
+    });
+  });
 }

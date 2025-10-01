@@ -837,6 +837,8 @@ function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/tmdb/popular"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tmdb/genre"] });
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmdb/featured-content"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tmdb/content-with-links"] });
       
       // Clear TMDB service cache
       tmdbService.clearContentCache();

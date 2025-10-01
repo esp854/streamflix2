@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TMDBTVSeries } from "@/types/movie";
@@ -6,12 +6,35 @@ import TVCard from "./tv-card";
 
 interface TVRowProps {
   title: string;
-  series: TMDBTVSeries[];
+  shows: TMDBTVSeries[];
   isLoading?: boolean;
 }
 
-export default function TVRow({ title, series, isLoading }: TVRowProps) {
+export default function TVRow({ title, shows, isLoading }: TVRowProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Gestionnaire d'événement wheel avec { passive: false }
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        container.scrollBy({
+          left: e.deltaY,
+        });
+      }
+    };
+
+    // Ajouter l'écouteur avec { passive: false }
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    // Cleanup
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -33,8 +56,8 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
 
   if (isLoading) {
     return (
-      <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-loading">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>
+      <section className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-loading">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-foreground">{title}</h2>
         <div className="flex space-x-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className="flex-shrink-0 w-48 md:w-56">
@@ -50,20 +73,13 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
     );
   }
 
-  if (!series.length) {
-    return (
-      <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-empty">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Aucune série disponible</p>
-        </div>
-      </section>
-    );
+  if (!shows || shows.length === 0) {
+    return null;
   }
 
   return (
-    <section className="py-8 px-4 sm:px-6 lg:px-8 relative group" data-testid="tv-row">
-      <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground" data-testid="tv-row-title">{title}</h2>
+    <section className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 relative group" data-testid="tv-row">
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-foreground" data-testid="tv-row-title">{title}</h2>
       
       <div className="relative">
         {/* Left scroll button */}
@@ -88,13 +104,13 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
           <ChevronRight className="w-6 h-6" />
         </Button>
 
-        {/* TV Series container */}
+        {/* TV Shows container */}
         <div
           ref={scrollContainerRef}
-          className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4"
+          className="flex space-x-3 sm:space-x-4 overflow-x-auto scrollbar-hide pb-4"
           data-testid="tv-container"
         >
-          {series.map((show) => (
+          {shows.map((show) => (
             <TVCard key={show.id} series={show} />
           ))}
         </div>

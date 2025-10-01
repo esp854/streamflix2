@@ -370,6 +370,56 @@ router.get("/admin/episodes/:contentId", async (req, res) => {
   }
 });
 
+// Add endpoint to fetch content with video links
+router.get("/admin/content-with-links", async (req, res) => {
+  try {
+    // Fetch content that has video links (odyseeUrl is not null or empty)
+    const contentWithLinks = await db.select().from(content).where(
+      // Note: Drizzle doesn't have a direct 'is not empty' operator, so we'll filter in JS
+      // In a production environment, you might want to add a boolean field to track this
+    );
+    
+    // Filter content that actually has video links
+    const filteredContent = contentWithLinks.filter(item => 
+      item.odyseeUrl && item.odyseeUrl.trim() !== ''
+    );
+    
+    res.json(filteredContent);
+  } catch (error) {
+    console.error("Error fetching content with links:", error);
+    res.status(500).json({ error: "Failed to fetch content with links" });
+  }
+});
+
+// Add endpoint to fetch featured content with links for homepage
+router.get("/admin/featured-content", async (req, res) => {
+  try {
+    // Fetch content that has video links and is active
+    const contentWithLinks = await db.select().from(content).where(
+      // Same note as above about filtering
+      undefined
+    );
+    
+    // Filter content that actually has video links and is active
+    const filteredContent = contentWithLinks.filter(item => 
+      item.odyseeUrl && item.odyseeUrl.trim() !== '' && item.active
+    );
+    
+    // Separate movies and TV shows
+    const movies = filteredContent.filter(item => item.mediaType === 'movie');
+    const tvShows = filteredContent.filter(item => item.mediaType === 'tv');
+    
+    // Return a structured response
+    res.json({
+      movies: movies.slice(0, 20), // Limit to 20 movies
+      tvShows: tvShows.slice(0, 20) // Limit to 20 TV shows
+    });
+  } catch (error) {
+    console.error("Error fetching featured content:", error);
+    res.status(500).json({ error: "Failed to fetch featured content" });
+  }
+});
+
 // Create a new episode
 router.post("/admin/episodes", async (req, res) => {
   try {
@@ -448,6 +498,28 @@ router.delete("/admin/episodes/:episodeId", async (req, res) => {
   } catch (error) {
     console.error("Error deleting episode:", error);
     res.status(500).json({ error: "Failed to delete episode" });
+  }
+});
+
+// Add endpoint to delete content
+router.delete("/admin/content/:contentId", async (req, res) => {
+  try {
+    const { contentId } = req.params;
+
+    // First delete all episodes associated with this content (for TV shows)
+    await db.delete(episodes).where(eq(episodes.contentId, contentId));
+    
+    // Then delete the content itself
+    const result = await db.delete(content).where(eq(content.id, contentId));
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Content not found" });
+    }
+
+    res.json({ message: "Content deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting content:", error);
+    res.status(500).json({ error: "Failed to delete content" });
   }
 });
 

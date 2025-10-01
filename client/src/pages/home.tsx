@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { tmdbService } from "@/lib/tmdb";
 import HeroCarousel from "@/components/hero-carousel";
 import MovieRow from "@/components/movie-row";
+import TVRow from "@/components/tv-row";
 import CategoryGrid from "@/components/category-grid";
 import TelegramBanner from "@/components/telegram-banner";
 import SubscriptionBanner from "@/components/subscription-banner";
@@ -17,37 +18,35 @@ export default function Home() {
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
     
-    // Load popular movies first (they're shown first)
+    // Load featured content first (they're shown first)
     timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'popular']);
+      setActiveSections(prev => [...prev, 'featured']);
     }, 100));
     
     // Load other sections with delays
     timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'action']);
+      setActiveSections(prev => [...prev, 'movies']);
     }, 300));
     
     timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'comedy']);
+      setActiveSections(prev => [...prev, 'tv']);
     }, 500));
-    
-    timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'horror']);
-    }, 700));
     
     return () => {
       timers.forEach(timer => clearTimeout(timer));
     };
   }, []);
   
-  const { data: popularMovies, isLoading: popularLoading, isError: popularError } = useQuery({
-    queryKey: ["/api/tmdb/popular"],
-    queryFn: () => tmdbService.getPopular(),
+  // Use the new featured content endpoint instead of popular movies
+  const { data: featuredContent, isLoading: featuredLoading, isError: featuredError } = useQuery({
+    queryKey: ["/api/tmdb/featured-content"],
+    queryFn: () => tmdbService.getFeaturedContent(),
     retry: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: activeSections.includes('popular'), // Only fetch when section is active
+    enabled: activeSections.includes('featured'), // Only fetch when section is active
   });
 
+  // We can still keep the other queries for fallback or additional sections
   const { data: actionMovies, isLoading: actionLoading, isError: actionError } = useQuery({
     queryKey: ["/api/tmdb/genre/28"],
     queryFn: () => tmdbService.getMoviesByGenre(28),
@@ -96,12 +95,23 @@ export default function Home() {
 
       {/* Movie Sections */}
       <div className="space-y-6 sm:space-y-8">
+        {/* Featured Content Section - Show content with links */}
         <MovieRow
-          title="Films Populaires"
-          movies={popularMovies || []}
-          isLoading={popularLoading}
+          title="Films Disponibles"
+          movies={featuredContent?.movies || []}
+          isLoading={featuredLoading}
         />
         
+        {/* TV Shows Section - Show TV shows with links */}
+        {activeSections.includes('tv') && featuredContent?.tvShows && (
+          <TVRow
+            title="Séries Disponibles"
+            shows={featuredContent.tvShows || []}
+            isLoading={featuredLoading}
+          />
+        )}
+        
+        {/* Fallback sections for when we don't have enough custom content */}
         {activeSections.includes('action') && (
           <MovieRow
             title="Films d'Action"

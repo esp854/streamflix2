@@ -480,6 +480,58 @@ class TMDBService {
     
     console.log("TMDB content cache cleared");
   }
+  
+  // New method to fetch featured content with links
+  async getFeaturedContent(): Promise<{movies: TMDBMovie[], tvShows: TMDBTVSeries[]}> {
+    const cacheKey = "featured-content";
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log("Returning cached featured content");
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/featured-content`);
+      if (!response.ok) {
+        console.error("Featured content API error:", response.status, response.statusText);
+        return {movies: [], tvShows: []};
+      }
+      const data = await response.json();
+      
+      // Cache the result
+      this.cache.set(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching featured content:", error);
+      return {movies: [], tvShows: []};
+    }
+  }
+  
+  // New method to fetch content with links
+  async getContentWithLinks(): Promise<TMDBMovie[]> {
+    const cacheKey = "content-with-links";
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log("Returning cached content with links");
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/content-with-links`);
+      if (!response.ok) {
+        console.error("Content with links API error:", response.status, response.statusText);
+        return [];
+      }
+      const data = await response.json();
+      
+      // Cache the result
+      this.cache.set(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching content with links:", error);
+      return [];
+    }
+  }
 }
 
 export const tmdbService = new TMDBService();
