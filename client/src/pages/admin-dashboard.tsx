@@ -838,6 +838,9 @@ function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/tmdb/genre"] });
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
       
+      // Clear TMDB service cache
+      tmdbService.clearContentCache();
+      
       // Clear service worker cache for API responses
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ command: 'CLEAR_API_CACHE' });

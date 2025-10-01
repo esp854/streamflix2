@@ -32,6 +32,11 @@ class Cache {
   clear(): void {
     this.cache.clear();
   }
+  
+  // Method to clear specific cache entries
+  clearKey(key: string): void {
+    this.cache.delete(key);
+  }
 }
 
 // Rate limiter to prevent 429 errors
@@ -455,6 +460,25 @@ class TMDBService {
   clearCache(): void {
     this.cache.clear();
     console.log("TMDB cache cleared");
+  }
+  
+  // Clear specific cache entries (useful when content is deleted)
+  clearContentCache(): void {
+    // Clear popular movies cache
+    this.cache.clearKey("popular");
+    
+    // Clear genre caches (action, comedy, horror)
+    this.cache.clearKey("genre-28");  // Action
+    this.cache.clearKey("genre-35");  // Comedy
+    this.cache.clearKey("genre-27");  // Horror
+    
+    // Clear TV show caches
+    this.cache.clearKey("tv-popular");
+    this.cache.clearKey("tv-top-rated");
+    this.cache.clearKey("tv-on-the-air");
+    this.cache.clearKey("tv-airing-today");
+    
+    console.log("TMDB content cache cleared");
   }
 }
 
