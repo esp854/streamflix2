@@ -737,7 +737,7 @@ export default function WatchTV() {
         {/* Controls Overlay - show for all video types except Odysee */}
         {!isOdyseeVideo && (
           <div
-            className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 z-10 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => { // Toggle controls on click/tap for mobile
               if (isMobile && !isTransitioning) {
                 setShowControls(prev => !prev);

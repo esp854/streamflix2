@@ -154,6 +154,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             backgroundColor: 'black',
             border: 'none',
             outline: 'none',
+            zIndex: 0,
           }}
         />
       )}
