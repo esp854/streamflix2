@@ -1,18 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
   title: string;
   onVideoEnd?: () => void;
   onVideoError?: (error: string) => void;
+  onNextEpisode?: () => void;
+  onSkipIntro?: () => void;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+  onSeasonChange?: (season: number) => void;
+  onEpisodeChange?: (episode: number) => void;
+  onPreviousEpisode?: () => void;
 }
 
 const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   videoUrl,
   title,
   onVideoEnd,
-  onVideoError
+  onVideoError,
+  onNextEpisode,
+  onSkipIntro,
+  currentSeason = 1,
+  currentEpisode = 1,
+  totalSeasons = 1,
+  totalEpisodes = 10,
+  onSeasonChange,
+  onEpisodeChange,
+  onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -20,6 +41,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(!isAuthenticated);
   const [adSkipped, setAdSkipped] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle iframe load
   const handleIframeLoad = () => {
@@ -66,6 +89,28 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsLoading(true);
   };
 
+  // Show controls on mouse move and auto-hide after 3 seconds
+  const handleMouseMove = () => {
+    setShowControls(true);
+    
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Modified video URL to include branding removal parameters and disable download
   // Simplified parameters to avoid potential issues with Zupload API changes
   const modifiedVideoUrl = videoUrl.includes('?')
@@ -73,7 +118,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     : `${videoUrl}?autoplay=1`;
 
   return (
-    <div className="relative w-full h-screen bg-black">
+    <div 
+      className="relative w-full h-screen bg-black"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => {
+        if (controlsTimeoutRef.current) {
+          clearTimeout(controlsTimeoutRef.current);
+          controlsTimeoutRef.current = setTimeout(() => {
+            setShowControls(false);
+          }, 500);
+        }
+      }}
+    >
       {/* Ad for non-authenticated users */}
       {showAd && (
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
@@ -122,10 +178,109 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       )}
 
+      {/* Custom Controls Overlay for Zupload */}
+      {showControls && !showAd && (
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          {/* Top Controls - Season and Episode Selection */}
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-2">
+              {onSeasonChange && (
+                <Select 
+                  value={currentSeason.toString()} 
+                  onValueChange={(value) => onSeasonChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-24 bg-black/70 text-white border-white/20">
+                    <SelectValue placeholder="Saison" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                      <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                        S{seasonNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {onEpisodeChange && (
+                <Select 
+                  value={currentEpisode.toString()} 
+                  onValueChange={(value) => onEpisodeChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-24 bg-black/70 text-white border-white/20">
+                    <SelectValue placeholder="Épisode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                      <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                        E{episodeNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            
+            <div className="flex space-x-2">
+              {onSkipIntro && (
+                <button
+                  onClick={onSkipIntro}
+                  className="bg-black/70 text-white px-3 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-sm"
+                >
+                  <RotateCw className="w-4 h-4 mr-1" />
+                  Passer l'intro
+                </button>
+              )}
+              
+              {onNextEpisode && (
+                <button
+                  onClick={onNextEpisode}
+                  className="bg-black/70 text-white px-3 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-sm"
+                >
+                  <SkipForward className="w-4 h-4 mr-1" />
+                  Épisode suivant
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Middle Controls - Previous/Next Episode Navigation */}
+          <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-2">
+              {onPreviousEpisode && (
+                <Button
+                  onClick={onPreviousEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+                  disabled={currentEpisode <= 1}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {onNextEpisode && (
+                <Button
+                  onClick={onNextEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+                  disabled={currentEpisode >= totalEpisodes}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Overlay to block clicks in the top-right area (likely download button region) */}
       {!showAd && (
         <div
-          className="absolute z-20 top-0 right-0"
+          className="absolute z-10 top-0 right-0"
           style={{ width: '12rem', height: '3rem', cursor: 'default' }}
           onClick={(e) => e.preventDefault()}
           onMouseDown={(e) => e.preventDefault()}
@@ -133,6 +288,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           onDoubleClick={(e) => e.preventDefault()}
         />
       )}
+      
       {/* Direct Zupload iframe integration without custom controls */}
       {!showAd && (
         <iframe

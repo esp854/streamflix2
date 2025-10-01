@@ -709,6 +709,21 @@ export default function WatchTV() {
             videoUrl={videoUrl}
             title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
             onVideoEnd={goToNextEpisode}
+            onNextEpisode={goToNextEpisode}
+            onSkipIntro={skipIntro}
+            currentSeason={currentSeason}
+            currentEpisode={currentEpisode}
+            totalSeasons={tvDetails.number_of_seasons || 1}
+            totalEpisodes={seasonDetails?.episodes?.length || 10}
+            onSeasonChange={(season) => {
+              const newUrl = `/watch/tv/${tvId}/${season}/${currentEpisode}`;
+              window.location.href = newUrl;
+            }}
+            onEpisodeChange={(episode) => {
+              const newUrl = `/watch/tv/${tvId}/${currentSeason}/${episode}`;
+              window.location.href = newUrl;
+            }}
+            onPreviousEpisode={goToPreviousEpisode}
           />
         )}
         
@@ -734,10 +749,10 @@ export default function WatchTV() {
           Accueil
         </Button>
 
-        {/* Controls Overlay - show for all video types except Odysee */}
-        {!isOdyseeVideo && (
+        {/* Controls Overlay - show for all video types except Odysee and Zupload */}
+        {!isOdyseeVideo && !isZuploadVideo && (
           <div
-            className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 z-10 ${showControls ? 'opacity-100' : 'opacity-0'}`}
+            className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
             onClick={() => { // Toggle controls on click/tap for mobile
               if (isMobile && !isTransitioning) {
                 setShowControls(prev => !prev);
@@ -1014,8 +1029,8 @@ export default function WatchTV() {
           </div>
         )}
 
-        {/* Keyboard Shortcuts Help - show for all video types except Odysee on desktop */}
-        {!isOdyseeVideo && !isMobile && (
+        {/* Keyboard Shortcuts Help - show for all video types except Odysee and Zupload on desktop */}
+        {!isOdyseeVideo && !isZuploadVideo && !isMobile && (
           <div className="absolute bottom-20 left-4 text-white text-xs opacity-50">
             <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Plein écran) • N (Épisode suivant) • P (Épisode précédent)</p>
           </div>
