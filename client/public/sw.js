@@ -68,17 +68,39 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
-  // Allow requests to PayPal and Google domains
+  // Allow requests to PayPal, Google, Zupload and HilltopAds domains
   const allowedExternalDomains = [
     'www.paypal.com',
     'www.paypalobjects.com',
     'api.paypal.com',
     'www.sandbox.paypal.com',
     'www.googletagmanager.com',
-    'www.google-analytics.com'
+    'www.google-analytics.com',
+    'zupload.co',
+    'zupload.cc',
+    'zupload.io',
+    '*.zupload.co',
+    '*.zupload.cc',
+    '*.zupload.io',
+    'hilltopads.net',
+    '*.hilltopads.net',
+    'selfishzone.com',
+    '*.selfishzone.com'
   ];
 
-  if (allowedExternalDomains.includes(url.hostname)) {
+  // Check if the request is to an allowed external domain
+  const isAllowedDomain = allowedExternalDomains.some(domain => {
+    if (domain.startsWith('*.')) {
+      // Handle wildcard domains
+      const domainWithoutWildcard = domain.substring(2);
+      return url.hostname.endsWith(domainWithoutWildcard);
+    } else {
+      // Handle exact match domains
+      return url.hostname === domain;
+    }
+  });
+
+  if (isAllowedDomain) {
     // For external domains, bypass service worker and fetch directly
     return;
   }
