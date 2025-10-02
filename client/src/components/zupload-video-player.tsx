@@ -45,8 +45,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
-  const [showPlayButton, setShowPlayButton] = useState(false);
-  const [noAdsMessage, setNoAdsMessage] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
@@ -127,7 +125,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Récupère tous les Ad du VAST
       const ads = xml.querySelectorAll('Ad');
       console.log('Nombre de balises Ad trouvées:', ads.length);
-
+      
       if (!ads.length) {
         // Vérifier s'il y a d'autres éléments qui pourraient indiquer une erreur
         const errorElements = xml.querySelectorAll('Error');
@@ -137,31 +135,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             console.warn(`Error ${index + 1}:`, errorEl.textContent);
           });
         }
-
-        // Vérifier s'il y a des éléments Wrapper ou Inline
-        const wrappers = xml.querySelectorAll('Wrapper');
-        const inlines = xml.querySelectorAll('InLine');
-        console.log('Éléments Wrapper trouvés:', wrappers.length);
-        console.log('Éléments InLine trouvés:', inlines.length);
-
-        // Afficher la structure XML pour debug
-        console.log('Structure XML VAST:', xml.documentElement.outerHTML.substring(0, 500) + '...');
-
-        console.warn('Pas de Ad dans le VAST - Aucune publicité disponible');
-        console.log('Affichage du message informatif');
-
-        // Afficher un message informatif pendant 2 secondes
-        setNoAdsMessage(true);
-        setTimeout(() => {
-          setNoAdsMessage(false);
-          if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
-          }
-          setIsLoading(false);
-          setIsAdPlaying(false);
-          setShowAd(false); // Masquer l'écran de pub
-        }, 2000);
-
+        
+        console.warn('Pas de Ad dans le VAST');
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
         return;
       }
 
@@ -184,21 +164,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       });
 
       if (!adUrls.length) {
-        console.warn('Pas de MediaFile dans le VAST - Aucune URL de publicité trouvée');
-        console.log('URLs de pubs extraites:', adUrls);
-
-        // Afficher un message informatif pendant 2 secondes
-        setNoAdsMessage(true);
-        setTimeout(() => {
-          setNoAdsMessage(false);
-          if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
-          }
-          setIsLoading(false);
-          setIsAdPlaying(false);
-          setShowAd(false); // Masquer l'écran de pub
-        }, 2000);
-
+        console.warn('Pas de MediaFile dans le VAST');
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
         return;
       }
 
@@ -232,8 +203,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const playNextAd = () => {
     if (!adVideoRef.current) return;
 
-    setShowPlayButton(false); // Masquer le bouton play pour la nouvelle pub
-
     const videoEl = adVideoRef.current;
     
     // Vérifier s'il y a une pub suivante
@@ -259,31 +228,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       videoEl.play().catch(error => {
         console.error('Erreur de lecture de la pub:', error);
-        // Détecter si on est sur mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if (!isMobile) {
-          // Sur desktop, passer à la pub suivante
-          currentAdIndexRef.current++;
-          playNextAd();
-        } else {
-          // Sur mobile, si autoplay échoue, afficher le bouton play
-          console.log('Autoplay échoué sur mobile, affichage du bouton play');
-          setShowPlayButton(true);
-          // Définir un timeout pour passer après 30 secondes si pas en lecture
-          setTimeout(() => {
-            if (videoEl && !videoEl.paused && videoEl.currentTime > 0) return; // Si l'utilisateur a commencé la lecture, ne pas passer
-            currentAdIndexRef.current++;
-            playNextAd();
-          }, 30000);
-        }
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
       });
-
-      // Masquer le bouton play quand la vidéo commence à jouer
-      videoEl.onplay = () => {
-        setShowPlayButton(false);
-        setIsAdPlaying(true);
-      };
-
+      
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
       
@@ -339,21 +288,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle video error
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    console.error('Erreur vidéo détectée:', e);
-    console.error('Type d\'erreur:', (e.target as HTMLVideoElement).error);
-    console.error('Code d\'erreur:', (e.target as HTMLVideoElement).error?.code);
-    console.error('Message d\'erreur:', (e.target as HTMLVideoElement).error?.message);
-
     setIsLoading(false);
-
-    // Message d'erreur spécifique selon le type d'appareil
-    const errorMessage = isMobile
-      ? 'Erreur de chargement vidéo sur mobile. Vérifiez votre connexion réseau.'
-      : 'Failed to load video content';
-
-    setError(errorMessage);
-    onVideoError?.(errorMessage);
+    setError('Failed to load video content');
+    onVideoError?.('Failed to load video content');
   };
 
   // Reset loading state when videoUrl changes
@@ -361,55 +298,24 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsLoading(true);
     setError(null);
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
-
+    
     // Pour les URLs d'iframe, réduire le temps d'affichage du loader
-    // Sur mobile, donner plus de temps pour le chargement
+    // Sur mobile, masquer encore plus rapidement
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const loaderDelay = isMobile ? 3000 : 2000; // 3 secondes sur mobile, 2 sur desktop
-
-    console.log('Configuration du loader pour:', videoUrl, 'Mobile:', isMobile, 'Delay:', loaderDelay);
-    console.log('Type de vidéo:', videoUrl.includes('embed') || videoUrl.includes('zupload') ? 'Iframe Zupload' : 'Vidéo directe');
-
+    const loaderDelay = isMobile ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
+    
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
-        console.log('Masquage automatique du loader après timeout pour iframe');
         setIsLoading(false);
       }, loaderDelay);
-
+      
       return () => clearTimeout(loaderTimeout);
-    } else {
-      // Pour les vidéos directes, vérifier la compatibilité du format sur mobile
-      if (isMobile) {
-        console.log('Vérification compatibilité format vidéo sur mobile');
-        // Les formats MP4 sont généralement bien supportés, mais vérifions
-        const isSupportedFormat = videoUrl.includes('.mp4') || videoUrl.includes('.webm') || videoUrl.includes('.m3u8');
-        if (!isSupportedFormat) {
-          console.warn('Format vidéo potentiellement non supporté sur mobile:', videoUrl);
-        }
-      }
     }
   }, [videoUrl]);
-
-  // Vérifier la connectivité réseau sur mobile
-  const checkNetworkConnectivity = () => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobile && 'navigator' in window && 'onLine' in navigator) {
-      if (!navigator.onLine) {
-        console.warn('Pas de connexion réseau détectée sur mobile');
-        setError('Pas de connexion réseau. Vérifiez votre connexion internet.');
-        setIsLoading(false);
-        return false;
-      }
-    }
-    return true;
-  };
 
   // Handle ad for non-authenticated users
   useEffect(() => {
     if (!isAuthenticated && !adSkipped) {
-      // Vérifier la connectivité avant de charger les pubs
-      if (!checkNetworkConnectivity()) return;
-
       setShowAd(true);
       loadVastAd();
       
@@ -450,33 +356,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setShowAd(false);
       // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
       if (!isAuthenticated || adSkipped) {
-        // Vérifier la connectivité réseau avant de charger la vidéo
-        if (!checkNetworkConnectivity()) return;
-
-        console.log('Chargement de la vidéo principale (pas de pub)');
         setIsLoading(true);
         // Précharger la vidéo immédiatement pour les utilisateurs authentifiés
         setTimeout(() => {
           preloadMainVideo();
         }, 100);
-
-        // Détecter si on est sur mobile pour ajuster les timeouts
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        // Pour les URLs d'iframe, masquer le loader après un délai
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
         if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-          const iframeTimeout = isMobile ? 5000 : 3000; // 5s sur mobile, 3s sur desktop
           setTimeout(() => {
-            console.log('Timeout du loader iframe atteint, masquage forcé');
             setIsLoading(false);
-          }, iframeTimeout);
-        } else {
-          // Pour les vidéos directes, timeout plus long sur mobile
-          const videoTimeout = isMobile ? 10000 : 5000; // 10s sur mobile, 5s sur desktop
-          setTimeout(() => {
-            console.log('Timeout du loader vidéo atteint, masquage forcé');
-            setIsLoading(false);
-          }, videoTimeout);
+          }, 1000);
         }
       }
     }
@@ -511,7 +401,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsAdPlaying(false);
     setShowAd(false);
     setAdSkipped(true);
-    setShowPlayButton(false);
     // Réinitialiser l'état de chargement après avoir passé la pub
     setIsLoading(false);
     
@@ -618,33 +507,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               >
                 Passer la pub
               </button>
-            )}
-
-            {showPlayButton && (
-              <button
-                onClick={() => {
-                  if (adVideoRef.current) {
-                    adVideoRef.current.play().catch(err => console.error('Erreur lors du clic play:', err));
-                  }
-                }}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 z-35"
-              >
-                <div className="bg-white/90 rounded-full p-6 sm:p-8 md:p-10 hover:bg-white transition-colors">
-                  <svg className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-black" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                </div>
-              </button>
-            )}
-
-            {noAdsMessage && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-40">
-                <div className="text-center p-6 max-w-sm">
-                  <div className="text-4xl mb-4">📺</div>
-                  <h3 className="text-xl font-bold text-white mb-2">Aucune publicité disponible</h3>
-                  <p className="text-gray-300 text-sm">Chargement de votre vidéo...</p>
-                </div>
-              </div>
             )}
           </div>
         </div>
@@ -788,16 +650,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               title={title}
               loading="lazy"
               onLoad={() => {
-                console.log('Iframe Zupload chargée avec succès');
+                console.log('Iframe Zupload chargée');
                 setIsLoading(false);
                 setError(null);
               }}
               onError={(e) => {
                 console.error('Erreur de chargement de l\'iframe Zupload:', e);
-                console.error('URL de l\'iframe:', videoUrl);
                 setIsLoading(false);
-                setError('Impossible de charger la vidéo Zupload');
-                onVideoError?.('Impossible de charger la vidéo Zupload');
+                setError('Impossible de charger la vidéo');
+                onVideoError?.('Impossible de charger la vidéo');
               }}
             />
           ) : (
@@ -809,19 +670,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               height="100%"
               preload="auto"
               className="w-full h-full touch-manipulation"
-              onLoad={() => {
-                console.log('Vidéo directe chargée avec succès');
-                handleVideoLoad();
-              }}
-              onPlaying={() => {
-                console.log('Vidéo directe en lecture');
-                handleVideoPlaying();
-              }}
-              onError={(e) => {
-                console.error('Erreur de chargement de la vidéo directe:', e);
-                console.error('URL de la vidéo:', videoUrl);
-                handleVideoError(e);
-              }}
+              onLoad={handleVideoLoad}
+              onPlaying={handleVideoPlaying}
+              onError={handleVideoError}
               onEnded={onVideoEnd}
               playsInline
             />
