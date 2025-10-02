@@ -29,7 +29,6 @@ export default function WatchMovie() {
    const movieId = parseInt(id || "0");
    const playerRef = useRef<any>(null);
    const isMountedRef = useRef(true);
-   const youtubePlayerRef = useRef<any>(null);
    const isMobile = useIsMobile(); // Détecter si l'appareil est mobile
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -47,7 +46,6 @@ export default function WatchMovie() {
   const [quality, setQuality] = useState("auto");
   const [subtitle, setSubtitle] = useState("off");
   const [relatedMovies, setRelatedMovies] = useState<any[]>([]);
-  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false);
   const [isZuploadVideo, setIsZuploadVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -57,10 +55,6 @@ export default function WatchMovie() {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
-      // Clean up YouTube player if it exists
-      if (youtubePlayerRef.current) {
-        youtubePlayerRef.current.destroy();
-      }
     };
   }, []);
 
@@ -122,96 +116,10 @@ export default function WatchMovie() {
     }
   }, [showControls, isPlaying, isMobile]);
 
-  // Check if video is YouTube or Zupload
-  useEffect(() => {
-    if (contentWithVideo?.odyseeUrl) {
-      const url = contentWithVideo.odyseeUrl;
-      setIsYouTubeVideo(url.includes("youtube.com") || url.includes("youtu.be"));
-      setIsZuploadVideo(url.includes("zupload"));
-      setVideoUrl(url);
-    }
-  }, [contentWithVideo]);
-
   // Check if video is Odysee
   const isOdyseeVideo = useMemo(() => {
     return contentWithVideo?.odyseeUrl && contentWithVideo.odyseeUrl.includes("odysee.com");
   }, [contentWithVideo?.odyseeUrl]);
-
-  // Initialize YouTube player API when iframe is loaded
-  useEffect(() => {
-    if (!isYouTubeVideo || !contentWithVideo?.odyseeUrl) return;
-
-    // Load YouTube iframe API if not already loaded
-    if (!window.YT) {
-      const scriptTag = document.createElement('script');
-      scriptTag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(scriptTag);
-
-      window.onYouTubeIframeAPIReady = () => {
-        initializeYouTubePlayer();
-      };
-    } else {
-      // YouTube API already loaded
-      initializeYouTubePlayer();
-    }
-
-    return () => {
-      // Clean up YouTube player
-      if (youtubePlayerRef.current) {
-        youtubePlayerRef.current.destroy();
-        youtubePlayerRef.current = null;
-      }
-    };
-  }, [isYouTubeVideo, contentWithVideo?.odyseeUrl]);
-
-  const initializeYouTubePlayer = () => {
-    if (youtubePlayerRef.current) return;
-
-    const interval = setInterval(() => {
-      const iframe = document.getElementById('youtube-player');
-      if (iframe && window.YT) {
-        clearInterval(interval);
-        
-        youtubePlayerRef.current = new window.YT.Player('youtube-player', {
-          events: {
-            'onReady': (event: any) => {
-              console.log('YouTube player ready');
-              // Get duration
-              const dur = event.target.getDuration();
-              setDuration(dur || 0);
-              setIsPlaying(event.target.getPlayerState() === 1);
-            },
-            'onStateChange': (event: any) => {
-              switch (event.data) {
-                case 1: // Playing
-                  setIsPlaying(true);
-                  break;
-                case 2: // Paused
-                  setIsPlaying(false);
-                  break;
-                case 0: // Ended
-                  setIsPlaying(false);
-                  break;
-              }
-            }
-          }
-        });
-
-        // Start time update interval
-        const timeInterval = setInterval(() => {
-          if (youtubePlayerRef.current && isMountedRef.current) {
-            const time = youtubePlayerRef.current.getCurrentTime();
-            setCurrentTime(time || 0);
-            
-            const dur = youtubePlayerRef.current.getDuration();
-            setDuration(dur || 0);
-          }
-        }, 1000);
-
-        return () => clearInterval(timeInterval);
-      }
-    }, 500);
-  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -268,14 +176,6 @@ export default function WatchMovie() {
       
       if (!isMountedRef.current) return;
       
-      if (isYouTubeVideo && youtubePlayerRef.current) {
-        // YouTube player controls
-        if (isPlaying) {
-          youtubePlayerRef.current.pauseVideo();
-        } else {
-          youtubePlayerRef.current.playVideo();
-        }
-      }
     } catch (error) {
       // Silently handle interrupted operations
       if (error instanceof Error && error.name !== 'AbortError') {
@@ -290,102 +190,62 @@ export default function WatchMovie() {
         }, 100);
       }
     }
-  }, [isPlaying, isTransitioning, isYouTubeVideo]);
+  }, [isPlaying, isTransitioning]);
 
   const handleVolumeChange = useCallback((newVolume: number[]) => {
     if (!isMountedRef.current) return;
     
     setVolume(newVolume);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      const volumeValue = newVolume[0];
-      youtubePlayerRef.current.setVolume(volumeValue);
-      
-      if (volumeValue === 0) {
-        setIsMuted(true);
-        youtubePlayerRef.current.mute();
-      } else {
-        setIsMuted(false);
-        youtubePlayerRef.current.unMute();
-      }
-    }
-  }, [isYouTubeVideo]);
+  }, []);
 
   const handleMute = useCallback(() => {
     if (!isMountedRef.current) return;
     
     const newMutedState = !isMuted;
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      if (newMutedState) {
-        youtubePlayerRef.current.mute();
-      } else {
-        youtubePlayerRef.current.unMute();
-      }
-    }
-    
     setIsMuted(newMutedState);
-  }, [isMuted, isYouTubeVideo]);
+  }, [isMuted]);
 
   const handleSeek = useCallback((newTime: number[]) => {
     if (!isMountedRef.current) return;
     
     const time = newTime[0];
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.seekTo(time, true);
-    }
-    
     setCurrentTime(time);
-  }, [isYouTubeVideo]);
+  }, []);
 
   const skipBackward = useCallback(() => {
     if (!isMountedRef.current) return;
     
     const newTime = Math.max(0, currentTime - 10);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.seekTo(newTime, true);
-    }
-    
     setCurrentTime(newTime);
-  }, [currentTime, isYouTubeVideo]);
+  }, [currentTime]);
 
   const skipForward = useCallback(() => {
     if (!isMountedRef.current) return;
     
     const newTime = Math.min(duration, currentTime + 10);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.seekTo(newTime, true);
-    }
-    
     setCurrentTime(newTime);
-  }, [currentTime, duration, isYouTubeVideo]);
+  }, [currentTime, duration]);
 
   const rewind15 = useCallback(() => {
     if (!isMountedRef.current) return;
     
     const newTime = Math.max(0, currentTime - 15);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.seekTo(newTime, true);
-    }
-    
     setCurrentTime(newTime);
-  }, [currentTime, isYouTubeVideo]);
+  }, [currentTime]);
 
   const forward15 = useCallback(() => {
     if (!isMountedRef.current) return;
     
     const newTime = Math.min(duration, currentTime + 15);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.seekTo(newTime, true);
-    }
-    
     setCurrentTime(newTime);
-  }, [currentTime, duration, isYouTubeVideo]);
+  }, [currentTime, duration]);
 
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
@@ -446,21 +306,14 @@ export default function WatchMovie() {
     const speedValue = parseFloat(speed);
     setPlaybackSpeed(speedValue);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.setPlaybackRate(speedValue);
-    }
-  }, [isYouTubeVideo]);
+  }, []);
 
   const handleQualityChange = useCallback((quality: string) => {
     if (!isMountedRef.current) return;
     
     setQuality(quality);
     
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      // Quality changes are handled automatically by YouTube player
-      // based on bandwidth and screen size
-    }
-  }, [isYouTubeVideo]);
+  }, []);
 
   const handleVideoError = useCallback((error: string) => {
     setVideoError(error);

@@ -3,6 +3,10 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import videojs from 'video.js';
+import 'video.js/dist/video-js.css';
+import 'videojs-contrib-ads';
+import 'videojs-ima';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -36,7 +40,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(!isAuthenticated);
@@ -44,23 +49,64 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle iframe load
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
-
-  // Handle iframe error
-  const handleIframeError = (e: React.SyntheticEvent<HTMLIFrameElement, Event>) => {
-    setIsLoading(false);
-    setError('Failed to load video content');
-    onVideoError?.('Failed to load video content');
-  };
-
-  // Reset loading state when videoUrl changes
+  // Initialize Video.js player with IMA plugin
   useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-  }, [videoUrl]);
+    if (!videoRef.current) return;
+
+    const videoElement = videoRef.current;
+    
+    // Create Video.js player
+    const player = videojs(videoElement, {
+      controls: true,
+      preload: 'auto',
+      fluid: true,
+      responsive: true,
+    });
+
+    playerRef.current = player;
+
+    // Initialize IMA plugin for VAST ads
+    if (!isAuthenticated) {
+      player.ima({
+        adTagUrl: 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay',
+        // Additional IMA options
+        debug: true,
+      });
+
+      // Start ad display
+      player.ready(() => {
+        player.ima.initializeAdDisplayContainer();
+        player.ima.requestAds();
+      });
+    }
+
+    // Handle player events
+    player.on('loadstart', () => {
+      setIsLoading(true);
+      setError(null);
+    });
+
+    player.on('loadeddata', () => {
+      setIsLoading(false);
+    });
+
+    player.on('error', () => {
+      setIsLoading(false);
+      setError('Failed to load video content');
+      onVideoError?.('Failed to load video content');
+    });
+
+    player.on('ended', () => {
+      onVideoEnd?.();
+    });
+
+    // Cleanup player on unmount
+    return () => {
+      if (player) {
+        player.dispose();
+      }
+    };
+  }, [videoUrl, isAuthenticated, onVideoEnd, onVideoError]);
 
   // Handle ad for non-authenticated users
   useEffect(() => {
@@ -69,24 +115,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       const timer = setTimeout(() => {
         setShowAd(false);
         setAdSkipped(true);
-        // Réinitialiser l'état de chargement après la fin de la pub
-        setIsLoading(true);
       }, 30000); // 30 seconds ad
       return () => clearTimeout(timer);
     } else {
       setShowAd(false);
-      // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
-      if (!isAuthenticated || adSkipped) {
-        setIsLoading(true);
-      }
     }
   }, [isAuthenticated, adSkipped]);
 
   const skipAd = () => {
     setShowAd(false);
     setAdSkipped(true);
-    // Réinitialiser l'état de chargement après avoir passé la pub
-    setIsLoading(true);
+    
+    // Skip the ad in Video.js player if it exists
+    if (playerRef.current) {
+      playerRef.current.ima.skipAd();
+    }
   };
 
   // Show controls on mouse move and auto-hide after 3 seconds
@@ -111,12 +154,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     };
   }, []);
 
-  // Modified video URL to include branding removal parameters and disable download
-  // Simplified parameters to avoid potential issues with Zupload API changes
-  const modifiedVideoUrl = videoUrl.includes('?')
-    ? `${videoUrl}&autoplay=1`
-    : `${videoUrl}?autoplay=1`;
-
   return (
     <div 
       className="relative w-full h-screen bg-black"
@@ -130,45 +167,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Ad for non-authenticated users - HilltopAds integration */}
+      {/* Ad for non-authenticated users - HilltopAds VAST integration */}
       {showAd && (
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
           <div className="relative w-full h-full">
-            {/* HilltopAds integration */}
-            <div 
-              id="hilltopads-zone-1" 
-              className="w-full h-full flex items-center justify-center"
-            >
-              {/* Conteneur pour HilltopAds */}
-              <div dangerouslySetInnerHTML={{ 
-                __html: `
-                <script type="text/javascript">
-                  var atOptions = {
-                    'key' : 'd0a26cf005980043c2e129630f0053e0',
-                    'format' : 'iframe',
-                    'height' : '100%',
-                    'width' : '100%',
-                    'params' : {}
-                  };
-                  if (document.getElementById('hilltopads-script-1')) {
-                    document.getElementById('hilltopads-script-1').remove();
-                  }
-                  var script = document.createElement('script');
-                  script.id = 'hilltopads-script-1';
-                  script.type = 'text/javascript';
-                  script.async = true;
-                  script.src = 'https://hilltopads.net/pcode/adult.php?' + Math.floor(Math.random()*99999999999);
-                  document.getElementById('hilltopads-zone-1').appendChild(script);
-                </script>
-                `
-              }} />
+            {/* Video.js player with VAST ads will be shown here */}
+            <div className="w-full h-full flex items-center justify-center">
+              <button
+                onClick={skipAd}
+                className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
+              >
+                Passer la pub (30s)
+              </button>
             </div>
-            <button
-              onClick={skipAd}
-              className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
-            >
-              Passer la pub (30s)
-            </button>
           </div>
         </div>
       )}
@@ -297,42 +308,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Overlay to block clicks in the top-right area (likely download button region) */}
+      {/* Video.js player container */}
       {!showAd && (
-        <div
-          className="absolute z-10 top-0 right-0"
-          style={{ width: '12rem', height: '3rem', cursor: 'default' }}
-          onClick={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onPointerDown={(e) => e.preventDefault()}
-          onDoubleClick={(e) => e.preventDefault()}
-        />
-      )}
-      
-      {/* Direct Zupload iframe integration without custom controls */}
-      {!showAd && (
-        <iframe
-          ref={iframeRef}
-          src={modifiedVideoUrl}
-          className="w-full h-full"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          title={`Lecture de ${title}`}
-          // More restrictive sandbox to prevent downloads
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          loading="lazy"
-          // Additional attributes to prevent downloads
-          referrerPolicy="no-referrer"
-          // Styling to blend seamlessly
-          style={{
-            backgroundColor: 'black',
-            border: 'none',
-            outline: 'none',
-            zIndex: 0,
-          }}
-        />
+        <div data-vjs-player className="w-full h-full">
+          <video
+            ref={videoRef}
+            className="video-js vjs-default-skin w-full h-full"
+            playsInline
+          >
+            <source src={videoUrl} type="video/mp4" />
+          </video>
+        </div>
       )}
     </div>
   );
