@@ -236,14 +236,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
       
-      // Masquer le bouton de skip pendant 15 secondes
+      // Masquer le bouton de skip pendant 8 secondes sur mobile, 12 sur desktop
       setShowSkipButton(false);
       if (skipButtonTimeoutRef.current) {
         clearTimeout(skipButtonTimeoutRef.current);
       }
+      // Détecter si on est sur mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const skipDelay = isMobile ? 8000 : 12000; // 8 secondes sur mobile, 12 sur desktop
       skipButtonTimeoutRef.current = setTimeout(() => {
         setShowSkipButton(true);
-      }, 15000); // 15 secondes
+      }, skipDelay);
     } else {
       console.log('Toutes les publicités ont été jouées, lecture de la vidéo principale');
       // Toutes les pubs ont été jouées, lancer la vidéo principale
@@ -297,10 +300,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
     
     // Pour les URLs d'iframe, réduire le temps d'affichage du loader
+    // Sur mobile, masquer encore plus rapidement
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const loaderDelay = isMobile ? 1500 : 3000; // 1.5 secondes sur mobile, 3 sur desktop
+    
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
-      }, 3000); // Masquer le loader après 3 secondes pour les iframes
+      }, loaderDelay);
       
       return () => clearTimeout(loaderTimeout);
     }
@@ -312,10 +319,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setShowAd(true);
       loadVastAd();
       
+      // Déterminer si on est sur mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
       // Précharger la vidéo principale pendant la lecture de la pub
+      // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
+      const preloadDelay = isMobile ? 3000 : 2000; // 3 secondes sur mobile, 2 sur desktop
+      
       setTimeout(() => {
         preloadMainVideo();
-      }, 2000); // Commencer le préchargement après 2 secondes
+      }, preloadDelay);
+      
+      // Ajuster la durée de la pub selon le type d'appareil
+      const adDuration = isMobile ? 45000 : 60000; // 45 secondes sur mobile, 60 sur desktop
       
       const timer = setTimeout(() => {
         setShowAd(false);
@@ -329,7 +345,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             setIsLoading(false);
           }, 1000);
         }
-      }, 60000); // 60 seconds ad (augmenté pour gérer plusieurs pubs)
+      }, adDuration);
       return () => {
         clearTimeout(timer);
         if (skipButtonTimeoutRef.current) {
@@ -395,20 +411,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setShowSkipButton(false);
   };
 
-  // Show controls on mouse move and auto-hide after 3 seconds
-  // Also handle touch events for mobile
-  const handleMouseMove = () => {
-    setShowControls(true);
-    
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000);
-  };
-
   // Handle touch events for mobile devices
   const handleTouch = () => {
     setShowControls(true);
@@ -417,9 +419,24 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       clearTimeout(controlsTimeoutRef.current);
     }
     
+    // Sur mobile, garder les contrôles visibles plus longtemps
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
-    }, 3000);
+    }, 5000); // 5 secondes sur mobile au lieu de 3
+  };
+
+  // Show controls on mouse move (desktop) or touch (mobile)
+  const handleMouseMove = () => {
+    setShowControls(true);
+    
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    
+    // Sur desktop, masquer plus rapidement
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3000); // 3 secondes sur desktop
   };
 
   // Cleanup timeouts on unmount
@@ -476,7 +493,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             {showSkipButton && (
               <button
                 onClick={skipAd}
-                className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
+                className="absolute top-4 right-4 bg-black/80 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors z-40 text-sm sm:text-base sm:px-4 sm:py-2 md:px-5 md:py-3"
               >
                 Passer la pub
               </button>
@@ -485,26 +502,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Loading indicator */}
+      {/* Loading indicator - Optimized for mobile */}
       {isLoading && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-4">
-            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-sm sm:text-base">Chargement de la vidéo...</p>
+          <div className="text-center p-4 max-w-xs">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4 sm:mb-6"></div>
+            <p className="text-white text-base sm:text-lg px-2">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
 
-      {/* Error display */}
+      {/* Error display - Optimized for mobile */}
       {error && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
-          <div className="text-center p-6 bg-black/80 rounded-lg max-w-md w-full">
-            <div className="text-red-500 text-4xl mb-4">⚠️</div>
-            <h3 className="text-xl font-bold text-white mb-2">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-4 text-sm">{error}</p>
+          <div className="text-center p-6 sm:p-8 bg-black/90 rounded-xl max-w-xs sm:max-w-md w-full">
+            <div className="text-red-500 text-4xl sm:text-5xl mb-4 sm:mb-6">⚠️</div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">Erreur de chargement</h3>
+            <p className="text-gray-300 mb-4 sm:mb-6 text-sm sm:text-base">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition-colors text-sm"
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-base sm:text-lg font-medium"
             >
               Réessayer
             </button>
@@ -512,17 +529,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Custom Controls Overlay for Zupload - Always visible but with transparency */}
+      {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
       <div className="absolute inset-0 z-20 pointer-events-none">
-        {/* Top Controls - Season and Episode Selection */}
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-2">
+        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
+        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {onSeasonChange && (
               <Select 
                 value={currentSeason.toString()} 
                 onValueChange={(value) => onSeasonChange(parseInt(value))}
               >
-                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
                   <SelectValue placeholder="S" />
                 </SelectTrigger>
                 <SelectContent>
@@ -540,7 +557,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 value={currentEpisode.toString()} 
                 onValueChange={(value) => onEpisodeChange(parseInt(value))}
               >
-                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
                   <SelectValue placeholder="E" />
                 </SelectTrigger>
                 <SelectContent>
@@ -554,57 +571,55 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             )}
           </div>
           
-          <div className="flex space-x-1 sm:space-x-2">
+          <div className="flex space-x-1">
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
+                className="bg-black/70 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
               >
-                <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span className="hidden sm:inline">Passer l'intro</span>
-                <span className="sm:hidden">Intro</span>
+                <RotateCw className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline sm:inline">Intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
+                className="bg-black/70 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
               >
-                <SkipForward className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span className="hidden sm:inline">Épisode suivant</span>
-                <span className="sm:hidden">Suiv.</span>
+                <SkipForward className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline sm:inline">Suiv.</span>
               </button>
             )}
           </div>
         </div>
         
-        {/* Middle Controls - Previous/Next Episode Navigation */}
-        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-2">
+        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
+        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {onPreviousEpisode && (
               <Button
                 onClick={onPreviousEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full"
                 disabled={currentEpisode <= 1}
               >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
               </Button>
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {onNextEpisode && (
               <Button
                 onClick={onNextEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full"
                 disabled={currentEpisode >= totalEpisodes}
               >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
               </Button>
             )}
           </div>
@@ -614,7 +629,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
       {!showAd && (
         <>
-          {/* For iframe embeds (Zupload) */}
+          {/* For iframe embeds (Zupload) - Mobile optimized */}
           {videoUrl.includes('embed') ? (
             <iframe
               src={videoUrl}

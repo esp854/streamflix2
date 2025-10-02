@@ -660,36 +660,36 @@ export default function WatchMovie() {
                   onClick={rewind15}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCcw className="w-5 h-5 md:w-6 md:h-6" />
+                  <RotateCcw className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
                 </Button>
                 
                 <Button
                   onClick={handlePlayPause}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-18 h-18 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  {isPlaying ? <Pause className="w-6 h-6 md:w-8 md:h-8" /> : <Play className="w-6 h-6 md:w-8 md:h-8" />}
+                  {isPlaying ? <Pause className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10" /> : <Play className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10" />}
                 </Button>
                 
                 <Button
                   onClick={forward15}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCw className="w-5 h-5 md:w-6 md:h-6" />
+                  <RotateCw className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
                 </Button>
               </div>
             </div>
 
             {/* Bottom Controls */}
             <div className="absolute bottom-4 left-4 right-4 space-y-2 md:space-y-4">
-              {/* Progress Bar */}
-              <div className="flex items-center space-x-2 md:space-x-4">
-                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
+              {/* Progress Bar - Optimized for mobile */}
+              <div className="flex items-center space-x-3 sm:space-x-4 md:space-x-6">
+                <span className="text-white text-xs sm:text-sm md:text-base min-w-[50px] sm:min-w-[60px] md:min-w-[70px]">
                   {formatTime(currentTime)}
                 </span>
                 <Slider
@@ -697,9 +697,9 @@ export default function WatchMovie() {
                   onValueChange={handleSeek}
                   max={duration}
                   step={1}
-                  className="flex-1"
+                  className="flex-1 h-1 sm:h-2"
                 />
-                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
+                <span className="text-white text-xs sm:text-sm md:text-base min-w-[50px] sm:min-w-[60px] md:min-w-[70px]">
                   {formatTime(duration)}
                 </span>
               </div>
@@ -711,27 +711,27 @@ export default function WatchMovie() {
                     onClick={handlePlayPause}
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                   >
-                    {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
+                    {isPlaying ? <Pause className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" /> : <Play className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
                   </Button>
                   
                   <Button
                     onClick={skipBackward}
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                   >
-                    <SkipBack className="w-4 h-4 md:w-5 md:h-5" />
+                    <SkipBack className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                   </Button>
                   
                   <Button
                     onClick={skipForward}
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                   >
-                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
+                    <SkipForward className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                   </Button>
 
                   <div className="flex items-center space-x-1 md:space-x-2 ml-2 md:ml-4">
@@ -739,16 +739,16 @@ export default function WatchMovie() {
                       onClick={handleMute}
                       variant="ghost"
                       size="icon"
-                      className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                      className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                     >
-                      {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
+                      {isMuted ? <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" /> : <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
                     </Button>
                     <Slider
                       value={volume}
                       onValueChange={handleVolumeChange}
                       max={100}
                       step={1}
-                      className="w-16 md:w-24"
+                      className="w-20 sm:w-24 md:w-32"
                     />
                   </div>
                 </div>
@@ -759,17 +759,17 @@ export default function WatchMovie() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                        className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                       >
-                        <Settings className="w-4 h-4 md:w-5 md:h-5" />
+                        <Settings className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-48 md:w-56 bg-black/90 border-white/20 p-3 md:p-4" side="top">
-                      <div className="space-y-3 md:space-y-4">
+                    <PopoverContent className="w-56 sm:w-64 md:w-72 bg-black/90 border-white/20 p-4 sm:p-5 md:p-6" side="top">
+                      <div className="space-y-4 sm:space-y-5 md:space-y-6">
                         <div>
-                          <label className="text-white text-xs md:text-sm font-medium">Vitesse de lecture</label>
+                          <label className="text-white text-sm sm:text-base md:text-lg font-medium mb-2 block">Vitesse de lecture</label>
                           <Select value={playbackSpeed.toString()} onValueChange={handlePlaybackSpeedChange}>
-                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-10 sm:h-11 md:h-12 text-sm sm:text-base md:text-lg">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -785,9 +785,9 @@ export default function WatchMovie() {
                           </Select>
                         </div>
                         <div>
-                          <label className="text-white text-xs md:text-sm font-medium">Qualité</label>
+                          <label className="text-white text-sm sm:text-base md:text-lg font-medium mb-2 block">Qualité</label>
                           <Select value={quality} onValueChange={handleQualityChange}>
-                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-10 sm:h-11 md:h-12 text-sm sm:text-base md:text-lg">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -809,9 +809,9 @@ export default function WatchMovie() {
                     onClick={toggleFullscreen}
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
                   >
-                    {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+                    {isFullscreen ? <Minimize className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" /> : <Maximize className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
                   </Button>
                 </div>
               </div>
