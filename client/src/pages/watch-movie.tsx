@@ -660,27 +660,27 @@ export default function WatchMovie() {
                   onClick={rewind15}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCcw className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
+                  <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </Button>
                 
                 <Button
                   onClick={handlePlayPause}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-18 h-18 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  {isPlaying ? <Pause className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10" /> : <Play className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10" />}
+                  {isPlaying ? <Pause className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" /> : <Play className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />}
                 </Button>
                 
                 <Button
                   onClick={forward15}
                   variant="ghost"
                   size={isMobile ? "icon" : "lg"}
-                  className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
                 >
-                  <RotateCw className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
+                  <RotateCw className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </Button>
               </div>
             </div>

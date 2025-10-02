@@ -45,6 +45,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
+  const [adCurrentTime, setAdCurrentTime] = useState(0);
+  const [adDuration, setAdDuration] = useState(15); // Durée par défaut de 15 secondes
+  const [adExpanded, setAdExpanded] = useState(false); // Nouvel état pour gérer l'expansion de la pub
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
@@ -236,14 +239,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
       
-      // Masquer le bouton de skip pendant 8 secondes sur mobile, 12 sur desktop
+      // Masquer le bouton de skip pendant 3 secondes sur mobile, 3 sur desktop (expérience utilisateur améliorée)
       setShowSkipButton(false);
       if (skipButtonTimeoutRef.current) {
         clearTimeout(skipButtonTimeoutRef.current);
       }
       // Détecter si on est sur mobile
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const skipDelay = isMobile ? 8000 : 12000; // 8 secondes sur mobile, 12 sur desktop
+      const skipDelay = 3000; // 3 secondes pour tous les appareils
       skipButtonTimeoutRef.current = setTimeout(() => {
         setShowSkipButton(true);
       }, skipDelay);
@@ -286,6 +289,57 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   };
 
+  // Handle ad time update
+  const handleAdTimeUpdate = () => {
+    if (adVideoRef.current && isAdPlaying) {
+      setAdCurrentTime(adVideoRef.current.currentTime);
+      
+      // Mettre à jour la durée si elle n'est pas encore définie
+      if (adVideoRef.current.duration && adVideoRef.current.duration > 0 && adDuration === 15) {
+        setAdDuration(adVideoRef.current.duration);
+      }
+    }
+  };
+
+  // Handle ad loaded metadata
+  const handleAdLoadedMetadata = () => {
+    if (adVideoRef.current && isAdPlaying) {
+      // Mettre à jour la durée de la pub
+      if (adVideoRef.current.duration && adVideoRef.current.duration > 0) {
+        setAdDuration(adVideoRef.current.duration);
+      }
+    }
+  };
+
+  // Fonction pour agrandir/réduire la publicité
+  const toggleAdExpand = () => {
+    setAdExpanded(!adExpanded);
+  };
+
+  // Effet pour mettre à jour le temps de la pub
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isAdPlaying && adVideoRef.current) {
+      interval = setInterval(() => {
+        if (adVideoRef.current) {
+          setAdCurrentTime(adVideoRef.current.currentTime);
+          
+          // Mettre à jour la durée si elle n'est pas encore définie
+          if (adVideoRef.current.duration && adVideoRef.current.duration > 0 && adDuration === 15) {
+            setAdDuration(adVideoRef.current.duration);
+          }
+        }
+      }, 100);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isAdPlaying, adDuration]);
+
   // Handle video error
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     setIsLoading(false);
@@ -300,9 +354,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
     
     // Pour les URLs d'iframe, réduire le temps d'affichage du loader
-    // Sur mobile, masquer encore plus rapidement
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const loaderDelay = isMobile ? 1500 : 3000; // 1.5 secondes sur mobile, 3 sur desktop
+    // Optimisation du loader pour une meilleure expérience utilisateur
+    const loaderDelay = 800; // 0.8 seconde pour tous les appareils
     
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
@@ -323,15 +376,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       // Précharger la vidéo principale pendant la lecture de la pub
-      // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
-      const preloadDelay = isMobile ? 3000 : 2000; // 3 secondes sur mobile, 2 sur desktop
+      // Préchargement optimisé pour tous les appareils
+      const preloadDelay = 2500; // 2.5 secondes pour tous les appareils
       
       setTimeout(() => {
         preloadMainVideo();
       }, preloadDelay);
       
-      // Ajuster la durée de la pub selon le type d'appareil
-      const adDuration = isMobile ? 45000 : 60000; // 45 secondes sur mobile, 60 sur desktop
+      // Ajuster la durée de la pub - expérience utilisateur équilibrée
+      const adDuration = 20000; // 20 secondes pour tous les appareils
       
       const timer = setTimeout(() => {
         setShowAd(false);
@@ -411,32 +464,84 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setShowSkipButton(false);
   };
 
-  // Handle touch events for mobile devices
-  const handleTouch = () => {
-    setShowControls(true);
+  // Handle touch events for all devices with tap detection
+  const tapCountRef = useRef(0);
+  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    tapCountRef.current++;
     
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
+    if (tapCountRef.current === 1) {
+      tapTimeoutRef.current = setTimeout(() => {
+        // Single tap - show controls
+        setShowControls(true);
+        
+        if (controlsTimeoutRef.current) {
+          clearTimeout(controlsTimeoutRef.current);
+        }
+        
+        // Pour tous les appareils tactiles, garder les contrôles visibles plus longtemps
+        controlsTimeoutRef.current = setTimeout(() => {
+          setShowControls(false);
+        }, 4000); // 4 secondes pour tous les appareils tactiles
+        
+        tapCountRef.current = 0;
+      }, 300);
+    } else if (tapCountRef.current === 2) {
+      // Double tap - play/pause
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
+      
+      if (!isAdPlaying && !showAd) {
+        togglePlayPause();
+      }
+      
+      tapCountRef.current = 0;
     }
-    
-    // Sur mobile, garder les contrôles visibles plus longtemps
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 5000); // 5 secondes sur mobile au lieu de 3
   };
 
   // Show controls on mouse move (desktop) or touch (mobile)
-  const handleMouseMove = () => {
+  const handleMouseMove = (e: React.MouseEvent) => {
+    e.preventDefault();
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
     
-    // Sur desktop, masquer plus rapidement
+    // Pour les appareils de bureau, masquer plus rapidement
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
     }, 3000); // 3 secondes sur desktop
+  };
+
+  // Handle touch end event
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    // Ne pas masquer immédiatement les contrôles après un touch
+  };
+
+  // Fonction play/pause pour le lecteur vidéo
+  const togglePlayPause = () => {
+    if (mainVideoRef.current) {
+      if (mainVideoRef.current.paused) {
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture:', error);
+        });
+      } else {
+        mainVideoRef.current.pause();
+      }
+    }
+    
+    if (adVideoRef.current && isAdPlaying) {
+      if (adVideoRef.current.paused) {
+        adVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture de la pub:', error);
+        });
+      } else {
+        adVideoRef.current.pause();
+      }
+    }
   };
 
   // Cleanup timeouts on unmount
@@ -448,15 +553,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       if (skipButtonTimeoutRef.current) {
         clearTimeout(skipButtonTimeoutRef.current);
       }
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+      }
     };
   }, []);
 
   return (
     <div 
-      className="relative w-full h-screen bg-black"
+      className="relative w-full h-screen bg-black transition-colors duration-300"
       onMouseMove={handleMouseMove}
       onTouchStart={handleTouch}
       onTouchMove={handleTouch}
+      onTouchEnd={handleTouchEnd}
       onMouseLeave={() => {
         if (controlsTimeoutRef.current) {
           clearTimeout(controlsTimeoutRef.current);
@@ -466,38 +575,91 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Ad for non-authenticated users - HilltopAds VAST integration */}
+      {/* Ad expansion overlay */}
+      {showAd && adExpanded && (
+        <div 
+          className="ad-expanded-overlay"
+          onClick={() => setAdExpanded(false)}
+        />
+      )}
+      
+      {/* Ad for non-authenticated users - HilltopAds VAST integration in enhanced banner with animations */}
       {showAd && (
-        <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
-          <div className="relative w-full h-full">
-            {/* HilltopAds VAST integration */}
-            <div className="w-full h-full flex items-center justify-center">
-              <video
-                ref={adVideoRef}
-                controls
-                width="100%"
-                height="100%"
-                preload="auto"
-                className="w-full h-full"
-                onLoad={handleVideoLoad}
-                onPlaying={handleVideoPlaying}
-                onError={handleVideoError}
-                onEnded={() => {
-                  if (isAdPlaying) {
-                    // Pub terminée, jouer la pub suivante ou la vidéo principale
-                    playNextAd();
-                  }
-                }}
-              />
+        <div className={`absolute ${adExpanded ? 'inset-0 sm:inset-4 md:inset-8 lg:inset-12' : 'top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6'} z-30 bg-gradient-to-r from-black/90 to-gray-900/90 rounded-xl border border-white/30 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:shadow-2xl transform hover:scale-[1.02] animate-fade-in`}>
+          <div className="relative w-full flex items-center justify-between p-3 sm:p-4">
+            {/* Enhanced ad player with loading indicator and progress bar */}
+            <div className="flex-1 min-w-0 mr-3 sm:mr-4">
+              <div className="bg-black rounded-lg overflow-hidden relative" style={{ height: adExpanded ? '200px' : '100px' }}>
+                <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center font-bold">
+                  <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                  PUBLICITÉ
+                </div>
+                <video
+                  ref={adVideoRef}
+                  controls={false}
+                  width="100%"
+                  height="100%"
+                  preload="auto"
+                  className="w-full h-full touch-manipulation object-cover transition-opacity duration-300"
+                  onLoad={handleVideoLoad}
+                  onPlaying={handleVideoPlaying}
+                  onError={handleVideoError}
+                  onTimeUpdate={handleAdTimeUpdate}
+                  onLoadedMetadata={handleAdLoadedMetadata}
+                  onEnded={() => {
+                    if (isAdPlaying) {
+                      // Pub terminée, jouer la pub suivante ou la vidéo principale
+                      playNextAd();
+                    }
+                  }}
+                  playsInline
+                />
+                {/* Progress bar for ad */}
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+                  <div 
+                    className="h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-300 rounded-r"
+                    style={{ width: `${(adCurrentTime / adDuration) * 100}%` }}
+                  ></div>
+                </div>
+                {/* Ad loading overlay */}
+                {isAdPlaying && adCurrentTime === 0 && (
+                  <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
             </div>
-            {showSkipButton && (
+            
+            {/* Enhanced Ad controls with improved UX and animations */}
+            <div className="flex flex-col items-center space-y-2 sm:space-y-3">
+              {showSkipButton ? (
+                <button
+                  onClick={skipAd}
+                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-red-700 hover:to-orange-600 transition-all duration-200 text-sm font-bold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
+                >
+                  <span>Passer</span>
+                  <span className="ml-2 text-xs bg-white/20 px-1.5 py-0.5 rounded font-bold">
+                    {Math.ceil(adDuration - adCurrentTime)}s
+                  </span>
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="bg-gray-700 text-gray-400 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-bold whitespace-nowrap shadow-md opacity-70 flex items-center"
+                >
+                  <span>Passer</span>
+                  <span className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-bold">
+                    {Math.ceil(adDuration - adCurrentTime)}s
+                  </span>
+                </button>
+              )}
               <button
-                onClick={skipAd}
-                className="absolute top-4 right-4 bg-black/80 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors z-40 text-sm sm:text-base sm:px-4 sm:py-2 md:px-5 md:py-3"
+                onClick={toggleAdExpand}
+                className="bg-white/10 text-white px-3 py-1 rounded-lg hover:bg-white/20 transition-all duration-200 text-xs font-medium whitespace-nowrap border border-white/30 hover:border-white/50 transform hover:scale-105"
               >
-                Passer la pub
+                {adExpanded ? 'Réduire' : 'Voir la pub'}
               </button>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -505,9 +667,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Loading indicator - Optimized for mobile */}
       {isLoading && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-4 max-w-xs">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4 sm:mb-6"></div>
-            <p className="text-white text-base sm:text-lg px-2">Chargement de la vidéo...</p>
+          <div className="text-center p-6 max-w-xs">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
+            <p className="text-white text-lg sm:text-xl px-4 font-medium">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
@@ -515,13 +677,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Error display - Optimized for mobile */}
       {error && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
-          <div className="text-center p-6 sm:p-8 bg-black/90 rounded-xl max-w-xs sm:max-w-md w-full">
-            <div className="text-red-500 text-4xl sm:text-5xl mb-4 sm:mb-6">⚠️</div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-4 sm:mb-6 text-sm sm:text-base">{error}</p>
+          <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
+            <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
+            <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 sm:px-6 sm:py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-base sm:text-lg font-medium"
+              className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
             >
               Réessayer
             </button>
@@ -529,10 +691,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
+      {/* Custom Controls Overlay for Zupload - Enhanced for all devices */}
+      <div className="absolute inset-0 z-20 pointer-events-none transition-opacity duration-300">
+        {/* Top Controls - Season and Episode Selection - Enhanced for all devices */}
+        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto transition-all duration-300">
           <div className="flex items-center space-x-1 sm:space-x-2">
             {onSeasonChange && (
               <Select 
@@ -575,27 +737,27 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
+                className="bg-black/70 text-white px-2 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs"
               >
-                <RotateCw className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline sm:inline">Intro</span>
+                <RotateCw className="w-3 h-3 mr-1" />
+                <span className="hidden xs:inline">Intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-3 py-2 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
+                className="bg-black/70 text-white px-2 py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs"
               >
-                <SkipForward className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline sm:inline">Suiv.</span>
+                <SkipForward className="w-3 h-3 mr-1" />
+                <span className="hidden xs:inline">Suiv.</span>
               </button>
             )}
           </div>
         </div>
         
-        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+        {/* Middle Controls - Previous/Next Episode Navigation - Enhanced for all devices */}
+        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto transition-all duration-300">
           <div className="flex items-center space-x-1 sm:space-x-2">
             {onPreviousEpisode && (
               <Button
@@ -633,11 +795,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           {videoUrl.includes('embed') ? (
             <iframe
               src={videoUrl}
-              className="w-full h-full"
+              className="w-full h-full touch-manipulation"
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               title={title}
+              loading="lazy"
               onLoad={() => {
                 console.log('Iframe Zupload chargée');
                 setIsLoading(false);
@@ -658,11 +821,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               width="100%"
               height="100%"
               preload="auto"
-              className="w-full h-full"
+              className="w-full h-full touch-manipulation"
               onLoad={handleVideoLoad}
               onPlaying={handleVideoPlaying}
               onError={handleVideoError}
               onEnded={onVideoEnd}
+              playsInline
             />
           )}
         </>
