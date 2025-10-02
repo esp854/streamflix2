@@ -45,6 +45,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
+  const [showPlayButton, setShowPlayButton] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
@@ -203,6 +204,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const playNextAd = () => {
     if (!adVideoRef.current) return;
 
+    setShowPlayButton(false); // Masquer le bouton play pour la nouvelle pub
+
     const videoEl = adVideoRef.current;
     
     // Vérifier s'il y a une pub suivante
@@ -228,11 +231,31 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       videoEl.play().catch(error => {
         console.error('Erreur de lecture de la pub:', error);
-        // Passer à la pub suivante ou à la vidéo principale
-        currentAdIndexRef.current++;
-        playNextAd();
+        // Détecter si on est sur mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (!isMobile) {
+          // Sur desktop, passer à la pub suivante
+          currentAdIndexRef.current++;
+          playNextAd();
+        } else {
+          // Sur mobile, si autoplay échoue, afficher le bouton play
+          console.log('Autoplay échoué sur mobile, affichage du bouton play');
+          setShowPlayButton(true);
+          // Définir un timeout pour passer après 30 secondes si pas en lecture
+          setTimeout(() => {
+            if (videoEl && !videoEl.paused && videoEl.currentTime > 0) return; // Si l'utilisateur a commencé la lecture, ne pas passer
+            currentAdIndexRef.current++;
+            playNextAd();
+          }, 30000);
+        }
       });
-      
+
+      // Masquer le bouton play quand la vidéo commence à jouer
+      videoEl.onplay = () => {
+        setShowPlayButton(false);
+        setIsAdPlaying(true);
+      };
+
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
       
@@ -401,6 +424,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsAdPlaying(false);
     setShowAd(false);
     setAdSkipped(true);
+    setShowPlayButton(false);
     // Réinitialiser l'état de chargement après avoir passé la pub
     setIsLoading(false);
     
@@ -506,6 +530,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
               >
                 Passer la pub
+              </button>
+            )}
+
+            {showPlayButton && (
+              <button
+                onClick={() => {
+                  if (adVideoRef.current) {
+                    adVideoRef.current.play().catch(err => console.error('Erreur lors du clic play:', err));
+                  }
+                }}
+                className="absolute inset-0 flex items-center justify-center bg-black/50 z-35"
+              >
+                <div className="bg-white/90 rounded-full p-6 sm:p-8 md:p-10 hover:bg-white transition-colors">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-black" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </div>
               </button>
             )}
           </div>
