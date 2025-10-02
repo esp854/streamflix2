@@ -270,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", authLimiter, bruteForceProtection, async (req: any, res: any) => {
+  app.post("/api/auth/login", authLimiter, /*bruteForceProtection,*/ async (req: any, res: any) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
@@ -288,8 +288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Email ou mot de passe incorrect" });
       }
       
-      // Reset brute force protection on successful login
-      resetLoginAttempts(req, res, () => {});
+      // Reset brute force protection on successful login - désactivé
+      // resetLoginAttempts(req, res, () => {});
       
       // Generate JWT token
       const token = jwt.sign(

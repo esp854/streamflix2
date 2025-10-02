@@ -56,14 +56,14 @@ export const securityHeaders = helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.gstatic.com", "https://translate.googleapis.com"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173", "https://www.paypal.com", "https://www.paypalobjects.com"],
-      scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173", "https://www.paypal.com", "https://www.paypalobjects.com"],
-      imgSrc: ["'self'", "data:", "https:", "https://image.tmdb.org", "https://odysee.com", "https://i.ytimg.com", "https://i.vimeocdn.com", "https://www.gstatic.com", "https://translate.googleapis.com", "https://i.pinimg.com", "https://www.paypal.com", "https://www.paypalobjects.com", "https://www.google-analytics.com", "https://www.googletagmanager.com"],
-      connectSrc: ["'self'", "https://api.themoviedb.org", "https://image.tmdb.org", "http://127.0.0.1:5000", "http://localhost:5173", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "ws://127.0.0.1:5000", "https://player.vimeo.com", "https://translate.googleapis.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "https://fonts.googleapis.com", "https://i.pinimg.com", "https://fonts.gstatic.com", "https://overbridgenet.com", "https://www.paypal.com", "https://api.paypal.com", "https://www.sandbox.paypal.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://www.gstatic.com", "https://fonts.googleapis.com", "https:", "data:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173", "https://www.paypal.com", "https://www.paypalobjects.com", "https://hilltopads.net", "https://*.hilltopads.net"],
+      scriptSrcElem: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://i.ytimg.com", "https://player.vimeo.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "http://127.0.0.1:5000", "https://www.gstatic.com", "http://localhost:5173", "https://www.paypal.com", "https://www.paypalobjects.com", "https://hilltopads.net", "https://*.hilltopads.net"],
+      imgSrc: ["'self'", "data:", "https:", "https://image.tmdb.org", "https://odysee.com", "https://i.ytimg.com", "https://i.vimeocdn.com", "https://www.gstatic.com", "https://translate.googleapis.com", "https://i.pinimg.com", "https://www.paypal.com", "https://www.paypalobjects.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "https://hilltopads.net", "https://*.hilltopads.net"],
+      connectSrc: ["'self'", "https://api.themoviedb.org", "https://image.tmdb.org", "http://127.0.0.1:5000", "http://localhost:5173", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "ws://127.0.0.1:5000", "https://player.vimeo.com", "https://translate.googleapis.com", "https://www.google-analytics.com", "https://www.googletagmanager.com", "https://fonts.googleapis.com", "https://i.pinimg.com", "https://fonts.gstatic.com", "https://overbridgenet.com", "https://www.paypal.com", "https://api.paypal.com", "https://www.sandbox.paypal.com", "https://hilltopads.net", "https://*.hilltopads.net"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://www.gstatic.com", "https://fonts.googleapis.com", ":", "data:"],
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'", "https:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://player.vimeo.com"],
-      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://zupload.co", "https://zupload.cc", "https://zupload.io", "https://*.zupload.co", "https://*.zupload.cc", "https://*.zupload.io", "https://www.paypal.com"],
+      mediaSrc: ["'self'", "https:", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://player.vimeo.com", "https://hilltopads.net", "https://*.hilltopads.net"],
+      frameSrc: ["'self'", "https://odysee.com", "https://player.twitch.tv", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://zupload.co", "https://zupload.cc", "https://zupload.io", "https://*.zupload.co", "https://*.zupload.cc", "https://*.zupload.io", "https://www.paypal.com", "https://hilltopads.net", "https://*.hilltopads.net"],
       frameAncestors: ["'self'"],
       upgradeInsecureRequests: [],
     },
@@ -272,11 +272,14 @@ export const sessionManagement = async (req: Request, res: Response, next: NextF
   next();
 };
 
-// Brute force protection middleware
-const loginAttempts: Record<string, { count: number; lastAttempt: number }> = {};
+// Brute force protection middleware - DÉSACTIVÉ
+// const loginAttempts: Record<string, { count: number; lastAttempt: number }> = {};
 
 export const bruteForceProtection = (req: Request, res: Response, next: NextFunction) => {
-  const ip = req.ip || req.connection.remoteAddress;
+  // Protection désactivée
+  next();
+  
+  /*const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutes
   
@@ -312,16 +315,19 @@ export const bruteForceProtection = (req: Request, res: Response, next: NextFunc
   loginAttempts[ip].count++;
   loginAttempts[ip].lastAttempt = now;
   
-  next();
+  next();*/
 };
 
-// Reset login attempts on successful login
+// Reset login attempts on successful login - DÉSACTIVÉ
 export const resetLoginAttempts = (req: Request, res: Response, next: NextFunction) => {
-  const ip = req.ip || req.connection.remoteAddress;
+  // Protection désactivée
+  next();
+  
+  /*const ip = req.ip || req.connection.remoteAddress;
   if (ip && loginAttempts[ip]) {
     delete loginAttempts[ip];
   }
-  next();
+  next();*/
 };
 
 // Enhanced authentication middleware with HttpOnly cookie support
