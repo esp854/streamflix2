@@ -795,7 +795,9 @@ function SubscriptionPage() {
               <CardDescription>
                 {isFreePlan(selectedPlan) 
                   ? "Confirmez vos informations pour activer votre abonnement gratuit" 
-                  : "Paiement sécurisé et crypté via Lygos"}
+                  : selectedProvider === 'paypal' 
+                    ? "Paiement sécurisé via PayPal (Visa, Mastercard)" 
+                    : "Paiement sécurisé et crypté via Lygos"}
               </CardDescription>
             </CardHeader>
             <CardContent>

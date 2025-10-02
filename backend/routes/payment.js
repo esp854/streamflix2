@@ -36,7 +36,12 @@ router.post("/create-payment", async (req, res) => {
         success_url: LYGOS_SUCCESS_URL,
         failure_url: LYGOS_CANCEL_URL
       },
-      { headers: { Authorization: `Bearer ${API_KEY}` } }
+      { 
+        headers: { 
+          "api-key": API_KEY,
+          "Content-Type": "application/json"
+        } 
+      }
     );
 
     // Retourner les infos au frontend
@@ -59,7 +64,12 @@ router.get("/check-payment/:paymentId", async (req, res) => {
   try {
     const response = await axios.get(
       `https://api.lygosapp.com/v1/gateway/${paymentId}`,
-      { headers: { Authorization: `Bearer ${API_KEY}` } }
+      { 
+        headers: { 
+          "api-key": API_KEY,
+          "Content-Type": "application/json"
+        } 
+      }
     );
 
     res.json({ status: response.data.status });
