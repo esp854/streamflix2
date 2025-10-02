@@ -94,14 +94,48 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     const videoEl = adVideoRef.current;
 
     try {
+      console.log('Chargement du tag VAST:', vastTag);
       const response = await fetch(vastTag);
+      
+      // Vérifier si la réponse est OK
+      if (!response.ok) {
+        console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const xmlText = await response.text();
+      console.log('Réponse VAST reçue:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
+      
+      // Vérifier si la réponse est vide ou invalide
+      if (!xmlText || xmlText.trim().length === 0) {
+        console.warn('Réponse VAST vide');
+        throw new Error('Réponse VAST vide');
+      }
+      
       const parser = new DOMParser();
       const xml = parser.parseFromString(xmlText, "text/xml");
+      
+      // Vérifier les erreurs de parsing XML
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) {
+        console.warn('Erreur de parsing XML VAST:', parserError.textContent);
+        throw new Error('Erreur de parsing XML VAST');
+      }
 
       // Récupère tous les Ad du VAST
       const ads = xml.querySelectorAll('Ad');
+      console.log('Nombre de balises Ad trouvées:', ads.length);
+      
       if (!ads.length) {
+        // Vérifier s'il y a d'autres éléments qui pourraient indiquer une erreur
+        const errorElements = xml.querySelectorAll('Error');
+        if (errorElements.length > 0) {
+          console.warn('Éléments Error trouvés dans le VAST:', errorElements.length);
+          errorElements.forEach((errorEl, index) => {
+            console.warn(`Error ${index + 1}:`, errorEl.textContent);
+          });
+        }
+        
         console.warn('Pas de Ad dans le VAST');
         if (mainVideoRef.current) {
           mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
@@ -113,13 +147,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
       // Récupère tous les MediaFile des pubs
       const adUrls: string[] = [];
-      ads.forEach(ad => {
+      ads.forEach((ad, index) => {
+        console.log(`Traitement de l'Ad ${index + 1}:`, ad);
         const mediaFile = ad.querySelector('MediaFile');
         if (mediaFile) {
           const adUrl = mediaFile.textContent?.trim();
           if (adUrl) {
+            console.log(`MediaFile trouvé pour Ad ${index + 1}:`, adUrl);
             adUrls.push(adUrl);
+          } else {
+            console.warn(`MediaFile vide pour Ad ${index + 1}`);
           }
+        } else {
+          console.warn(`Aucun MediaFile trouvé pour Ad ${index + 1}`);
         }
       });
 
@@ -136,17 +176,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Initialiser la file d'attente des pubs
       adQueueRef.current = adUrls;
       currentAdIndexRef.current = 0;
+      console.log('File d\'attente des pubs initialisée:', adUrls);
 
       // Lecture de la première pub
       playNextAd();
     } catch (err) {
       console.error('Erreur chargement VAST:', err);
+      // En cas d'erreur, passer directement à la vidéo principale
       if (mainVideoRef.current) {
-        mainVideoRef.current.src = videoUrl; // fallback
-        mainVideoRef.current.play();
+        mainVideoRef.current.src = videoUrl;
+        // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+        if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+          mainVideoRef.current.play().catch(playError => {
+            console.error('Erreur de lecture automatique de la vidéo:', playError);
+          });
+        }
       }
       setIsAdPlaying(false);
       setIsLoading(false);
+      setShowAd(false);
+      setAdSkipped(true);
     }
   }
 
@@ -159,12 +208,29 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     // Vérifier s'il y a une pub suivante
     if (currentAdIndexRef.current < adQueueRef.current.length) {
       const adUrl = adQueueRef.current[currentAdIndexRef.current];
+      console.log('Lecture de la publicité:', currentAdIndexRef.current + 1, '/', adQueueRef.current.length, adUrl);
       
       // Lecture de la pub
       videoEl.src = adUrl;
       setIsAdPlaying(true);
+      
+      // Ajouter un gestionnaire d'erreurs pour la lecture
+      videoEl.oncanplay = () => {
+        console.log('La publicité peut être lue');
+      };
+      
+      videoEl.onerror = (e) => {
+        console.error('Erreur de chargement de la publicité:', e);
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
+      };
+      
       videoEl.play().catch(error => {
         console.error('Erreur de lecture de la pub:', error);
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
       });
       
       // Incrémenter l'index pour la prochaine pub
@@ -179,11 +245,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setShowSkipButton(true);
       }, 15000); // 15 secondes
     } else {
+      console.log('Toutes les publicités ont été jouées, lecture de la vidéo principale');
       // Toutes les pubs ont été jouées, lancer la vidéo principale
       if (mainVideoRef.current) {
         mainVideoRef.current.src = videoUrl;
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture de la vidéo principale:', error);
+          // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
+          if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+            setIsLoading(false);
+          }
         });
       }
       setIsAdPlaying(false);
@@ -286,18 +357,31 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   }, [isAuthenticated, adSkipped]);
 
   const skipAd = () => {
+    console.log('Passage des publicités demandé par l\'utilisateur');
+    
     if (adVideoRef.current) {
       // Arrêter la lecture de la pub
       adVideoRef.current.pause();
+      adVideoRef.current.oncanplay = null;
+      adVideoRef.current.onerror = null;
     }
     
     // Passer toutes les pubs restantes et lancer la vidéo principale
     if (mainVideoRef.current) {
       mainVideoRef.current.src = videoUrl;
-      mainVideoRef.current.play().catch(error => {
-        console.error('Erreur de lecture après avoir passé la pub:', error);
-      });
+      
+      // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture après avoir passé la pub:', error);
+        });
+      }
     }
+    
+    // Vider la file d'attente des pubs
+    adQueueRef.current = [];
+    currentAdIndexRef.current = 0;
+    
     setIsAdPlaying(false);
     setShowAd(false);
     setAdSkipped(true);
@@ -527,20 +611,46 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Main video player for authenticated users or after ad is skipped */}
+      {/* Main video player - Handle both direct video URLs and iframe embeds */}
       {!showAd && (
-        <video
-          ref={mainVideoRef}
-          controls
-          width="100%"
-          height="100%"
-          preload="auto"
-          className="w-full h-full"
-          onLoad={handleVideoLoad}
-          onPlaying={handleVideoPlaying}
-          onError={handleVideoError}
-          onEnded={onVideoEnd}
-        />
+        <>
+          {/* For iframe embeds (Zupload) */}
+          {videoUrl.includes('embed') ? (
+            <iframe
+              src={videoUrl}
+              className="w-full h-full"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={title}
+              onLoad={() => {
+                console.log('Iframe Zupload chargée');
+                setIsLoading(false);
+                setError(null);
+              }}
+              onError={(e) => {
+                console.error('Erreur de chargement de l\'iframe Zupload:', e);
+                setIsLoading(false);
+                setError('Impossible de charger la vidéo');
+                onVideoError?.('Impossible de charger la vidéo');
+              }}
+            />
+          ) : (
+            // For direct video files
+            <video
+              ref={mainVideoRef}
+              controls
+              width="100%"
+              height="100%"
+              preload="auto"
+              className="w-full h-full"
+              onLoad={handleVideoLoad}
+              onPlaying={handleVideoPlaying}
+              onError={handleVideoError}
+              onEnded={onVideoEnd}
+            />
+          )}
+        </>
       )}
     </div>
   );
