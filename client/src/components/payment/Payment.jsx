@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import PayPalButton from "./PayPalButton";
 
 const plans = [
   { key: "basic", name: "Basic", price: 2000 },
@@ -22,6 +23,7 @@ export default function Payment() {
     phone: ""
   });
   const [providers, setProviders] = useState({ lygos: false, paypal: false });
+  const [selectedPlan, setSelectedPlan] = useState(null);
 
   // Prefill customer info from user data
   useEffect(() => {
@@ -71,6 +73,12 @@ export default function Payment() {
         description: "Veuillez remplir votre nom et votre email.",
         variant: "destructive"
       });
+      return;
+    }
+
+    if (provider === 'paypal') {
+      // For PayPal, we'll set the selected plan to render the PayPal button
+      setSelectedPlan(planKey);
       return;
     }
 
@@ -124,6 +132,27 @@ export default function Payment() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: "Paiement réussi",
+      description: "Paiement réussi ! Votre abonnement a été activé.",
+    });
+    // Reset the form
+    setQrCode(null);
+    setPaymentId(null);
+    setStatus("");
+    setSelectedPlan(null);
+  };
+
+  const handlePaymentError = (error) => {
+    toast({
+      title: "Erreur de paiement",
+      description: "Erreur lors du paiement: " + error,
+      variant: "destructive"
+    });
+    setLoading(false);
   };
 
   const checkPayment = async () => {
@@ -289,23 +318,36 @@ export default function Payment() {
                 </button>
               )}
               {providers.paypal && (
-                <button
-                  onClick={() => handlePayment(plan.key, 'paypal')}
-                  disabled={loading}
-                  style={{
-                    backgroundColor: "#0070ba",
-                    color: "white",
-                    border: "none",
-                    padding: "10px 20px",
-                    borderRadius: "4px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "14px",
-                    opacity: loading ? 0.7 : 1,
-                    width: "100%"
-                  }}
-                >
-                  {loading ? "Traitement..." : "Payer avec PayPal"}
-                </button>
+                <div>
+                  <button
+                    onClick={() => handlePayment(plan.key, 'paypal')}
+                    disabled={loading}
+                    style={{
+                      backgroundColor: "#0070ba",
+                      color: "white",
+                      border: "none",
+                      padding: "10px 20px",
+                      borderRadius: "4px",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      opacity: loading ? 0.7 : 1,
+                      width: "100%",
+                      marginBottom: "10px"
+                    }}
+                  >
+                    {loading && selectedPlan === plan.key ? "Traitement..." : "Payer avec PayPal"}
+                  </button>
+                  {selectedPlan === plan.key && (
+                    <PayPalButton
+                      planKey={plan.key}
+                      customerInfo={customerInfo}
+                      onPaymentSuccess={handlePaymentSuccess}
+                      onPaymentError={handlePaymentError}
+                      loading={loading}
+                      setLoading={setLoading}
+                    />
+                  )}
+                </div>
               )}
               {!providers.lygos && !providers.paypal && (
                 <p style={{ color: "#dc3545", fontSize: "14px" }}>Aucun fournisseur de paiement disponible</p>
