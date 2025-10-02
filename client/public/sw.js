@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
-  // Allow requests to PayPal, Google, Zupload and HilltopAds domains
+  // Allow requests to PayPal, Google, Zupload, HilltopAds and silent-basis domains
   const allowedExternalDomains = [
     'www.paypal.com',
     'www.paypalobjects.com',
@@ -85,7 +85,9 @@ self.addEventListener('fetch', (event) => {
     'hilltopads.net',
     '*.hilltopads.net',
     'selfishzone.com',
-    '*.selfishzone.com'
+    '*.selfishzone.com',
+    'silent-basis.pro',
+    '*.silent-basis.pro'
   ];
 
   // Check if the request is to an allowed external domain
