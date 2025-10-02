@@ -383,22 +383,32 @@ export class PaymentService {
       const result = await response.json();
       console.log('PayPal order created:', result);
 
-      // Store payment record
-      const paymentRecord = await storage.createPayment({
-        userId,
-        amount: selectedPlan.amount,
-        method: 'paypal',
-        status: 'pending',
-        paymentData: { orderId: result.id, planId }
-      });
-
-      console.log('Payment record created:', paymentRecord.id);
-
-      return {
-        success: true,
-        orderId: result.id,
-        paymentId: paymentRecord.id,
-      };
+      try {
+        // Store payment record
+        const paymentRecord = await storage.createPayment({
+          userId,
+          amount: selectedPlan.amount,
+          method: 'paypal',
+          status: 'pending',
+          paymentData: { orderId: result.id, planId }
+        });
+        
+        console.log('Payment record created:', paymentRecord.id);
+        
+        return {
+          success: true,
+          orderId: result.id,
+          paymentId: paymentRecord.id,
+        };
+      } catch (storageError: any) {
+        console.error("Error creating payment record in database:", storageError);
+        // Even if we can't store the payment record, we should still return the PayPal order
+        return {
+          success: true,
+          orderId: result.id,
+          message: "Paiement PayPal créé avec succès, mais une erreur est survenue lors de l'enregistrement local"
+        };
+      }
     } catch (error: any) {
       console.error("Error creating PayPal payment:", error);
       throw new Error(`Erreur lors de la création du paiement PayPal: ${error.message}`);
