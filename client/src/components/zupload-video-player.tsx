@@ -45,6 +45,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(false); // Nouvel état pour suivre l'interaction utilisateur
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
@@ -165,8 +166,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
       if (!adUrls.length) {
         console.warn('Pas de MediaFile dans le VAST');
+        // Fallback vers une bannière d'annonce statique si les pubs vidéo échouent
+        console.log('Activation du fallback vers bannière d\'annonce');
+        setShowAd(false);
+        setAdSkipped(true);
         if (mainVideoRef.current) {
-          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+          mainVideoRef.current.src = videoUrl;
         }
         setIsLoading(false);
         setIsAdPlaying(false);
@@ -182,7 +187,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       playNextAd();
     } catch (err) {
       console.error('Erreur chargement VAST:', err);
-      // En cas d'erreur, passer directement à la vidéo principale
+      // En cas d'erreur, activer le fallback vers une bannière d'annonce
+      console.log('Activation du fallback vers bannière d\'annonce en raison d\'une erreur');
+      setShowAd(false);
+      setAdSkipped(true);
       if (mainVideoRef.current) {
         mainVideoRef.current.src = videoUrl;
         // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
@@ -194,8 +202,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       setIsAdPlaying(false);
       setIsLoading(false);
-      setShowAd(false);
-      setAdSkipped(true);
     }
   }
 
@@ -217,6 +223,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Ajouter un gestionnaire d'erreurs pour la lecture
       videoEl.oncanplay = () => {
         console.log('La publicité peut être lue');
+        // Tenter de jouer la vidéo après interaction utilisateur
+        if (userInteracted) {
+          videoEl.play().catch(error => {
+            console.error('Erreur de lecture de la pub:', error);
+            // Passer à la pub suivante ou à la vidéo principale
+            currentAdIndexRef.current++;
+            playNextAd();
+          });
+        }
       };
       
       videoEl.onerror = (e) => {
@@ -226,11 +241,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         playNextAd();
       };
       
+      // Tenter de jouer automatiquement (fonctionnera sur mobile si muted)
       videoEl.play().catch(error => {
         console.error('Erreur de lecture de la pub:', error);
-        // Passer à la pub suivante ou à la vidéo principale
-        currentAdIndexRef.current++;
-        playNextAd();
+        // Si l'autoplay échoue, attendre l'interaction utilisateur
+        if (!userInteracted) {
+          console.log('En attente d\'interaction utilisateur pour lire la pub');
+        } else {
+          // Passer à la pub suivante ou à la vidéo principale
+          currentAdIndexRef.current++;
+          playNextAd();
+        }
       });
       
       // Incrémenter l'index pour la prochaine pub
@@ -415,6 +436,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleTouch = (e: React.TouchEvent) => {
     e.preventDefault();
     setShowControls(true);
+    setUserInteracted(true); // Marquer l'interaction utilisateur
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
@@ -430,6 +452,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     e.preventDefault();
     setShowControls(true);
+    setUserInteracted(true); // Marquer l'interaction utilisateur
     
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
@@ -445,6 +468,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleTouchEnd = (e: React.TouchEvent) => {
     e.preventDefault();
     // Ne pas masquer immédiatement les contrôles après un touch
+    setUserInteracted(true); // Marquer l'interaction utilisateur
   };
 
   // Cleanup timeouts on unmount
@@ -498,6 +522,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   }
                 }}
                 playsInline
+                muted
+                autoPlay
               />
             </div>
             {showSkipButton && (
@@ -675,6 +701,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onError={handleVideoError}
               onEnded={onVideoEnd}
               playsInline
+              muted
             />
           )}
         </>
