@@ -281,7 +281,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   };
 
   // Show controls on mouse move and auto-hide after 3 seconds
+  // Also handle touch events for mobile
   const handleMouseMove = () => {
+    setShowControls(true);
+    
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3000);
+  };
+
+  // Handle touch events for mobile devices
+  const handleTouch = () => {
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
@@ -309,6 +323,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     <div 
       className="relative w-full h-screen bg-black"
       onMouseMove={handleMouseMove}
+      onTouchStart={handleTouch}
+      onTouchMove={handleTouch}
       onMouseLeave={() => {
         if (controlsTimeoutRef.current) {
           clearTimeout(controlsTimeoutRef.current);
@@ -356,23 +372,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Loading indicator */}
       {isLoading && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center">
+          <div className="text-center p-4">
             <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white">Chargement de la vidéo...</p>
+            <p className="text-white text-sm sm:text-base">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
 
       {/* Error display */}
       {error && !showAd && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-6 bg-black/80 rounded-lg max-w-md">
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
+          <div className="text-center p-6 bg-black/80 rounded-lg max-w-md w-full">
             <div className="text-red-500 text-4xl mb-4">⚠️</div>
             <h3 className="text-xl font-bold text-white mb-2">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-4">{error}</p>
+            <p className="text-gray-300 mb-4 text-sm">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 bg-white text-black rounded hover:bg-gray-200 transition-colors text-sm"
             >
               Réessayer
             </button>
@@ -390,7 +406,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 value={currentSeason.toString()} 
                 onValueChange={(value) => onSeasonChange(parseInt(value))}
               >
-                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs md:text-sm">
+                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
                   <SelectValue placeholder="S" />
                 </SelectTrigger>
                 <SelectContent>
@@ -408,7 +424,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 value={currentEpisode.toString()} 
                 onValueChange={(value) => onEpisodeChange(parseInt(value))}
               >
-                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs md:text-sm">
+                <SelectTrigger className="w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
                   <SelectValue placeholder="E" />
                 </SelectTrigger>
                 <SelectContent>
@@ -422,24 +438,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             )}
           </div>
           
-          <div className="flex space-x-1 md:space-x-2">
+          <div className="flex space-x-1 sm:space-x-2">
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs md:text-sm"
+                className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
               >
-                <RotateCw className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                <span className="hidden md:inline">Passer l'intro</span>
+                <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">Passer l'intro</span>
+                <span className="sm:hidden">Intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-2 py-1 md:px-3 md:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs md:text-sm"
+                className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-1 rounded hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm"
               >
-                <SkipForward className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                <span className="hidden md:inline">Épisode suivant</span>
+                <SkipForward className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="hidden sm:inline">Épisode suivant</span>
+                <span className="sm:hidden">Suiv.</span>
               </button>
             )}
           </div>
@@ -453,10 +471,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={onPreviousEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 md:w-10 md:h-10 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 rounded-full"
                 disabled={currentEpisode <= 1}
               >
-                <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
             )}
           </div>
@@ -467,10 +485,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={onNextEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 md:w-10 md:h-10 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 rounded-full"
                 disabled={currentEpisode >= totalEpisodes}
               >
-                <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
             )}
           </div>
