@@ -130,17 +130,39 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Ad for non-authenticated users */}
+      {/* Ad for non-authenticated users - HilltopAds integration */}
       {showAd && (
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
           <div className="relative w-full h-full">
-            <iframe
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1"
-              className="w-full h-full"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              title="Publicité YouTube"
-            />
+            {/* HilltopAds integration */}
+            <div 
+              id="hilltopads-zone-1" 
+              className="w-full h-full flex items-center justify-center"
+            >
+              {/* Conteneur pour HilltopAds */}
+              <div dangerouslySetInnerHTML={{ 
+                __html: `
+                <script type="text/javascript">
+                  var atOptions = {
+                    'key' : 'd0a26cf005980043c2e129630f0053e0',
+                    'format' : 'iframe',
+                    'height' : '100%',
+                    'width' : '100%',
+                    'params' : {}
+                  };
+                  if (document.getElementById('hilltopads-script-1')) {
+                    document.getElementById('hilltopads-script-1').remove();
+                  }
+                  var script = document.createElement('script');
+                  script.id = 'hilltopads-script-1';
+                  script.type = 'text/javascript';
+                  script.async = true;
+                  script.src = 'https://hilltopads.net/pcode/adult.php?' + Math.floor(Math.random()*99999999999);
+                  document.getElementById('hilltopads-zone-1').appendChild(script);
+                </script>
+                `
+              }} />
+            </div>
             <button
               onClick={skipAd}
               className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
