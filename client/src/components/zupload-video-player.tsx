@@ -56,6 +56,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
+    // Ne pas tenter de précharger les URLs d'iframe (Zupload embed)
+    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+      console.log('Préchargement ignoré pour l\'URL d\'intégration:', videoUrl);
+      return;
+    }
+    
     if (videoPreloadStartedRef.current || !mainVideoRef.current) return;
     
     videoPreloadStartedRef.current = true;
