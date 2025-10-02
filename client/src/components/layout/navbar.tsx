@@ -386,7 +386,7 @@ export default function Navbar() {
                     Inscription
                   </Button>
                   
-                  {/* Mobile: Icon buttons */}
+                  {/* Mobile: Single auth icon */}
                   <Button 
                     variant="ghost"
                     size="icon"
@@ -395,23 +395,10 @@ export default function Navbar() {
                       setAuthModalOpen(true);
                     }}
                     className="sm:hidden"
-                    title="Connexion"
-                    data-testid="mobile-login-button"
+                    title="Connexion / Inscription"
+                    data-testid="mobile-auth-button"
                   >
                     <User className="h-5 w-5" />
-                  </Button>
-                  <Button 
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setAuthModalTab("register");
-                      setAuthModalOpen(true);
-                    }}
-                    className="sm:hidden"
-                    title="Inscription"
-                    data-testid="mobile-register-button"
-                  >
-                    <UserPlus className="h-5 w-5" />
                   </Button>
                 </div>
               )}
