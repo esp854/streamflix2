@@ -78,6 +78,34 @@ export class PaymentService {
     return this.paypalClientId;
   }
 
+  // Get PayPal base URL
+  getPayPalBaseUrl(): string {
+    return this.paypalMode === 'live'
+      ? 'https://api.paypal.com'
+      : 'https://api.sandbox.paypal.com';
+  }
+
+  // Get PayPal access token
+  private async getPayPalAccessToken(): Promise<string> {
+    const auth = Buffer.from(`${this.paypalClientId}:${this.paypalClientSecret}`).toString('base64');
+
+    const response = await fetch(`${this.getPayPalBaseUrl()}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get PayPal access token');
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  }
+
   // Test PayPal configuration
   async testPayPalConfiguration(): Promise<{ configured: boolean; accessToken?: boolean; error?: string }> {
     try {
@@ -90,6 +118,50 @@ export class PaymentService {
       return { configured: true, accessToken: !!accessToken };
     } catch (error: any) {
       return { configured: false, error: error.message };
+    }
+  }
+
+  // Generate PayPal client token for SDK v6
+  async generatePayPalClientToken(): Promise<string> {
+    try {
+      // Check if PayPal is configured
+      if (!this.isPayPalConfigured()) {
+        throw new Error("PayPal n'est pas configuré");
+      }
+
+      // Get access token
+      const accessToken = await this.getPayPalAccessToken();
+      
+      // Get domains from environment variables
+      const merchantDomains = process.env.PAYPAL_MERCHANT_DOMAINS 
+        ? process.env.PAYPAL_MERCHANT_DOMAINS.split(',') 
+        : [process.env.CLIENT_URL?.replace('http://', '').replace('https://', '') || 'localhost:5173'];
+
+      // Generate client token using PayPal API
+      const paypalBaseUrl = this.getPayPalBaseUrl();
+      const response = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          'response_type': 'client_token',
+          'domains[]': merchantDomains.join(','),
+          'grant_type': 'client_credentials'
+        }).toString()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate client token: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+
+      const clientTokenData = await response.json();
+      return clientTokenData.access_token;
+    } catch (error: any) {
+      console.error("Error generating PayPal client token:", error);
+      throw new Error(`Impossible de générer le jeton client PayPal: ${error.message}`);
     }
   }
 
@@ -281,33 +353,6 @@ export class PaymentService {
       console.error("Error processing Lygos webhook:", error);
       throw new Error("Failed to process webhook");
     }
-  }
-
-  // PayPal methods
-  private getPayPalBaseUrl(): string {
-    return this.paypalMode === 'live'
-      ? 'https://api.paypal.com'
-      : 'https://api.sandbox.paypal.com';
-  }
-
-  private async getPayPalAccessToken(): Promise<string> {
-    const auth = Buffer.from(`${this.paypalClientId}:${this.paypalClientSecret}`).toString('base64');
-
-    const response = await fetch(`${this.getPayPalBaseUrl()}/v1/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get PayPal access token');
-    }
-
-    const data = await response.json();
-    return data.access_token;
   }
 
   // Create a payment using PayPal

@@ -11,7 +11,7 @@ const cspMiddleware = () => {
     name: 'csp-middleware',
     configureServer(server: any) {
       server.middlewares.use((req: any, res: any, next: any) => {
-        // Add CSP header to allow Zupload domains
+        // Add CSP header to allow Zupload domains and PayPal SDK
         res.setHeader(
           'Content-Security-Policy',
           `default-src 'self'; ` +
@@ -82,5 +82,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter'],
     exclude: ['chunk-IPDEAFVS']
+  },
+  // Add environment variables
+  define: {
+    'import.meta.env.VITE_PAYPAL_SDK_URL': JSON.stringify(process.env.VITE_PAYPAL_SDK_URL || 'https://www.sandbox.paypal.com/web-sdk/v6/core')
   }
 });

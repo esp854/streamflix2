@@ -31,6 +31,7 @@ import Series from "@/pages/series";
 import ZuploadTest from "@/pages/zupload-test";
 import ZuploadEpisodeTest from "@/pages/zupload-episode-test";
 import ZuploadDirectTest from "@/pages/zupload-direct-test";
+import TestPayPalSDK from "@/pages/test-paypal-sdk";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
@@ -88,6 +89,7 @@ function Router() {
       <Route path="/zupload-test" component={ZuploadTest} />
       <Route path="/zupload-episode-test" component={ZuploadEpisodeTest} />
       <Route path="/zupload-direct-test" component={ZuploadDirectTest} />
+      <Route path="/test-paypal-sdk" component={TestPayPalSDK} />
       
       {/* Regular routes with navbar/footer */}
       <Route path="/" component={Home} />

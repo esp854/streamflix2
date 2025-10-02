@@ -4326,6 +4326,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   console.log('Subscription plans route registered'); // Debug log
 
+  // Get PayPal client token for SDK v6
+  app.post("/api/paypal/client-token", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+
+      // Check if PayPal is configured
+      if (!paymentService.isPayPalConfigured()) {
+        return res.status(500).json({ error: "PayPal n'est pas configuré" });
+      }
+
+      // Get domains from environment variables
+      const merchantDomains = process.env.PAYPAL_MERCHANT_DOMAINS 
+        ? process.env.PAYPAL_MERCHANT_DOMAINS.split(',') 
+        : ['localhost:5173'];
+
+      // Generate client token using PayPal API
+      const accessToken = await paymentService.getPayPalAccessToken();
+      
+      const paypalBaseUrl = paymentService.getPayPalBaseUrl();
+      const response = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          'response_type': 'client_token',
+          'domains[]': merchantDomains.join(','),
+          'grant_type': 'client_credentials'
+        }).toString()
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to generate client token: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+
+      const clientTokenData = await response.json();
+      const clientToken = clientTokenData.access_token;
+
+      res.json({ clientToken });
+    } catch (error: any) {
+      console.error("Error generating PayPal client token:", error);
+      res.status(500).json({ 
+        error: "Impossible de générer le jeton client PayPal", 
+        details: error.message 
+      });
+    }
+  });
+
+  // Get PayPal client token for SDK v6
+  app.post("/api/paypal/client-token", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+
+      // Check if PayPal is configured
+      if (!paymentService.isPayPalConfigured()) {
+        return res.status(500).json({ error: "PayPal n'est pas configuré" });
+      }
+
+      // Generate client token using payment service
+      const clientToken = await paymentService.generatePayPalClientToken();
+
+      res.json({ clientToken });
+    } catch (error: any) {
+      console.error("Error generating PayPal client token:", error);
+      res.status(500).json({ 
+        error: "Impossible de générer le jeton client PayPal", 
+        details: error.message 
+      });
+    }
+  });
+
   // Check payment status
   app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
     try {
