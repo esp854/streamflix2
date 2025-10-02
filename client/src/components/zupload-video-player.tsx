@@ -36,7 +36,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const adVideoRef = useRef<HTMLVideoElement>(null);
+  const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(!isAuthenticated);
@@ -48,15 +49,43 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
+  const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
   // URL VAST de HilltopAds
   const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
 
+  // Précharger la vidéo principale pour accélérer le chargement
+  const preloadMainVideo = () => {
+    if (videoPreloadStartedRef.current || !mainVideoRef.current) return;
+    
+    videoPreloadStartedRef.current = true;
+    console.log('Préchargement de la vidéo principale:', videoUrl);
+    
+    // Créer un objet vidéo temporaire pour le préchargement
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'auto';
+    tempVideo.src = videoUrl;
+    
+    // Écouter les événements de chargement
+    tempVideo.addEventListener('loadeddata', () => {
+      console.log('Vidéo principale préchargée avec succès');
+    });
+    
+    tempVideo.addEventListener('error', (e) => {
+      console.error('Erreur de préchargement de la vidéo:', e);
+    });
+    
+    // Nettoyer après 30 secondes si la vidéo n'est pas utilisée
+    setTimeout(() => {
+      tempVideo.remove();
+    }, 30000);
+  };
+
   // Fonction pour charger la pub VAST via IMA
   async function loadVastAd() {
-    if (!videoRef.current) return;
+    if (!adVideoRef.current) return;
 
-    const videoEl = videoRef.current;
+    const videoEl = adVideoRef.current;
 
     try {
       const response = await fetch(vastTag);
@@ -68,7 +97,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       const ads = xml.querySelectorAll('Ad');
       if (!ads.length) {
         console.warn('Pas de Ad dans le VAST');
-        videoEl.src = videoUrl; // pas de pub, lance la vidéo normale
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
         setIsLoading(false);
         setIsAdPlaying(false);
         return;
@@ -88,7 +119,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
       if (!adUrls.length) {
         console.warn('Pas de MediaFile dans le VAST');
-        videoEl.src = videoUrl; // pas de pub, lance la vidéo normale
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
         setIsLoading(false);
         setIsAdPlaying(false);
         return;
@@ -102,18 +135,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       playNextAd();
     } catch (err) {
       console.error('Erreur chargement VAST:', err);
-      videoEl.src = videoUrl; // fallback
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoUrl; // fallback
+        mainVideoRef.current.play();
+      }
       setIsAdPlaying(false);
-      videoEl.play();
       setIsLoading(false);
     }
   }
 
   // Fonction pour jouer la pub suivante
   const playNextAd = () => {
-    if (!videoRef.current) return;
+    if (!adVideoRef.current) return;
 
-    const videoEl = videoRef.current;
+    const videoEl = adVideoRef.current;
     
     // Vérifier s'il y a une pub suivante
     if (currentAdIndexRef.current < adQueueRef.current.length) {
@@ -122,7 +157,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Lecture de la pub
       videoEl.src = adUrl;
       setIsAdPlaying(true);
-      videoEl.play();
+      videoEl.play().catch(error => {
+        console.error('Erreur de lecture de la pub:', error);
+      });
       
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
@@ -137,9 +174,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }, 15000); // 15 secondes
     } else {
       // Toutes les pubs ont été jouées, lancer la vidéo principale
-      videoEl.src = videoUrl;
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoUrl;
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture de la vidéo principale:', error);
+        });
+      }
       setIsAdPlaying(false);
-      videoEl.play();
       setIsLoading(false);
       
       // Nettoyer le timeout du bouton skip
@@ -168,6 +209,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   useEffect(() => {
     setIsLoading(true);
     setError(null);
+    videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
   }, [videoUrl]);
 
   // Handle ad for non-authenticated users
@@ -176,33 +218,50 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setShowAd(true);
       loadVastAd();
       
+      // Précharger la vidéo principale pendant la lecture de la pub
+      setTimeout(() => {
+        preloadMainVideo();
+      }, 2000); // Commencer le préchargement après 2 secondes
+      
       const timer = setTimeout(() => {
         setShowAd(false);
         setAdSkipped(true);
         // Réinitialiser l'état de chargement après la fin de la pub
         setIsLoading(true);
       }, 60000); // 60 seconds ad (augmenté pour gérer plusieurs pubs)
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (skipButtonTimeoutRef.current) {
+          clearTimeout(skipButtonTimeoutRef.current);
+        }
+      };
     } else {
       setShowAd(false);
       // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
       if (!isAuthenticated || adSkipped) {
         setIsLoading(true);
+        // Précharger la vidéo immédiatement pour les utilisateurs authentifiés
+        setTimeout(() => {
+          preloadMainVideo();
+        }, 100);
       }
     }
   }, [isAuthenticated, adSkipped]);
 
   const skipAd = () => {
-    if (videoRef.current) {
-      // Passer toutes les pubs restantes et lancer la vidéo principale
-      videoRef.current.src = videoUrl;
-      setIsAdPlaying(false);
-      videoRef.current.play();
-      
-      // Nettoyer les files d'attente
-      adQueueRef.current = [];
-      currentAdIndexRef.current = 0;
+    if (adVideoRef.current) {
+      // Arrêter la lecture de la pub
+      adVideoRef.current.pause();
     }
+    
+    // Passer toutes les pubs restantes et lancer la vidéo principale
+    if (mainVideoRef.current) {
+      mainVideoRef.current.src = videoUrl;
+      mainVideoRef.current.play().catch(error => {
+        console.error('Erreur de lecture après avoir passé la pub:', error);
+      });
+    }
+    setIsAdPlaying(false);
     setShowAd(false);
     setAdSkipped(true);
     // Réinitialiser l'état de chargement après avoir passé la pub
@@ -260,7 +319,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             {/* HilltopAds VAST integration */}
             <div className="w-full h-full flex items-center justify-center">
               <video
-                ref={videoRef}
+                ref={adVideoRef}
                 controls
                 width="100%"
                 height="100%"
@@ -272,8 +331,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   if (isAdPlaying) {
                     // Pub terminée, jouer la pub suivante ou la vidéo principale
                     playNextAd();
-                  } else {
-                    onVideoEnd?.();
                   }
                 }}
               />
@@ -417,7 +474,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Main video player for authenticated users or after ad is skipped */}
       {!showAd && (
         <video
-          ref={videoRef}
+          ref={mainVideoRef}
           controls
           width="100%"
           height="100%"
