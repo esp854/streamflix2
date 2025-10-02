@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import PayPalButton from "./PayPalButton";
 
 const plans = [
   { key: "basic", name: "Basic", price: 2000 },
@@ -23,7 +22,6 @@ export default function Payment() {
     phone: ""
   });
   const [providers, setProviders] = useState({ lygos: false, paypal: false });
-  const [selectedPlan, setSelectedPlan] = useState(null);
 
   // Prefill customer info from user data
   useEffect(() => {
@@ -107,9 +105,6 @@ export default function Payment() {
       } else if (res.data.qrCode) {
         setQrCode(res.data.qrCode);
         setPaymentId(res.data.paymentId || res.data.id);
-      } else if (res.data.orderId) {
-        // PayPal order created, store the selected plan for PayPal button
-        setSelectedPlan(planKey);
       } else {
         // If we don't get a payment link, show a message
         toast({
@@ -178,26 +173,6 @@ export default function Payment() {
         variant: "destructive"
       });
     }
-  };
-
-  const handlePayPalSuccess = () => {
-    toast({
-      title: "Paiement réussi",
-      description: "Votre paiement PayPal a été traité avec succès ! Votre abonnement est maintenant actif.",
-    });
-    // Reset the form
-    setQrCode(null);
-    setPaymentId(null);
-    setStatus("");
-    setSelectedPlan(null);
-  };
-
-  const handlePayPalError = (error) => {
-    toast({
-      title: "Erreur PayPal",
-      description: "Une erreur s'est produite lors du traitement de votre paiement PayPal: " + error,
-      variant: "destructive"
-    });
   };
 
   if (!isAuthenticated) {
@@ -339,28 +314,6 @@ export default function Payment() {
           </div>
         ))}
       </div>
-
-      {/* PayPal Button Integration */}
-      {selectedPlan && providers.paypal && (
-        <div style={{ 
-          marginTop: "30px", 
-          padding: "20px", 
-          border: "1px solid #0070ba", 
-          borderRadius: "8px",
-          backgroundColor: "#f0f8ff"
-        }}>
-          <h3>Finalisez votre paiement avec PayPal</h3>
-          <p style={{ marginBottom: "15px" }}>
-            Cliquez sur le bouton ci-dessous pour finaliser votre paiement PayPal.
-          </p>
-          <PayPalButton
-            planId={selectedPlan}
-            amount={plans.find(p => p.key === selectedPlan)?.price || 0}
-            onSuccess={handlePayPalSuccess}
-            onError={handlePayPalError}
-          />
-        </div>
-      )}
 
       {qrCode && (
         <div style={{ marginTop: "30px", textAlign: "center" }}>

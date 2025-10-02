@@ -47,8 +47,6 @@ Pour configurer les paiements PayPal et les webhooks :
    PAYPAL_CLIENT_SECRET=votre_client_secret
    PAYPAL_MODE=sandbox # ou 'live' pour la production
    PAYPAL_WEBHOOK_ID=votre_webhook_id # Obtenu après création du webhook
-   PAYPAL_SDK_URL=https://www.sandbox.paypal.com/web-sdk/v6/core # URL du SDK PayPal v6
-   PAYPAL_MERCHANT_DOMAINS=localhost:5173,localhost:5000 # Domaines autorisés
    ```
 4. Créer un webhook PayPal avec l'URL : `https://votre-domaine.com/api/webhook/paypal`
 5. Sélectionner les événements suivants :
@@ -57,18 +55,6 @@ Pour configurer les paiements PayPal et les webhooks :
    - PAYMENT.CAPTURE.REFUNDED
    - BILLING.SUBSCRIPTION.CREATED
    - BILLING.SUBSCRIPTION.CANCELLED
-
-## Intégration du SDK PayPal v6
-
-StreamFlix utilise maintenant le SDK PayPal v6 JavaScript pour une expérience de paiement améliorée :
-
-- Chargement dynamique du SDK pour de meilleures performances
-- Authentification sécurisée avec clientToken
-- Support des modes de présentation (popup, modal, redirect)
-- Personnalisation avancée du bouton PayPal
-- Gestion complète des événements de paiement
-
-Documentation détaillée disponible dans `docs/paypal-sdk-v6-integration.md`
 
 ## Configuration Email
 
@@ -129,7 +115,7 @@ npm run dev:client
 - Backend : Express.js, TypeScript
 - Base de données : PostgreSQL avec Drizzle ORM
 - Authentification : JWT
-- Paiements : PayPal REST API et SDK v6
+- Paiements : PayPal REST API
 - Emails : Nodemailer avec Gmail
 
 ## Documentation
@@ -140,5 +126,4 @@ npm run dev:client
 - `LYGOS_INTEGRATION_SUMMARY.md` - Documentation de l'intégration Lygos
 - `EMAIL_CONFIGURATION.md` - Guide de configuration des emails
 - `GMAIL_SETUP_GUIDE.md` - Guide détaillé de configuration Gmail
-- `docs/paypal-sdk-v6-integration.md` - Documentation de l'intégration du SDK PayPal v6
 - `server/TROUBLESHOOTING_CHECKLIST.md` - Liste de vérification pour le dépannage des emails
