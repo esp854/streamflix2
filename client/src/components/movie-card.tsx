@@ -1,55 +1,35 @@
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader 
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { 
-  Calendar, 
-  Clock, 
-  Download, 
-  Eye, 
-  Play, 
-  Plus, 
-  Star, 
-  User 
-} from "lucide-react";
 import { Link } from "wouter";
-import { useAuth } from "@/contexts/auth-context";
+import { Play, Star, Plus, Heart, Share2 } from "lucide-react";
+import { TMDBMovie, GENRE_MAP } from "@/types/movie";
+import { tmdbService } from "@/lib/tmdb";
+import { Button } from "@/components/ui/button";
+import { useState, useRef, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useShare } from "@/hooks/use-share";
+import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { useOfflineContent } from "@/hooks/useOfflineContent";
-import { useContentPreloader } from "@/hooks/useContentPreloader";
-import LazyImage from "@/components/LazyImage";
-import { useTMDBImage } from "@/hooks/useImageOptimization";
 
 interface MovieCardProps {
-  movie: any;
-  size?: "sm" | "md" | "lg";
-  showDetails?: boolean;
-  onPlay?: () => void;
+  movie: TMDBMovie;
+  size?: "small" | "medium" | "large";
+  showOverlay?: boolean;
 }
 
-export default function MovieCard({ 
-  movie, 
-  size = "md", 
-  showDetails = false,
-  onPlay 
-}: MovieCardProps) {
-  const { user } = useAuth();
-  const { toggleFavorite, checkFavorite } = useFavorites();
-  const { toast } = useToast();
-  const { saveForOffline, isContentSavedOffline } = useOfflineContent();
-  const { preloadContent, preloadSimilarContent } = useContentPreloader();
-  const posterUrl = useTMDBImage(movie.poster_path, size === "sm" ? "w342" : size === "lg" ? "w780" : "w500");
-  
-  // Vérifier si le film est un favori
-  const { data: favoriteData } = checkFavorite(movie.id);
-  const isFavorite = favoriteData?.isFavorite || false;
-  
+export default function MovieCard({ movie, size = "medium", showOverlay = true }: MovieCardProps) {
+   const [imageError, setImageError] = useState(false);
+   const [showTrailer, setShowTrailer] = useState(false);
+   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+   const [isHovering, setIsHovering] = useState(false);
+   const videoRef = useRef<HTMLVideoElement>(null);
+   const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
+   const { shareContent } = useShare();
+   const { shouldRedirectToPayment } = useSubscriptionCheck();
+
+   // Check if movie is favorite
+   const { data: favoriteStatus } = checkFavorite(movie.id);
+   const isFavorite = favoriteStatus?.isFavorite || false;
+
   // Vérifier si le contenu est actif dans la base de données avec React Query pour le caching
   const { data: contentActiveData, isLoading: contentActiveLoading } = useQuery({
     queryKey: ["content-active", movie.id],
@@ -69,175 +49,215 @@ export default function MovieCard({
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
-  
-  // Ne pas afficher le film si son statut actif est false
-  if (contentActiveData === false) {
-    return null;
-  }
 
-  const handleToggleFavorite = async () => {
-    if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour ajouter aux favoris.",
-        action: (
-          <Link href="/login">
-            <Button variant="outline" size="sm">Se connecter</Button>
-          </Link>
-        ),
-      });
+  const contentActive = contentActiveData !== undefined ? contentActiveData : true;
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  // Load trailer when hovering
+  const loadTrailer = async () => {
+    if (trailerUrl) return; // Already loaded
+
+    try {
+      const details = await tmdbService.getMovieDetails(movie.id);
+      if (details.videos && details.videos.results) {
+        const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+        if (trailer) {
+          setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading trailer:', error);
+    }
+  };
+
+  // Handle mouse enter
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    loadTrailer();
+    // Start trailer after a short delay
+    trailerTimeoutRef.current = setTimeout(() => {
+      if (trailerUrl) {
+        setShowTrailer(true);
+      }
+    }, 500);
+  };
+
+  // Handle mouse leave
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    setShowTrailer(false);
+    if (trailerTimeoutRef.current) {
+      clearTimeout(trailerTimeoutRef.current);
+      trailerTimeoutRef.current = null;
+    }
+    // Pause video if playing
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (trailerTimeoutRef.current) {
+        clearTimeout(trailerTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handlePlayClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // If user should be redirected to payment page, redirect them
+    if (shouldRedirectToPayment) {
+      window.location.href = `/subscription`;
       return;
     }
     
-    try {
-      await toggleFavorite(movie, 'movie');
-      toast({
-        title: isFavorite ? "Retiré des favoris" : "Ajouté aux favoris",
-        description: isFavorite 
-          ? `"${movie.title}" a été retiré de vos favoris.` 
-          : `"${movie.title}" a été ajouté à vos favoris.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour les favoris.",
-        variant: "destructive"
-      });
-    }
+    window.location.href = `/watch/movie/${movie.id}`;
   };
 
-  const handleSaveForOffline = async () => {
-    try {
-      await saveForOffline({
-        ...movie,
-        contentType: 'movie'
-      });
-      toast({
-        title: "Contenu sauvegardé",
-        description: `"${movie.title}" a été ajouté à votre bibliothèque hors-ligne.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder le contenu.",
-        variant: "destructive"
-      });
-    }
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await toggleFavorite(movie, 'movie');
   };
 
-  const handleMouseEnter = () => {
-    // Précharger le contenu du film quand l'utilisateur passe la souris sur la carte
-    preloadContent({
-      id: movie.id.toString(),
-      type: 'movie',
-      url: `/movie/${movie.id}`,
-      priority: 'medium'
-    });
-    
-    // Précharger les contenus similaires
-    preloadSimilarContent(movie.id.toString(), 'movie');
+  const handleAddToList = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: Implement watchlist functionality (separate from favorites)
+    console.log('Add to watchlist:', movie.title);
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await shareContent(movie, 'movie');
   };
 
   const sizeClasses = {
-    sm: "w-48",
-    md: "w-56",
-    lg: "w-64"
+    small: "w-32 sm:w-40 md:w-48",
+    medium: "w-40 sm:w-48 md:w-56",
+    large: "w-48 sm:w-56 md:w-64",
   };
 
-  const posterSize = {
-    sm: "h-64",
-    md: "h-72",
-    lg: "h-80"
+  const heightClasses = {
+    small: "h-48 sm:h-60 md:h-72",
+    medium: "h-60 sm:h-72 md:h-80",
+    large: "h-72 sm:h-80 md:h-96",
   };
+
+  const genres = movie.genre_ids?.slice(0, 2).map(id => GENRE_MAP[id]).filter(Boolean) || [];
+
+  // Si le contenu n'est pas actif, on ne l'affiche pas
+  if (!contentActive) {
+    return null;
+  }
 
   return (
-    <Card 
-      className={`${sizeClasses[size]} flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-lg`}
+    <Link
+      href={`/movie/${movie.id}`}
+      className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer movie-card block`}
+      data-testid={`movie-card-${movie.id}`}
       onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <CardHeader className="p-0 relative group">
-        <Link href={`/movie/${movie.id}`}>
-          <div className="relative overflow-hidden rounded-t-lg">
-            <LazyImage
-              src={posterUrl}
-              alt={movie.title}
-              className={`${posterSize[size]} w-full object-cover transition-transform duration-300 group-hover:scale-110`}
-              loading="lazy"
+        <div className="relative overflow-hidden rounded-md transition-transform duration-300 group-hover:scale-105">
+          {showTrailer && trailerUrl ? (
+            <iframe
+              ref={videoRef as any}
+              src={trailerUrl}
+              className={`w-full ${heightClasses[size]} object-cover`}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              title={`${movie.title} trailer`}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-              <div className="text-white space-y-2 w-full">
-                <h3 className="font-bold text-lg line-clamp-2">{movie.title}</h3>
-                <div className="flex items-center gap-2 text-sm">
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span>{movie.vote_average?.toFixed(1)}</span>
-                  <span>•</span>
-                  <Calendar className="w-4 h-4" />
-                  <span>{movie.release_date?.substring(0, 4) || 'N/A'}</span>
+          ) : (
+            <img
+              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(movie.poster_path)}
+              alt={movie.title}
+              className={`w-full ${heightClasses[size]} object-cover`}
+              onError={handleImageError}
+              data-testid={`movie-poster-${movie.id}`}
+            />
+          )}
+          
+          {showOverlay && (
+            <>
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
+              
+              {/* Play overlay */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <button 
+                  onClick={handlePlayClick}
+                  className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
+                >
+                  <Play className="w-5 h-5 ml-1" />
+                </button>
+              </div>
+              
+              {/* Rating badge */}
+              {movie.vote_average > 0 && (
+                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`movie-rating-${movie.id}`}>
+                  <Star className="w-3 h-3 fill-current" />
+                  <span>{movie.vote_average.toFixed(1)}</span>
                 </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={handleToggleFavorite}
+                  disabled={isAddingToFavorites}
+                  className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
+                  data-testid={`button-favorite-${movie.id}`}
+                  title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={handleAddToList}
+                  className="w-8 h-8 rounded-full bg-black/50 text-white"
+                  data-testid={`button-add-list-${movie.id}`}
+                  title="Ajouter à ma liste"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  onClick={handleShare}
+                  className="w-8 h-8 rounded-full bg-black/50 text-white"
+                  data-testid={`button-share-${movie.id}`}
+                  title="Partager"
+                >
+                  <Share2 className="w-4 h-4" />
+                </Button>
               </div>
-            </div>
-            
-            {/* Bouton de sauvegarde hors-ligne */}
-            <Button
-              variant="secondary"
-              size="icon"
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSaveForOffline();
-              }}
-              disabled={isContentSavedOffline(movie.id)}
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-          </div>
-        </Link>
+            </>
+          )}
+        </div>
         
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 left-2 bg-black/50 hover:bg-black/70 text-white rounded-full w-8 h-8"
-          onClick={handleToggleFavorite}
-        >
-          <Plus className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
-        </Button>
-      </CardHeader>
-      
-      {showDetails && (
-        <CardContent className="p-4">
-          <div className="space-y-2">
-            <Badge variant="secondary" className="text-xs">
-              Film
-            </Badge>
-            
-            <p className="text-sm text-muted-foreground line-clamp-3">
-              {movie.overview}
+        <div className="mt-2 sm:mt-3" data-testid={`movie-info-${movie.id}`}>
+          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`movie-title-${movie.id}`}>
+            {movie.title}
+          </h3>
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`movie-year-${movie.id}`}>
+              {new Date(movie.release_date).getFullYear()} • {genres.join(", ")}
             </p>
-            
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{movie.runtime || 'N/A'} min</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                <span>{movie.vote_count || 0}</span>
-              </div>
-            </div>
           </div>
-        </CardContent>
-      )}
-      
-      <CardFooter className="p-4 pt-0">
-        <Button 
-          className="w-full" 
-          onClick={onPlay || (() => window.location.href = `/watch/movie/${movie.id}`)}
-        >
-          <Play className="w-4 h-4 mr-2" />
-          Regarder
-        </Button>
-      </CardFooter>
-    </Card>
+        </div>
+    </Link>
   );
 }

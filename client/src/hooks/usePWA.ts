@@ -213,25 +213,6 @@ export function usePWA() {
     }
   };
 
-  // Preload content for better performance
-  const preloadContent = (urls: string[]) => {
-    if (registration && registration.active) {
-      registration.active.postMessage({
-        command: 'PRELOAD_CONTENT',
-        urls
-      });
-    }
-  };
-
-  // Clear API cache
-  const clearAPICache = () => {
-    if (registration && registration.active) {
-      registration.active.postMessage({
-        command: 'CLEAR_API_CACHE'
-      });
-    }
-  };
-
   return {
     isInstallable,
     isInstalled,
@@ -244,9 +225,7 @@ export function usePWA() {
     updateAvailable,
     updateServiceWorker,
     prefetchContent,
-    preloadContent,
     invalidateContentCache,
-    clearAPICache,
     canShare: !!navigator.share,
     canInstall: isInstallable && !isInstalled,
     canSync: registration?.sync !== undefined
