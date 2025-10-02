@@ -425,20 +425,7 @@ function WatchTVContent() {
     }
   }, [tvId, currentSeason, currentEpisode]);
 
-  // Handle favorite toggle
-  const handleFavoriteToggle = async () => {
-    if (!isAuthenticated) {
-      // Redirect to login page with return URL
-      window.location.href = `/login?redirect=/watch/tv/${tvId}/${currentSeason}/${currentEpisode}`;
-      return;
-    }
-    
-    try {
-      await toggleFavorite(tvId);
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-    }
-  };
+
 
   if (isLoading) {
     return (
@@ -866,21 +853,20 @@ function WatchTVContent() {
   // Handle regular video
   return (
     <div className="flex flex-col min-h-screen bg-black">
-      {/* Video Player */}
+      {/* Zupload Video Player Only */}
       <div className="relative w-full aspect-video bg-black">
         {contentWithVideo?.odyseeUrl ? (
-          <video
-            ref={videoRef}
-            src={contentWithVideo.odyseeUrl}
-            className="w-full h-full"
-            controls={false}
-            autoPlay
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
-            onLoadedMetadata={(e) => setDuration((e.target as HTMLVideoElement).duration)}
-            onWaiting={() => setIsBuffering(true)}
-            onPlaying={() => setIsBuffering(false)}
+          <ZuploadVideoPlayer 
+            videoUrl={contentWithVideo.odyseeUrl} 
+            title={`${tvDetails?.name} - S${currentSeason} E${currentEpisode}` || "Épisode"}
+            currentSeason={currentSeason}
+            currentEpisode={currentEpisode}
+            totalSeasons={tvDetails?.number_of_seasons || 1}
+            totalEpisodes={seasonDetails?.episodes?.length || 10}
+            onSeasonChange={(season) => window.location.href = `/watch/tv/${tvId}/${season}/1`}
+            onEpisodeChange={(episode) => window.location.href = `/watch/tv/${tvId}/${currentSeason}/${episode}`}
+            onNextEpisode={goToNextEpisode}
+            onPreviousEpisode={goToPreviousEpisode}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-900">
@@ -892,213 +878,7 @@ function WatchTVContent() {
             </div>
           </div>
         )}
-        
-        {/* Video Controls Overlay */}
-        {showControls && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end">
-            <div className="p-4">
-              <Slider
-                value={[currentTime]}
-                onValueChange={handleSeek}
-                max={duration}
-                step={1}
-                className="mb-2"
-              />
-              <div className="flex justify-between items-center text-white text-sm">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-            
-            <div className="flex justify-between items-center p-4">
-              <div className="flex items-center space-x-2 md:space-x-4">
-                <Button
-                  onClick={handlePlayPause}
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20 w-8 h-8 md:w-10 md:h-10"
-                >
-                  {isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6" /> : <Play className="w-4 h-4 md:w-6 md:h-6" />}
-                </Button>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    onClick={handleMute}
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
-                  >
-                    {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
-                  </Button>
-                  <Slider
-                    value={volume}
-                    onValueChange={handleVolumeChange}
-                    max={100}
-                    step={1}
-                    className="w-16 md:w-24"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-1 md:space-x-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
-                    >
-                      <Settings className="w-4 h-4 md:w-5 md:h-5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 md:w-56 bg-black/90 border-white/20 p-3 md:p-4" side="top">
-                    <div className="space-y-3 md:space-y-4">
-                      <div>
-                        <label className="text-white text-xs md:text-sm font-medium">Vitesse de lecture</label>
-                        <Select value={playbackSpeed.toString()} onValueChange={handlePlaybackSpeedChange}>
-                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0.25">0.25x</SelectItem>
-                            <SelectItem value="0.5">0.5x</SelectItem>
-                            <SelectItem value="0.75">0.75x</SelectItem>
-                            <SelectItem value="1">Normal</SelectItem>
-                            <SelectItem value="1.25">1.25x</SelectItem>
-                            <SelectItem value="1.5">1.5x</SelectItem>
-                            <SelectItem value="1.75">1.75x</SelectItem>
-                            <SelectItem value="2">2x</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-white text-xs md:text-sm font-medium">Qualité</label>
-                        <Select value={quality} onValueChange={handleQualityChange}>
-                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="240p">240p</SelectItem>
-                            <SelectItem value="360p">360p</SelectItem>
-                            <SelectItem value="480p">480p</SelectItem>
-                            <SelectItem value="720p">720p HD</SelectItem>
-                            <SelectItem value="1080p">1080p Full HD</SelectItem>
-                            <SelectItem value="4k">4K Ultra HD</SelectItem>
-                            <SelectItem value="auto">Auto</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-white text-xs md:text-sm font-medium">Sous-titres</label>
-                        <Select value={quality} onValueChange={handleQualityChange}>
-                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="off">Désactivés</SelectItem>
-                            <SelectItem value="fr">Français</SelectItem>
-                            <SelectItem value="en">Anglais</SelectItem>
-                            <SelectItem value="es">Espagnol</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                
-                <Button
-                  onClick={toggleFullscreen}
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
-                >
-                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-      
-      {/* TV Show Details */}
-      <div className="container mx-auto px-4 py-6 flex-grow">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="md:w-2/3">
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              {tvDetails?.name} - S{currentSeason} E{currentEpisode}
-            </h1>
-            
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300 mb-4">
-              <span>{tvDetails?.first_air_date?.substring(0, 4)}</span>
-              <span>•</span>
-              {tvDetails?.genres?.map((genre: any) => genre.name).join(', ')}
-            </div>
-            
-            <p className="text-gray-300 mb-6">{episodeData?.overview || tvDetails?.overview}</p>
-            
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                onClick={handleFavoriteToggle}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-                {isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              </Button>
-              
-              <Button
-                onClick={goToPreviousEpisode}
-                variant="outline"
-                className="flex items-center gap-2"
-                disabled={currentSeason === 1 && currentEpisode === 1}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Épisode précédent
-              </Button>
-              
-              <Button
-                onClick={goToNextEpisode}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                Épisode suivant
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="md:w-1/3">
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h2 className="text-xl font-bold text-white mb-4">Détails</h2>
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-gray-400">Note:</span>
-                  <span className="text-white ml-2">{tvDetails?.vote_average?.toFixed(1)}/10</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Popularité:</span>
-                  <span className="text-white ml-2">{tvDetails?.popularity}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Statut:</span>
-                  <span className="text-white ml-2">{tvDetails?.status}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Langue:</span>
-                  <span className="text-white ml-2">{tvDetails?.original_language}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Advertisement Banner */}
-      {shouldShowAds && (
-        <div className="py-4">
-          <AdvertisementBanner />
-        </div>
-      )}
     </div>
   );
 }
