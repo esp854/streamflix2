@@ -68,6 +68,21 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
+  // Allow requests to PayPal and Google domains
+  const allowedExternalDomains = [
+    'www.paypal.com',
+    'www.paypalobjects.com',
+    'api.paypal.com',
+    'www.sandbox.paypal.com',
+    'www.googletagmanager.com',
+    'www.google-analytics.com'
+  ];
+
+  if (allowedExternalDomains.includes(url.hostname)) {
+    // For external domains, bypass service worker and fetch directly
+    return;
+  }
+
   // Handle image requests with specific image cache
   if (url.hostname === 'image.tmdb.org') {
     event.respondWith(
