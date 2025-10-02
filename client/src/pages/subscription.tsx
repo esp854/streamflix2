@@ -137,7 +137,7 @@ function SubscriptionPage() {
     email: "",
     phone: "",
   });
-  const [providers, setProviders] = useState({ lygos: false, paypal: false });
+  const [providers, setProviders] = useState({ paypal: false });
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [paypalPaymentId, setPaypalPaymentId] = useState<string | null>(null);
   const [paypalLoaded, setPaypalLoaded] = useState(false);
@@ -164,7 +164,8 @@ function SubscriptionPage() {
         const res = await fetch("/api/subscription/payment-providers");
         if (res.ok) {
           const data = await res.json();
-          setProviders(data);
+          // Only keep PayPal provider
+          setProviders({ paypal: data.paypal || false });
         }
       } catch (error) {
         console.error("Error fetching payment providers:", error);
@@ -348,7 +349,7 @@ function SubscriptionPage() {
       }
 
       // For paid plans, use the specific provider endpoint
-      const endpoint = provider === 'paypal' ? '/api/subscription/create-payment-paypal' : '/api/subscription/create-payment-lygos';
+      const endpoint = '/api/subscription/create-payment-paypal';
       const res = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
@@ -433,14 +434,8 @@ function SubscriptionPage() {
       return;
     }
 
-    if (selectedProvider === 'paypal') {
-      // Handle PayPal payment directly on site
-      await handlePayPalPayment();
-    } else {
-      // Handle Lygos payment
-      setIsProcessing(true);
-      createPayment.mutate({ planId: selectedPlan, provider: selectedProvider });
-    }
+    // Redirect to PayPal payment page
+    setLocation(`/paypal-payment?plan=${selectedPlan}`);
   };
 
   const handlePayPalPayment = async () => {
@@ -704,195 +699,81 @@ function SubscriptionPage() {
 
       {/* Customer info form + payment */}
       {selectedPlan && (
-        <>
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Informations de facturation</CardTitle>
-              <CardDescription>Remplissez vos informations pour procéder au paiement</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <CreditCard className="w-6 h-6 text-blue-500"/>Finaliser votre abonnement
+            </CardTitle>
+            <CardDescription>
+              Vous serez redirigé vers la page de paiement sécurisé PayPal
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <Label htmlFor="name">Nom complet *</Label>
-                  <Input id="name" value={customerInfo.name} onChange={(e) => setCustomerInfo((p) => ({ ...p, name: e.target.value }))} placeholder="Votre nom complet" required />
+                  <p className="font-medium">Plan {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}</p>
+                  <p className="text-sm text-muted-foreground">Abonnement mensuel</p>
                 </div>
-                <div>
-                  <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" value={customerInfo.email} onChange={(e) => setCustomerInfo((p) => ({ ...p, email: e.target.value }))} placeholder="votre@email.com" required />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="phone">Téléphone (optionnel)</Label>
-                  <Input id="phone" value={customerInfo.phone} onChange={(e) => setCustomerInfo((p) => ({ ...p, phone: e.target.value }))} placeholder="+221 XX XXX XX XX" />
-                </div>
-
-                <div className="md:col-span-2">
-                  <Label className="text-base font-medium">Choisissez votre méthode de paiement</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                    {providers.lygos && (
-                      <div
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          selectedProvider === 'lygos' ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-300'
-                        }`}
-                        onClick={() => setSelectedProvider('lygos')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">L</span>
-                          </div>
-                          <div>
-                            <h4 className="font-medium">Lygos</h4>
-                            <p className="text-sm text-muted-foreground">Portefeuille mobile</p>
-                          </div>
-                        </div>
-                        <p className="text-xs mt-2 text-muted-foreground">
-                          Orange Money, MTN Mobile Money, Wave
-                        </p>
-                      </div>
-                    )}
-                    {providers.paypal && (
-                      <div
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          selectedProvider === 'paypal' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
-                        }`}
-                        onClick={() => setSelectedProvider('paypal')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">P</span>
-                          </div>
-                          <div>
-                            <h4 className="font-medium">PayPal</h4>
-                            <p className="text-sm text-muted-foreground">Carte bancaire</p>
-                          </div>
-                        </div>
-                        <p className="text-xs mt-2 text-muted-foreground">
-                          Visa, Mastercard, PayPal
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {!providers.lygos && !providers.paypal && (
-                    <p className="text-red-600 text-sm mt-2">Aucun fournisseur de paiement disponible</p>
+                <div className="text-right">
+                  <p className="text-2xl font-bold">
+                    {isFreePlan(selectedPlan) 
+                      ? "Gratuit" 
+                      : `${plans?.[selectedPlan]?.amount.toLocaleString('fr-FR') ?? '0'} ${plans?.[selectedPlan]?.currency ?? 'FCFA'}`}
+                  </p>
+                  {!isFreePlan(selectedPlan) && plans?.[selectedPlan] && (
+                    <p className="text-sm text-muted-foreground">par mois</p>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                {isFreePlan(selectedPlan) ? (
-                  <>
-                    <Shield className="w-6 h-6 text-green-500"/>Activer votre abonnement gratuit
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-6 h-6 text-blue-500"/>Finaliser votre abonnement
-                  </>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {isFreePlan(selectedPlan) 
-                  ? "Confirmez vos informations pour activer votre abonnement gratuit" 
-                  : selectedProvider === 'paypal' 
-                    ? "Paiement sécurisé via PayPal (Visa, Mastercard)" 
-                    : "Paiement sécurisé et crypté via Lygos"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">Plan {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}</p>
-                    <p className="text-sm text-muted-foreground">Abonnement mensuel</p>
+              {isFreePlan(selectedPlan) ? (
+                <div className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-green-500"/>
+                    <span className="font-medium">Abonnement gratuit</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">
-                      {isFreePlan(selectedPlan) 
-                        ? "Gratuit" 
-                        : `${plans?.[selectedPlan]?.amount.toLocaleString('fr-FR') ?? '0'} ${plans?.[selectedPlan]?.currency ?? 'FCFA'}`}
-                    </p>
-                    {!isFreePlan(selectedPlan) && plans?.[selectedPlan] && (
-                      <p className="text-sm text-muted-foreground">par mois</p>
-                    )}
-                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Votre abonnement gratuit sera activé immédiatement après confirmation
+                  </p>
                 </div>
-
-                {isFreePlan(selectedPlan) ? (
-                  <div className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-6 h-6 text-green-500"/>
-                      <span className="font-medium">Abonnement gratuit</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Votre abonnement gratuit sera activé immédiatement après confirmation
-                    </p>
+              ) : (
+                <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-6 h-6 text-blue-600"/>
+                    <span className="font-medium">Paiement PayPal</span>
                   </div>
-                ) : selectedProvider === 'paypal' ? (
-                  paypalOrderId ? (
-                    <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="w-6 h-6 text-blue-600"/>
-                        <span className="font-medium">Paiement PayPal</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-4">Cliquez sur le bouton ci-dessous pour payer avec PayPal</p>
-                      <div id="paypal-button-container"></div>
+                  <p className="text-xs text-muted-foreground">Paiement sécurisé via PayPal (Visa, Mastercard)</p>
+                </div>
+              )}
+
+              <Button className="w-full py-6 text-lg" size="lg" disabled={isProcessing} onClick={onPay}>
+                {isProcessing ? (
+                  <span className="inline-flex items-center">
+                    <div className="loader-wrapper">
+                      <Loader2 className="w-5 h-5 animate-spin mr-2"/>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="w-6 h-6 text-blue-600"/>
-                        <span className="font-medium">Paiement PayPal</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Paiement sécurisé via PayPal (Visa, Mastercard)</p>
-                    </div>
-                  )
+                    <span>Traitement…</span>
+                  </span>
+                ) : isFreePlan(selectedPlan) ? (
+                  <span className="inline-flex items-center">
+                    <Check className="w-5 h-5 mr-2"/>
+                    <span>Activer l'abonnement gratuit</span>
+                  </span>
                 ) : (
-                  <div className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <QrCode className="w-6 h-6 text-green-500"/>
-                      <span className="font-medium">Paiement Lygos</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Paiement via portefeuille mobile (Orange Money, MTN, Wave)</p>
-                  </div>
+                  <span className="inline-flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2"/>
+                    <span>Procéder au paiement</span>
+                  </span>
                 )}
+              </Button>
 
-                {(!selectedProvider || selectedProvider !== 'paypal' || !paypalOrderId) && (
-                  <Button className="w-full py-6 text-lg" size="lg" disabled={isProcessing} onClick={onPay}>
-                    {isProcessing ? (
-                      <span className="inline-flex items-center">
-                        <div className="loader-wrapper">
-                          <Loader2 className="w-5 h-5 animate-spin mr-2"/>
-                        </div>
-                        <span>Traitement…</span>
-                      </span>
-                    ) : isFreePlan(selectedPlan) ? (
-                      <span className="inline-flex items-center">
-                        <Check className="w-5 h-5 mr-2"/>
-                        <span>Activer l'abonnement gratuit</span>
-                      </span>
-                    ) : selectedProvider === 'paypal' ? (
-                      <span className="inline-flex items-center">
-                        <CreditCard className="w-5 h-5 mr-2"/>
-                        <span>Payer avec PayPal</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center">
-                        <QrCode className="w-5 h-5 mr-2"/>
-                        <span>Payer avec Lygos</span>
-                      </span>
-                    )}
-                  </Button>
-                )}
-
-                <p className="text-xs text-center text-muted-foreground">
-                  En cliquant sur "{isFreePlan(selectedPlan) ? 'Activer l\'abonnement gratuit' : 'Procéder au paiement'}", vous acceptez nos <a href="/terms" className="underline">conditions d'utilisation</a> et notre <a href="/privacy" className="underline">politique de confidentialité</a>.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </>
+              <p className="text-xs text-center text-muted-foreground">
+                En cliquant sur "{isFreePlan(selectedPlan) ? 'Activer l\'abonnement gratuit' : 'Procéder au paiement'}", vous acceptez nos <a href="/terms" className="underline">conditions d'utilisation</a> et notre <a href="/privacy" className="underline">politique de confidentialité</a>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Payment history */}

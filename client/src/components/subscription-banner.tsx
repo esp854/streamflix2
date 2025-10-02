@@ -8,7 +8,7 @@ import { Crown, Star, Shield, ArrowRight, Sparkles, Info } from 'lucide-react';
 const SubscriptionBanner: React.FC = () => {
   const [bannerData, setBannerData] = useState({
     title: "Débloquez le streaming premium",
-    description: "Accédez à des milliers de films et séries en HD/4K. Paiement sécurisé avec Djamo - Orange Money, Wave, et cartes bancaires acceptées.",
+    description: "Accédez à des milliers de films et séries en HD/4K. Paiement sécurisé avec PayPal - Cartes bancaires acceptées.",
     price: "2.000",
     features: [
       { icon: Crown, text: "Contenu premium" },
@@ -140,24 +140,10 @@ const SubscriptionBanner: React.FC = () => {
               
               {/* Payment methods */}
               <div className="mt-4 pt-4 border-t border-white/20">
-                <p className="text-xs text-blue-200 mb-2">Moyens de paiement acceptés :</p>
+                <p className="text-xs text-blue-200 mb-2">Moyen de paiement accepté :</p>
                 <div className="flex flex-wrap gap-3 justify-center">
-                  <div className="bg-white rounded-sm p-1.5 flex items-center justify-center h-8 w-8" title="Orange Money">
-                    <img 
-                      src="https://i.pinimg.com/736x/d4/0a/ae/d40aaed93de5fb669b845167963c6d9f.jpg" 
-                      alt="Orange Money" 
-                      className="h-5 w-5 object-contain"
-                    />
-                  </div>
-                  <div className="bg-white rounded-sm p-1.5 flex items-center justify-center h-8 w-8" title="MTN Mobile Money">
-                    <span className="text-red-600 font-bold text-sm">MTN</span>
-                  </div>
-                  <div className="bg-white rounded-sm p-1.5 flex items-center justify-center h-8 w-8" title="Wave">
-                    <img 
-                      src="https://i.pinimg.com/736x/7f/aa/87/7faa8738dcc5412508328e03eb05850d.jpg" 
-                      alt="Wave" 
-                      className="h-5 w-5 object-contain"
-                    />
+                  <div className="bg-white rounded-sm p-1.5 flex items-center justify-center h-8 w-8" title="PayPal">
+                    <span className="text-blue-600 font-bold text-sm">PP</span>
                   </div>
                 </div>
               </div>

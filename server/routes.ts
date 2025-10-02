@@ -1395,13 +1395,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/subscription/payment-providers", async (req: any, res: any) => {
     try {
       const providers = {
-        lygos: paymentService.isLygosConfigured(),
         paypal: paymentService.isPayPalConfigured()
       };
       res.json(providers);
     } catch (error) {
       console.error("Error fetching payment providers:", error);
       res.status(500).json({ error: "Failed to fetch payment providers" });
+    }
+  });
+
+  // Get PayPal client ID for frontend
+  app.get("/api/paypal/client-id", async (req: any, res: any) => {
+    try {
+      const clientId = paymentService.getPayPalClientId();
+      res.json({ clientId });
+    } catch (error) {
+      console.error("Error fetching PayPal client ID:", error);
+      res.status(500).json({ error: "Failed to fetch PayPal client ID" });
+    }
+  });
+
+  // Create a subscription
+  app.post("/api/subscription/create", async (req: any, res: any) => {
+    try {
+      const { paymentMethod, planId, paymentData } = req.body;
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // Create subscription directly without payment service
+      const selectedPlan = plans[planId as keyof typeof plans];
+      if (!selectedPlan) {
+        return res.status(400).json({ error: "Plan invalide" });
+      }
+
+      // For free plans, activate immediately
+      if (selectedPlan.amount === 0) {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + selectedPlan.duration);
+
+        const subscription = await storage.createSubscription({
+          userId: userId,
+          planId: planId,
+          amount: selectedPlan.amount,
+          paymentMethod: paymentMethod,
+          status: 'active',
+          startDate: startDate,
+          endDate: endDate
+        });
+
+        return res.json({ subscriptionId: subscription.id, planDetails: selectedPlan });
+      }
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ error: "Failed to create subscription" });
+    }
+  });
+
+  // Get user subscriptions
+  app.get("/api/subscription/user", async (req: any, res: any) => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const subscriptions = await storage.getSubscriptionByUserId(userId);
+
+      res.json(subscriptions);
+    } catch (error) {
+      console.error("Error fetching user subscriptions:", error);
+      res.status(500).json({ error: "Failed to fetch user subscriptions" });
+    }
+  });
+
+  // Cancel a subscription
+  app.post("/api/subscription/cancel", async (req: any, res: any) => {
+    try {
+      const { subscriptionId } = req.body;
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // Cancel subscription directly
+      const subscription = await storage.getSubscriptionByUserId(userId);
+      if (!subscription || subscription.id !== subscriptionId) {
+        return res.status(404).json({ error: "Abonnement non trouvé" });
+      }
+      await storage.cancelSubscription(subscriptionId);
+
+      res.json({ message: "Subscription cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      res.status(500).json({ error: "Failed to cancel subscription" });
+    }
+  });
+
+  // Renew a subscription
+  app.post("/api/subscription/renew", async (req: any, res: any) => {
+    try {
+      const { subscriptionId } = req.body;
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      // Renew subscription directly
+      const subscription = await storage.getSubscriptionByUserId(userId);
+      if (!subscription || subscription.id !== subscriptionId) {
+        return res.status(404).json({ error: "Abonnement non trouvé" });
+      }
+      
+      const selectedPlan = plans[subscription.planId as keyof typeof plans];
+      if (!selectedPlan) {
+        return res.status(400).json({ error: "Plan invalide" });
+      }
+      
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + selectedPlan.duration);
+      
+      await storage.updateSubscription(subscriptionId, { startDate, endDate });
+
+      res.json({ message: "Subscription renewed successfully" });
+    } catch (error) {
+      console.error("Error renewing subscription:", error);
+      res.status(500).json({ error: "Failed to renew subscription" });
+    }
+  });
+
+  // Get subscription details
+  app.get("/api/subscription/details/:subscriptionId", async (req: any, res: any) => {
+    try {
+      const { subscriptionId } = req.params;
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const subscription = await storage.getSubscriptionByUserId(userId);
+      if (!subscription || subscription.id !== subscriptionId) {
+        return res.status(404).json({ error: "Abonnement non trouvé" });
+      }
+      
+      const selectedPlan = plans[subscription.planId as keyof typeof plans];
+      const details = { subscription, plan: selectedPlan };
+
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching subscription details:", error);
+      res.status(500).json({ error: "Failed to fetch subscription details" });
+    }
+  });
+
+  // Get payment history
+  app.get("/api/payment/history", async (req: any, res: any) => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      const payments = await storage.getUserPayments(userId);
+
+      res.json(payments);
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      res.status(500).json({ error: "Failed to fetch payment history" });
+    }
+  });
+
+  // Handle PayPal webhook
+  app.post("/api/webhook/paypal", async (req: any, res: any) => {
+    try {
+      console.log("PayPal webhook received:", req.body);
+      
+      // For now, we'll process all webhooks without verification
+      // In production, you should verify the webhook signature
+      
+      // Process the webhook event
+      const event = req.body;
+      const eventType = event.event_type;
+      
+      console.log(`Processing PayPal event: ${eventType}`);
+      
+      switch (eventType) {
+        case 'PAYMENT.CAPTURE.COMPLETED':
+          // Payment completed successfully
+          await handlePayPalPaymentCompleted(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.DENIED':
+          // Payment was denied
+          await handlePayPalPaymentDenied(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.REFUNDED':
+          // Payment was refunded
+          await handlePayPalPaymentRefunded(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CREATED':
+          // Subscription created
+          await handlePayPalSubscriptionCreated(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CANCELLED':
+          // Subscription cancelled
+          await handlePayPalSubscriptionCancelled(event);
+          break;
+          
+        default:
+          console.log(`Unhandled PayPal event type: ${eventType}`);
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error processing PayPal webhook:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
     }
   });
 
@@ -1506,7 +1726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: customerInfo?.phone || "",
       };
 
-      const result = await paymentService.createLygosPayment(planId, info, user.id);
+      const result = await paymentService.createPayment(planId, info, user.id);
       // Retourner le résultat tel quel (paymentLink, approval_url, paymentId, qrCode, ...)
       return res.json(result);
     } catch (error: any) {
@@ -1523,7 +1743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Payment ID requis" });
       }
 
-      const status = await paymentService.checkLygosPaymentStatus(paymentId);
+      const status = await paymentService.checkPaymentStatus(paymentId);
       return res.json(status);
     } catch (error: any) {
       console.error("Erreur lors de la vérification du paiement:", error);
@@ -3736,46 +3956,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Lygos Payment Routes
-  
-  // Create payment invoice for subscription with Lygos
-  app.post("/api/subscription/create-payment-lygos", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createLygosPayment(planId, info, user.id);
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement Lygos:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement Lygos" });
-    }
-  });
-
   // Create payment invoice for subscription with PayPal
   app.post("/api/subscription/create-payment-paypal", authenticateToken, async (req: any, res: any) => {
     try {
@@ -3815,130 +3995,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create payment invoice for subscription
-  app.post("/api/subscription/create-payment", authenticateToken, async (req: any, res: any) => {
+  app.post("/api/subscription/create-payment", async (req: any, res: any) => {
     try {
-      const { planId, customerInfo } = req.body;
-      
-      console.log('Received payment request:', { planId, customerInfo });
-      
-      if (!planId || !customerInfo) {
-        return res.status(400).json({ error: "Plan ID and customer info are required" });
+      if (!req.user) {
+        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
+        return res.status(401).json({ error: "Non authentifié" });
       }
-      
-      // Validate customer info
-      if (!customerInfo.name || !customerInfo.email) {
-        return res.status(400).json({ error: "Customer name and email are required" });
+
+      const { planId, customerInfo } = req.body || {};
+      if (!planId) {
+        return res.status(400).json({ error: "Plan ID requis" });
       }
-      
-      // Use our payment service to create the payment
-      const selectedPlan = plans[planId as keyof typeof plans];
-      
-      // For free plans, no payment is needed
-      if (selectedPlan && selectedPlan.amount === 0) {
-        return res.json({ 
-          success: true, 
-          message: 'Abonnement gratuit activé avec succès' 
-        });
+
+      const plan = plans[planId as keyof typeof plans];
+      if (!plan) {
+        return res.status(400).json({ error: "Plan invalide" });
       }
-      
-      // For paid plans, use the payment service
-      const userId = req.user?.userId || `temp_${customerInfo.email}_${Date.now()}`;
-      console.log('Creating payment for:', { userId, planId, customerInfo });
-      
-      const paymentResponse = await paymentService.createPayment(planId, customerInfo, userId);
-      
-      // For paid plans, return the payment details
-      console.log('Payment created successfully:', paymentResponse);
-      res.json(paymentResponse);
+
+      const user = await storage.getUserById(req.user.userId);
+      if (!user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+
+      const info: CustomerInfo = {
+        name: customerInfo?.name || user.username,
+        email: customerInfo?.email || user.email,
+        phone: customerInfo?.phone || "",
+      };
+
+      const result = await paymentService.createPayment(planId, info, user.id);
+      // Retourner le résultat tel quel (paymentLink, approval_url, paymentId, qrCode, ...)
+      return res.json(result);
     } catch (error: any) {
-      console.error("Error creating payment:", error);
-      
-      // Send a more user-friendly error message
-      const errorMessage = error.message || 'Erreur inconnue lors de la création du paiement';
-      const errorDetails = process.env.NODE_ENV === 'development' ? error.stack : undefined;
-      
-      res.status(500).json({ 
-        error: "Failed to create payment", 
-        details: errorMessage,
-        ...(errorDetails ? { stack: errorDetails } : {})
-      });
-    }
-  });
-  
-  // Lygos webhook endpoint for automatic subscription activation
-  app.post("/api/webhook/lygos", async (req: any, res: any) => {
-    try {
-      console.log("Lygos webhook received:", req.body);
-      
-      // Use our payment service to process the webhook
-      const result = await paymentService.processLygosWebhook(req.body);
-      
-      // Process the payment based on status
-      const paymentData = req.body;
-      const { id, status, custom_data } = paymentData;
-      
-      // Process the payment based on status
-      if (status === "completed") {
-        // Activate subscription in your database
-        if (custom_data && custom_data.userId && custom_data.planId) {
-          const { userId, planId, customerInfo } = custom_data;
-          
-          // Get plan information
-          const selectedPlan = plans[planId as keyof typeof plans];
-          if (selectedPlan) {
-            // Calculate end date
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + selectedPlan.duration);
-            
-            // Create subscription
-            const newSubscription = await storage.createSubscription({
-              userId: userId,
-              planId: planId,
-              amount: selectedPlan.amount,
-              paymentMethod: 'lygos',
-              status: 'active',
-              startDate: new Date(),
-              endDate: endDate
-            });
-            
-            // Create payment record
-            await storage.createPayment({
-              userId: userId,
-              amount: selectedPlan.amount,
-              method: 'lygos',
-              status: 'success',
-              transactionId: id,
-              paymentData: { planId, customerInfo }
-            });
-            
-            console.log("Subscription activated for user:", userId);
-          }
-        }
-        console.log("Lygos payment completed for payment ID:", id);
-      } else if (status === "failed" || status === "cancelled") {
-        // Handle failed payment
-        if (custom_data && custom_data.userId) {
-          // Log the failed payment
-          await storage.createPayment({
-            userId: custom_data.userId,
-            amount: custom_data.planId ? plans[custom_data.planId as keyof typeof plans]?.amount || 0 : 0,
-            method: 'lygos',
-            status: 'failed',
-            transactionId: id,
-            paymentData: custom_data
-          });
-        }
-        console.log("Lygos payment failed or cancelled for payment ID:", id);
-      }
-      
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error processing Lygos webhook:", error);
-      res.status(500).json({ error: "Failed to process webhook" });
+      console.error("Erreur lors de la création du paiement:", error);
+      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement" });
     }
   });
 
-  // PayPal webhook endpoint for automatic subscription activation
+  // Check payment status
+  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
+    try {
+      const { paymentId } = req.params;
+      if (!paymentId) {
+        return res.status(400).json({ error: "Payment ID requis" });
+      }
+
+      const status = await paymentService.checkPaymentStatus(paymentId);
+      return res.json(status);
+    } catch (error: any) {
+      console.error("Erreur lors de la vérification du paiement:", error);
+      return res.status(500).json({ error: error?.message || "Erreur lors de la vérification du paiement" });
+    }
+  });
+  
+  // Handle PayPal webhook
   app.post("/api/webhook/paypal", async (req: any, res: any) => {
     try {
       console.log("PayPal webhook received:", req.body);
@@ -4001,11 +4111,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parse custom_id to get user info
-      const customData = JSON.parse(customId);
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
+        return;
+      }
+      
       const { userId, planId } = customData;
       
       if (!userId || !planId) {
-        console.error("Missing userId or planId in custom_id");
+        console.error("Missing userId or planId in custom data:", customData);
         return;
       }
       
@@ -4017,6 +4134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Calculate end date
+      const startDate = new Date();
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + selectedPlan.duration);
       
@@ -4027,19 +4145,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: selectedPlan.amount,
         paymentMethod: 'paypal',
         status: 'active',
-        startDate: new Date(),
-        endDate: endDate
+        startDate,
+        endDate
       });
       
-      // Create payment record
-      await storage.createPayment({
-        userId: userId,
-        amount: selectedPlan.amount,
-        method: 'paypal',
-        status: 'success',
-        transactionId: resource.id,
-        paymentData: { planId, paypalData: resource }
-      });
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'success');
+      }
       
       console.log("Subscription activated for user:", userId);
     } catch (error) {
@@ -4059,23 +4174,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parse custom_id to get user info
-      const customData = JSON.parse(customId);
-      const { userId, planId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom_id");
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
         return;
       }
       
-      // Create payment record for failed payment
-      await storage.createPayment({
-        userId: userId,
-        amount: planId ? plans[planId as keyof typeof plans]?.amount || 0 : 0,
-        method: 'paypal',
-        status: 'failed',
-        transactionId: resource.id,
-        paymentData: { planId, paypalData: resource }
-      });
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom data:", customData);
+        return;
+      }
+      
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'failed');
+      }
       
       console.log("PayPal payment denied for user:", userId);
     } catch (error) {
@@ -4095,18 +4214,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Parse custom_id to get user info
-      const customData = JSON.parse(customId);
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom_id");
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
         return;
       }
       
-      // Update subscription status to cancelled
-      const userSubscription = await storage.getUserSubscription(userId);
-      if (userSubscription) {
-        await storage.updateSubscription(userSubscription.id, { status: 'cancelled' });
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom data:", customData);
+        return;
+      }
+      
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'success');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'refunded');
       }
       
       console.log("PayPal payment refunded for user:", userId);
@@ -4118,46 +4245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle PayPal subscription created
   async function handlePayPalSubscriptionCreated(event: any) {
     try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      const customData = JSON.parse(customId);
-      const { userId, planId } = customData;
-      
-      if (!userId || !planId) {
-        console.error("Missing userId or planId in custom_id");
-        return;
-      }
-      
-      // Get plan information
-      const selectedPlan = plans[planId as keyof typeof plans];
-      if (!selectedPlan) {
-        console.error("Invalid plan ID:", planId);
-        return;
-      }
-      
-      // Calculate end date
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
-      
-      // Create subscription
-      const newSubscription = await storage.createSubscription({
-        userId: userId,
-        planId: planId,
-        amount: selectedPlan.amount,
-        paymentMethod: 'paypal',
-        status: 'active',
-        startDate: new Date(),
-        endDate: endDate
-      });
-      
-      console.log("PayPal subscription created for user:", userId);
+      console.log("PayPal subscription created:", event);
+      // Handle subscription creation logic here if needed
     } catch (error) {
       console.error("Error handling PayPal subscription created:", error);
     }
@@ -4166,30 +4255,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle PayPal subscription cancelled
   async function handlePayPalSubscriptionCancelled(event: any) {
     try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      const customData = JSON.parse(customId);
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom_id");
-        return;
-      }
-      
-      // Update subscription status to cancelled
-      const userSubscription = await storage.getUserSubscription(userId);
-      if (userSubscription) {
-        await storage.updateSubscription(userSubscription.id, { status: 'cancelled' });
-      }
-      
-      console.log("PayPal subscription cancelled for user:", userId);
+      console.log("PayPal subscription cancelled:", event);
+      // Handle subscription cancellation logic here if needed
     } catch (error) {
       console.error("Error handling PayPal subscription cancelled:", error);
     }
@@ -5059,7 +5126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { paymentId } = req.params;
       
       // Use our payment service to check the payment status
-      const paymentStatus = await paymentService.checkLygosPaymentStatus(paymentId);
+      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
       res.json(paymentStatus);
     } catch (error: any) {
       console.error("Error checking payment status:", error);
@@ -5476,49 +5543,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Webhook endpoint for Lygos payment notifications
-  app.post("/api/webhook/lygos", async (req: any, res: any) => {
+  // Webhook endpoint for PayPal payment notifications
+  app.post("/api/webhook/paypal", async (req: any, res: any) => {
     try {
-      // Process webhook from Lygos
-      const result = await paymentService.processLygosWebhook(req.body);
+      // Process webhook from PayPal
+      console.log("PayPal webhook received:", req.body);
       
-      if (result.success) {
-        // Update payment and subscription status based on webhook data
-        const { id, status, custom_data } = req.body;
-        
-        // Update payment status in database
-        await storage.updatePaymentStatus(id, status);
-        
-        // If payment is completed, activate subscription
-        if (status === "completed" && custom_data) {
-          const { userId, planId } = custom_data;
-          const selectedPlan = plans[planId as keyof typeof plans];
-          
-          if (selectedPlan) {
-            // Calculate subscription dates
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + selectedPlan.duration);
-            
-            // Create subscription in database
-            const subscription = await storage.createSubscription({
-              userId: userId,
-              planId: planId,
-              amount: selectedPlan.amount,
-              paymentMethod: "lygos",
-              status: "active",
-              startDate: startDate,
-              endDate: endDate
-            });
-            
-            console.log("Subscription activated for user:", userId);
-          }
-        }
-      }
-      
+      // For now, just send a success response
       res.json({ success: true });
     } catch (error) {
-      console.error("Error processing Lygos webhook:", error);
+      console.error("Error processing PayPal webhook:", error);
       res.status(500).json({ error: "Erreur lors du traitement du webhook" });
     }
   });

@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import ZuploadVideoPlayer from "@/components/zupload-video-player";
 import { useIsMobile } from "@/hooks/use-mobile";
+import SubscriptionGuard from "@/components/subscription-guard";
+import { useSubscriptionCheck } from '@/hooks/useSubscriptionCheck';
 
 declare global {
   interface Window {
@@ -22,9 +24,18 @@ declare global {
 }
 
 export default function WatchMovie() {
+  return (
+    <SubscriptionGuard>
+      <WatchMovieContent />
+    </SubscriptionGuard>
+  );
+}
+
+function WatchMovieContent() {
    const { shouldShowAds } = useAuthCheck();
    const { isAuthenticated } = useAuth();
    const { features, planId, isLoading: planLoading } = usePlanFeatures();
+   const { hasAccess, accessType } = useSubscriptionCheck();
    const { id } = useParams<{ id: string }>();
    const movieId = parseInt(id || "0");
    const playerRef = useRef<any>(null);
@@ -387,354 +398,348 @@ export default function WatchMovie() {
     setCurrentTime(newTime);
   }, [currentTime, duration, isYouTubeVideo]);
 
+  const handlePlaybackSpeedChange = useCallback((value: string) => {
+    if (!isMountedRef.current) return;
+    
+    const speed = parseFloat(value);
+    setPlaybackSpeed(speed);
+    
+    if (isYouTubeVideo && youtubePlayerRef.current) {
+      youtubePlayerRef.current.setPlaybackRate(speed);
+    }
+  }, [isYouTubeVideo]);
+
+  const handleQualityChange = useCallback((value: string) => {
+    if (!isMountedRef.current) return;
+    
+    setQuality(value);
+    // Quality change logic would go here
+  }, []);
+
+  const handleSubtitleChange = useCallback((value: string) => {
+    if (!isMountedRef.current) return;
+    
+    setSubtitle(value);
+    // Subtitle change logic would go here
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
     
-    const videoContainer = document.querySelector('.relative.w-full.h-screen');
-    if (!videoContainer) return;
-    
     if (!document.fullscreenElement) {
-      videoContainer.requestFullscreen().catch(err => {
-        console.error('Failed to enter fullscreen:', err);
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
       });
     } else {
-      document.exitFullscreen().catch(err => {
-        console.error('Failed to exit fullscreen:', err);
-      });
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
     }
   }, []);
 
-  const handleGoHome = useCallback(() => {
-    if (!isMountedRef.current) return;
-    window.location.href = '/';
-  }, []);
-
-  const shareMovie = useCallback(() => {
-    if (!isMountedRef.current || !movieDetails) return;
-    
-    const shareData = {
-      title: movieDetails.movie.title,
-      text: `Regardez ${movieDetails.movie.title} sur StreamKji`,
-      url: window.location.href
-    };
-    
-    if (navigator.share) {
-      navigator.share(shareData).catch(err => {
-        if (err.name !== 'AbortError') {
-          console.error('Sharing failed:', err);
-        }
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        alert('Lien copié dans le presse-papiers!');
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-      });
-    }
-  }, [movieDetails]);
-
-  const downloadMovie = useCallback(() => {
-    if (!isMountedRef.current) return;
-    // In a real implementation, this would trigger a download
-    alert('Fonction de téléchargement non disponible pour cette vidéo.');
-  }, []);
-
-  const handlePlaybackSpeedChange = useCallback((speed: string) => {
-    if (!isMountedRef.current) return;
-    
-    const speedValue = parseFloat(speed);
-    setPlaybackSpeed(speedValue);
-    
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      youtubePlayerRef.current.setPlaybackRate(speedValue);
-    }
-  }, [isYouTubeVideo]);
-
-  const handleQualityChange = useCallback((quality: string) => {
-    if (!isMountedRef.current) return;
-    
-    setQuality(quality);
-    
-    if (isYouTubeVideo && youtubePlayerRef.current) {
-      // Quality changes are handled automatically by YouTube player
-      // based on bandwidth and screen size
-    }
-  }, [isYouTubeVideo]);
-
-  const handleVideoError = useCallback((error: string) => {
-    setVideoError(error);
-  }, []);
-
-  // Format time for display
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = Math.floor(time % 60);
     
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  // Fetch related movies
+  useEffect(() => {
+    if (!movieId) return;
+    
+    const fetchRelatedMovies = async () => {
+      try {
+        const response = await fetch(`/api/tmdb/movie/${movieId}/recommendations`);
+        if (response.ok) {
+          const data = await response.json();
+          setRelatedMovies(data.results || []);
+        }
+      } catch (error) {
+        console.error('Error fetching related movies:', error);
+      }
+    };
+
+    fetchRelatedMovies();
+  }, [movieId]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Chargement du film...</p>
+      <div className="flex justify-center items-center min-h-screen bg-black">
+        <div className="text-center">
+          <div className="loader-wrapper">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+          <p className="mt-4 text-white">Chargement du film...</p>
         </div>
       </div>
     );
   }
 
-  // Check if authenticated user has paid subscription
-  if (isAuthenticated && planId === 'free') {
+  if (contentError) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center max-w-md p-8">
-          <div className="text-6xl mb-6">🎬</div>
-          <h1 className="text-2xl font-bold mb-4">Abonnement requis</h1>
+      <div className="flex justify-center items-center min-h-screen bg-black">
+        <div className="text-center max-w-2xl mx-auto p-4">
+          <h1 className="text-2xl font-bold text-white mb-4">Erreur de chargement</h1>
           <p className="text-gray-300 mb-6">
-            Pour regarder ce film, vous devez souscrire à un abonnement payant.
+            Nous n'avons pas pu charger les informations de ce film. Veuillez réessayer plus tard.
           </p>
-          <div className="space-y-4">
-            <Button
-              onClick={() => window.location.href = '/subscription'}
-              className="w-full bg-primary hover:bg-primary/90"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Voir les abonnements
-            </Button>
-            <Button
-              onClick={handleGoHome}
-              variant="outline"
-              className="w-full border-white/20 text-white hover:bg-white/10"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Retour à l'accueil
-            </Button>
-          </div>
+          <Link to="/">
+            <Button variant="outline">Retour à l'accueil</Button>
+          </Link>
         </div>
       </div>
     );
   }
 
-  if (!movieDetails) {
+  // Handle YouTube video
+  if (isYouTubeVideo) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center">
-          <p className="text-xl mb-4">Film non trouvé</p>
-          <p className="text-gray-400 mb-6">Désolé, nous n'avons pas trouvé les détails de ce film.</p>
-          <Button onClick={handleGoHome} variant="default">
-            <Home className="w-4 h-4 mr-2" />
-            Retour à l'accueil
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Get the video URL, with fallback to sample video if none is provided
-// Handle video error
-  if (videoError) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center">
-          <p className="text-xl mb-4">Erreur de chargement de la vidéo</p>
-          <p className="text-gray-400 mb-6">{videoError}</p>
-          <Button onClick={handleGoHome} variant="default">
-            <Home className="w-4 h-4 mr-2" />
-            Retour à l'accueil
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-black text-white relative">
-      {/* Video container */}
-      <div className="relative w-full h-screen">
-        {/* Zupload Video Player - Direct integration */}
-        {isZuploadVideo && videoUrl ? (
-          <div className="w-full h-full">
-            <ZuploadVideoPlayer 
-              videoUrl={videoUrl}
-              title={movieDetails.movie.title}
-              onVideoError={handleVideoError}
-            />
-          </div>
-        ) : (
-          // Other video types (YouTube, Odysee, etc.) or fallback message
-          <>
-            {/* Video player has been removed for non-Zupload videos */}
-            <div className="w-full h-screen flex items-center justify-center bg-black">
-              <div className="text-center p-8">
-                <div className="text-4xl mb-4">🎬</div>
-                <h2 className="text-2xl font-bold mb-2">Lecteur de film non disponible</h2>
-                <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
-                <p className="text-gray-500 text-sm mb-6">Seules les vidéos Zupload sont actuellement supportées.</p>
-                <Button onClick={handleGoHome} variant="default">
-                  <Home className="w-4 h-4 mr-2" />
-                  Retour à l'accueil
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-        
-        {/* Buffering Indicator */}
-        {isBuffering && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="bg-black/80 text-white px-4 py-2 rounded-lg">
-              <div className="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
-              <div className="text-sm">Chargement...</div>
-            </div>
-          </div>
-        )}
-
-        {/* Home Button - Fixed at top-left edge */}
-        <Button 
-          onClick={handleGoHome}
-          variant="ghost" 
-          size="sm" 
-          className="absolute top-2 left-2 z-50 bg-black/70 text-white hover:bg-black/90 transition-all duration-200 border border-white/20 backdrop-blur-sm"
-          title="Retour à l'accueil"
-        >
-          <Home className="w-4 h-4 mr-2" />
-          Accueil
-        </Button>
-
-        {/* Controls Overlay - only show for non-Odysee and non-Zupload videos */}
-        {!isOdyseeVideo && !isZuploadVideo && (
-          <div
-            className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}
-            onMouseMove={() => {
-              if (!isTransitioning && !isMobile) { // Only show on mouse move for desktop
-                setShowControls(true);
-              }
-            }}
-            onClick={() => { // Toggle controls on click/tap for mobile
-              if (isMobile && !isTransitioning) {
-                setShowControls(prev => !prev);
-              }
-            }}
-          >
-            {/* Top Bar */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between p-2 md:p-0">
-              <div className="flex items-center space-x-4">
-                {/* Empty space where home button was */}
-              </div>
-              <div className="text-white text-xl font-semibold text-center flex-1">
-                {movieDetails.movie.title}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={shareMovie}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white hover:bg-white/20"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
-                {/* Removed download button for Zupload videos */}
-                {!isZuploadVideo && (
-                  <Button
-                    onClick={downloadMovie}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Center Controls */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center space-x-4 md:space-x-8">
-                <Button
-                  onClick={rewind15}
-                  variant="ghost"
-                  size={isMobile ? "icon" : "lg"}
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                >
-                  <RotateCcw className="w-5 h-5 md:w-6 md:h-6" />
-                </Button>
-                
-                <Button
-                  onClick={handlePlayPause}
-                  variant="ghost"
-                  size={isMobile ? "icon" : "lg"}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                >
-                  {isPlaying ? <Pause className="w-6 h-6 md:w-8 md:h-8" /> : <Play className="w-6 h-6 md:w-8 md:h-8" />}
-                </Button>
-                
-                <Button
-                  onClick={forward15}
-                  variant="ghost"
-                  size={isMobile ? "icon" : "lg"}
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                >
-                  <RotateCw className="w-5 h-5 md:w-6 md:h-6" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Bottom Controls */}
-            <div className="absolute bottom-4 left-4 right-4 space-y-2 md:space-y-4">
-              {/* Progress Bar */}
-              <div className="flex items-center space-x-2 md:space-x-4">
-                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
-                  {formatTime(currentTime)}
-                </span>
+      <div className="flex flex-col min-h-screen bg-black">
+        {/* Video Player */}
+        <div className="relative w-full aspect-video bg-black">
+          <iframe
+            id="youtube-player"
+            src={`https://www.youtube.com/embed/${new URL(videoUrl!).searchParams.get('v')}?enablejsapi=1`}
+            className="w-full h-full"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title={movieDetails?.movie?.title || "YouTube Video"}
+          ></iframe>
+          
+          {/* YouTube Player Controls Overlay */}
+          {showControls && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end pointer-events-none">
+              <div className="p-4 pointer-events-auto">
                 <Slider
                   value={[currentTime]}
                   onValueChange={handleSeek}
                   max={duration}
                   step={1}
-                  className="flex-1"
+                  className="mb-2"
                 />
-                <span className="text-white text-xs md:text-sm min-w-[45px] md:min-w-[60px]">
-                  {formatTime(duration)}
-                </span>
+                <div className="flex justify-between items-center text-white text-sm">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
               </div>
-
-              {/* Control Buttons */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center space-x-1 md:space-x-2">
+              
+              <div className="flex justify-between items-center p-4 pointer-events-auto">
+                <div className="flex items-center space-x-2 md:space-x-4">
                   <Button
                     onClick={handlePlayPause}
                     variant="ghost"
                     size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-10 md:h-10"
                   >
-                    {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
+                    {isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6" /> : <Play className="w-4 h-4 md:w-6 md:h-6" />}
                   </Button>
                   
-                  <Button
-                    onClick={skipBackward}
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
-                  >
-                    <SkipBack className="w-4 h-4 md:w-5 md:h-5" />
-                  </Button>
-                  
-                  <Button
-                    onClick={skipForward}
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
-                  >
-                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={handleMute}
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    >
+                      {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
+                    </Button>
+                    <Slider
+                      value={volume}
+                      onValueChange={handleVolumeChange}
+                      max={100}
+                      step={1}
+                      className="w-16 md:w-24"
+                    />
+                  </div>
+                </div>
 
-                  <div className="flex items-center space-x-1 md:space-x-2 ml-2 md:ml-4">
+                <div className="flex items-center space-x-1 md:space-x-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                      >
+                        <Settings className="w-4 h-4 md:w-5 md:h-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 md:w-56 bg-black/90 border-white/20 p-3 md:p-4" side="top">
+                      <div className="space-y-3 md:space-y-4">
+                        <div>
+                          <label className="text-white text-xs md:text-sm font-medium">Vitesse de lecture</label>
+                          <Select value={playbackSpeed.toString()} onValueChange={handlePlaybackSpeedChange}>
+                            <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0.25">0.25x</SelectItem>
+                              <SelectItem value="0.5">0.5x</SelectItem>
+                              <SelectItem value="0.75">0.75x</SelectItem>
+                              <SelectItem value="1">Normal</SelectItem>
+                              <SelectItem value="1.25">1.25x</SelectItem>
+                              <SelectItem value="1.5">1.5x</SelectItem>
+                              <SelectItem value="1.75">1.75x</SelectItem>
+                              <SelectItem value="2">2x</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  <Button
+                    onClick={toggleFullscreen}
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                  >
+                    {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Movie Details */}
+        <div className="container mx-auto px-4 py-6 flex-grow">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-2/3">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                {movieDetails?.movie?.title} ({movieDetails?.movie?.release_date?.substring(0, 4)})
+              </h1>
+              
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300 mb-4">
+                <span>{movieDetails?.movie?.release_date}</span>
+                <span>•</span>
+                <span>{movieDetails?.movie?.runtime} min</span>
+                <span>•</span>
+                {movieDetails?.movie?.genres?.map((genre: any) => genre.name).join(', ')}
+              </div>
+              
+              <p className="text-gray-300 mb-6">{movieDetails?.movie?.overview}</p>
+              
+              <div className="flex flex-wrap gap-2 mb-6">
+                {movieDetails?.credits?.cast?.slice(0, 5).map((actor: any) => (
+                  <span key={actor.id} className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
+                    {actor.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div className="md:w-1/3">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-white mb-4">Détails</h2>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-400">Note:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.vote_average?.toFixed(1)}/10</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Popularité:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.popularity}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Statut:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Langue:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.original_language}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Related Movies */}
+          {relatedMovies.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-white mb-4">Films similaires</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {relatedMovies.slice(0, 6).map((movie: any) => (
+                  <Link key={movie.id} to={`/movie/${movie.id}`} className="block">
+                    <div className="aspect-[2/3] bg-gray-700 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+                      {movie.poster_path ? (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                          alt={movie.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                          <span className="text-white text-xs text-center px-2">Aucune image</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-white text-sm mt-2 truncate">{movie.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Advertisement Banner */}
+        {shouldShowAds && (
+          <div className="py-4">
+            <AdvertisementBanner />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Handle Zupload video
+  if (isZuploadVideo) {
+    return (
+      <div className="flex flex-col min-h-screen bg-black">
+        {/* Video Player */}
+        <div className="relative w-full aspect-video bg-black">
+          <ZuploadVideoPlayer 
+            videoUrl={videoUrl!} 
+            title={movieDetails?.movie?.title || "Film"}
+          />
+          
+          {/* Video Controls Overlay */}
+          {showControls && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end">
+              <div className="p-4">
+                <Slider
+                  value={[currentTime]}
+                  onValueChange={handleSeek}
+                  max={duration}
+                  step={1}
+                  className="mb-2"
+                />
+                <div className="flex justify-between items-center text-white text-sm">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center p-4">
+                <div className="flex items-center space-x-2 md:space-x-4">
+                  <Button
+                    onClick={handlePlayPause}
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-10 md:h-10"
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6" /> : <Play className="w-4 h-4 md:w-6 md:h-6" />}
+                  </Button>
+                  
+                  <div className="flex items-center space-x-2">
                     <Button
                       onClick={handleMute}
                       variant="ghost"
@@ -816,16 +821,334 @@ export default function WatchMovie() {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+        
+        {/* Movie Details */}
+        <div className="container mx-auto px-4 py-6 flex-grow">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-2/33">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                {movieDetails?.movie?.title} ({movieDetails?.movie?.release_date?.substring(0, 4)})
+              </h1>
+              
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300 mb-4">
+                <span>{movieDetails?.movie?.release_date}</span>
+                <span>•</span>
+                <span>{movieDetails?.movie?.runtime} min</span>
+                <span>•</span>
+                {movieDetails?.movie?.genres?.map((genre: any) => genre.name).join(', ')}
+              </div>
+              
+              <p className="text-gray-300 mb-6">{movieDetails?.movie?.overview}</p>
+              
+              <div className="flex flex-wrap gap-2 mb-6">
+                {movieDetails?.credits?.cast?.slice(0, 5).map((actor: any) => (
+                  <span key={actor.id} className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
+                    {actor.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div className="md:w-1/3">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h2 className="text-xl font-bold text-white mb-4">Détails</h2>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-400">Note:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.vote_average?.toFixed(1)}/10</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Popularité:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.popularity}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Statut:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Langue:</span>
+                    <span className="text-white ml-2">{movieDetails?.movie?.original_language}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Related Movies */}
+          {relatedMovies.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-white mb-4">Films similaires</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {relatedMovies.slice(0, 6).map((movie: any) => (
+                  <Link key={movie.id} to={`/movie/${movie.id}`} className="block">
+                    <div className="aspect-[2/3] bg-gray-700 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+                      {movie.poster_path ? (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                          alt={movie.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                          <span className="text-white text-xs text-center px-2">Aucune image</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-white text-sm mt-2 truncate">{movie.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Advertisement Banner */}
+        {shouldShowAds && (
+          <div className="py-4">
+            <AdvertisementBanner />
           </div>
         )}
+      </div>
+    );
+  }
 
-        {/* Keyboard Shortcuts Help - only show for non-Odysee and non-Zupload videos on desktop */}
-        {!isOdyseeVideo && !isZuploadVideo && !isMobile && (
-          <div className="absolute bottom-20 left-4 text-white text-xs opacity-50">
-            <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Plein écran)</p>
+  // Handle regular video
+  return (
+    <div className="flex flex-col min-h-screen bg-black">
+      {/* Video Player */}
+      <div className="relative w-full aspect-video bg-black">
+        {contentWithVideo?.odyseeUrl ? (
+          <video
+            ref={playerRef}
+            src={contentWithVideo.odyseeUrl}
+            className="w-full h-full"
+            controls={false}
+            autoPlay
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime)}
+            onLoadedMetadata={(e) => setDuration((e.target as HTMLVideoElement).duration)}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => setIsBuffering(false)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-900">
+            <div className="text-center">
+              <p className="text-white text-lg">Aucune vidéo disponible pour ce film</p>
+              <Link to="/">
+                <Button variant="outline" className="mt-4">Retour à l'accueil</Button>
+              </Link>
+            </div>
           </div>
         )}
+        
+        {/* Video Controls Overlay */}
+        {showControls && (
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end">
+            <div className="p-4">
+              <Slider
+                value={[currentTime]}
+                onValueChange={handleSeek}
+                max={duration}
+                step={1}
+                className="mb-2"
+              />
+              <div className="flex justify-between items-center text-white text-sm">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center p-4">
+              <div className="flex items-center space-x-2 md:space-x-4">
+                <Button
+                  onClick={handlePlayPause}
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20 w-8 h-8 md:w-10 md:h-10"
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6" /> : <Play className="w-4 h-4 md:w-6 md:h-6" />}
+                </Button>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={handleMute}
+                    variant="ghost"
+                    size="icon"
+                    className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
+                  </Button>
+                  <Slider
+                    value={volume}
+                    onValueChange={handleVolumeChange}
+                    max={100}
+                    step={1}
+                    className="w-16 md:w-24"
+                  />
+                </div>
+              </div>
 
+              <div className="flex items-center space-x-1 md:space-x-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                    >
+                      <Settings className="w-4 h-4 md:w-5 md:h-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 md:w-56 bg-black/90 border-white/20 p-3 md:p-4" side="top">
+                    <div className="space-y-3 md:space-y-4">
+                      <div>
+                        <label className="text-white text-xs md:text-sm font-medium">Vitesse de lecture</label>
+                        <Select value={playbackSpeed.toString()} onValueChange={handlePlaybackSpeedChange}>
+                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0.25">0.25x</SelectItem>
+                            <SelectItem value="0.5">0.5x</SelectItem>
+                            <SelectItem value="0.75">0.75x</SelectItem>
+                            <SelectItem value="1">Normal</SelectItem>
+                            <SelectItem value="1.25">1.25x</SelectItem>
+                            <SelectItem value="1.5">1.5x</SelectItem>
+                            <SelectItem value="1.75">1.75x</SelectItem>
+                            <SelectItem value="2">2x</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-white text-xs md:text-sm font-medium">Qualité</label>
+                        <Select value={quality} onValueChange={handleQualityChange}>
+                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="240p">240p</SelectItem>
+                            <SelectItem value="360p">360p</SelectItem>
+                            <SelectItem value="480p">480p</SelectItem>
+                            <SelectItem value="720p">720p HD</SelectItem>
+                            <SelectItem value="1080p">1080p Full HD</SelectItem>
+                            <SelectItem value="4k">4K Ultra HD</SelectItem>
+                            <SelectItem value="auto">Auto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-white text-xs md:text-sm font-medium">Sous-titres</label>
+                        <Select value={subtitle} onValueChange={handleSubtitleChange}>
+                          <SelectTrigger className="w-full bg-black/50 text-white border-white/20 h-8 md:h-9 text-xs md:text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="off">Désactivés</SelectItem>
+                            <SelectItem value="fr">Français</SelectItem>
+                            <SelectItem value="en">Anglais</SelectItem>
+                            <SelectItem value="es">Espagnol</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
+                <Button
+                  onClick={toggleFullscreen}
+                  variant="ghost"
+                  size="icon"
+                  className="text-white hover:bg-white/20 w-8 h-8 md:w-9 md:h-9"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Movie Details */}
+      <div className="container mx-auto px-4 py-6 flex-grow">
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="md:w-2/3">
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              {movieDetails?.movie?.title} ({movieDetails?.movie?.release_date?.substring(0, 4)})
+            </h1>
+            
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-300 mb-4">
+              <span>{movieDetails?.movie?.release_date}</span>
+              <span>•</span>
+              <span>{movieDetails?.movie?.runtime} min</span>
+              <span>•</span>
+              {movieDetails?.movie?.genres?.map((genre: any) => genre.name).join(', ')}
+            </div>
+            
+            <p className="text-gray-300 mb-6">{movieDetails?.movie?.overview}</p>
+            
+            <div className="flex flex-wrap gap-2 mb-6">
+              {movieDetails?.credits?.cast?.slice(0, 5).map((actor: any) => (
+                <span key={actor.id} className="bg-gray-700 text-white px-3 py-1 rounded-full text-sm">
+                  {actor.name}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div className="md:w-1/3">
+            <div className="bg-gray-800 rounded-lg p-4">
+              <h2 className="text-xl font-bold text-white mb-4">Détails</h2>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-gray-400">Note:</span>
+                  <span className="text-white ml-2">{movieDetails?.movie?.vote_average?.toFixed(1)}/10</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Popularité:</span>
+                  <span className="text-white ml-2">{movieDetails?.movie?.popularity}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Statut:</span>
+                  <span className="text-white ml-2">{movieDetails?.movie?.status}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Langue:</span>
+                  <span className="text-white ml-2">{movieDetails?.movie?.original_language}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Related Movies */}
+        {relatedMovies.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-white mb-4">Films similaires</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {relatedMovies.slice(0, 6).map((movie: any) => (
+                <Link key={movie.id} to={`/movie/${movie.id}`} className="block">
+                  <div className="aspect-[2/3] bg-gray-700 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+                    {movie.poster_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                        alt={movie.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-600 flex items-center justify-center">
+                        <span className="text-white text-xs text-center px-2">Aucune image</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-white text-sm mt-2 truncate">{movie.title}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Advertisement Banner */}
