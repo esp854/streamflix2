@@ -31,9 +31,12 @@ import Series from "@/pages/series";
 import ZuploadTest from "@/pages/zupload-test";
 import ZuploadEpisodeTest from "@/pages/zupload-episode-test";
 import ZuploadDirectTest from "@/pages/zupload-direct-test";
+import OfflineContent from "@/pages/offline-content";
+import UserPreferences from "@/pages/user-preferences";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
+import PWAUpdateNotifier from "@/components/PWAUpdateNotifier";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 
@@ -99,6 +102,8 @@ function Router() {
       <Route path="/trending" component={Trending} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/continue-watching" component={ContinueWatching} />
+      <Route path="/offline-content" component={OfflineContent} />
+      <Route path="/user-preferences" component={UserPreferences} />
       <Route path="/profile" component={Profile} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/payment-success" component={PaymentSuccess} />
@@ -144,6 +149,7 @@ function App() {
                 <Router />
               </main>
               {!isWatchPage && !isAdminPage && <Footer />}
+              <PWAUpdateNotifier />
             </div>
           </ErrorBoundary>
           <Toaster />

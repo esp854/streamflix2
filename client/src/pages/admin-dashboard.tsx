@@ -838,6 +838,9 @@ function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/tmdb/genre"] });
       queryClient.invalidateQueries({ queryKey: ["/api/content"] });
       
+      // Invalidate content-active queries for all components
+      queryClient.invalidateQueries({ queryKey: ["content-active"] });
+      
       // Clear TMDB service cache
       tmdbService.clearContentCache();
       
@@ -847,8 +850,8 @@ function AdminDashboard() {
       }
       
       toast({
-        title: "Contenu supprimé",
-        description: "Le contenu a été supprimé avec succès.",
+        title: "Contenu désactivé",
+        description: "Le contenu a été désactivé avec succès. Il n'apparaîtra plus sur la page d'accueil.",
       });
     },
     onError: (error: any) => {

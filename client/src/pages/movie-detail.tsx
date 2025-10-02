@@ -1,19 +1,19 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Play, Plus, Heart, Star, Calendar, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tmdbService } from "@/lib/tmdb";
 import { useFavorites } from "@/hooks/use-favorites";
-import { useShare } from "@/hooks/use-share";
 import MovieRow from "@/components/movie-row";
 import CommentsSection from "@/components/CommentsSection";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import ContentShareButton from "@/components/ContentShareButton";
+import type { TMDBMovie } from "@/types/movie";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
-  const { shareCurrentPage } = useShare();
   const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   const { data: movieDetails, isLoading } = useQuery({
@@ -58,12 +58,6 @@ export default function MovieDetail() {
     console.log('Add to watchlist:', movieDetails?.movie.title);
   };
 
-  const handleShare = async () => {
-    if (movieDetails?.movie) {
-      await shareCurrentPage(movieDetails.movie.title);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background" data-testid="movie-detail-loading">
@@ -104,6 +98,19 @@ export default function MovieDetail() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}min`;
+  };
+
+  // Préparer les données de partage
+  const shareableContent = {
+    id: movie.id.toString(),
+    title: movie.title,
+    overview: movie.overview,
+    poster_path: movie.poster_path || undefined,
+    backdrop_path: movie.backdrop_path || undefined,
+    release_date: movie.release_date,
+    vote_average: movie.vote_average,
+    contentType: 'movie' as const,
+    url: `/movie/${movie.id}`
   };
 
   return (
@@ -191,60 +198,75 @@ export default function MovieDetail() {
                 <span className="hidden xs:inline">{isFavorite ? 'Retirer des favoris' : 'Favoris'}</span>
                 <span className="xs:hidden">{isFavorite ? 'Retirer' : 'Favoris'}</span>
               </Button>
-              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto" onClick={handleShare} data-testid="share-button">
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden xs:inline">Partager</span>
-                <span className="xs:hidden">Share</span>
-              </Button>
+              <ContentShareButton 
+                content={shareableContent}
+                className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto"
+                data-testid="share-button"
+              />
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Content sections */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 sm:space-y-12">
-        {/* Cast */}
-        {cast.length > 0 && (
-          <section data-testid="cast-section">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Distribution</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 sm:gap-6" data-testid="cast-grid">
-              {cast.map((actor) => (
-                <div key={actor.id} className="text-center" data-testid={`cast-member-${actor.id}`}>
-                  <img
-                    src={tmdbService.getProfileUrl(actor.profile_path)}
-                    alt={actor.name}
-                    className="w-full aspect-square rounded-lg object-cover mb-2"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder-profile.jpg";
-                    }}
-                  />
-                  <h3 className="text-xs sm:text-sm font-medium text-foreground line-clamp-1">{actor.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-1">{actor.character}</p>
+
+      {/* Cast Section */}
+      {cast.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Acteurs</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4">
+            {cast.map((actor: any) => (
+              <div key={actor.id} className="text-center">
+                <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden mb-2">
+                  {actor.profile_path ? (
+                    <img
+                      src={tmdbService.getProfileUrl(actor.profile_path)}
+                      alt={actor.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <span className="text-muted-foreground text-xs">Pas d'image</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+                <h3 className="font-medium text-sm sm:text-base line-clamp-1">{actor.name}</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm line-clamp-1">{actor.character}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {/* Similar Movies */}
-        {similarMovies && similarMovies.length > 0 && (
-          <section data-testid="similar-movies-section">
-            <MovieRow
-              title="Films Similaires"
-              movies={similarMovies}
-              isLoading={false}
-            />
-          </section>
-        )}
+      {/* Trailer Section */}
+      {trailer && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Bande-annonce</h2>
+          <div className="aspect-video bg-black rounded-lg overflow-hidden">
+            <iframe
+              src={`https://www.youtube.com/embed/${trailer.key}`}
+              title={trailer.name}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        </div>
+      )}
 
-        {/* Comments Section */}
-        {contentData && (
-          <CommentsSection
-            contentId={contentData.id}
-            contentType="movie"
-          />
-        )}
-      </div>
+      {/* Similar Movies */}
+      {similarMovies && similarMovies.length > 0 && (
+        <div className="py-8 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <MovieRow title="Vous aimerez aussi" movies={similarMovies.slice(0, 10) as TMDBMovie[]} />
+          </div>
+        </div>
+      )}
+
+      {/* Comments Section */}
+      {contentData?.id && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <CommentsSection contentId={contentData.id} contentType="movie" />
+        </div>
+      )}
     </div>
   );
 }

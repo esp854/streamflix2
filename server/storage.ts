@@ -750,7 +750,7 @@ export class DatabaseStorage implements IStorage {
     const [item] = await db
       .select()
       .from(content)
-      .where(eq(content.id, contentId));
+      .where(and(eq(content.id, contentId), eq(content.active, true)));
     return item || undefined;
   }
 
@@ -764,8 +764,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteContent(contentId: string): Promise<void> {
+    // Au lieu de supprimer complètement le contenu, nous le désactivons
     await db
-      .delete(content)
+      .update(content)
+      .set({ active: false, updatedAt: new Date() } as any)
       .where(eq(content.id, contentId));
   }
 

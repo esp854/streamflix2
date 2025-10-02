@@ -26,6 +26,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="StreamFlix">
     <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a1a" />
@@ -35,13 +36,16 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="msapplication-TileColor" content="#1a1a1a" />
     <meta name="msapplication-config" content="/browserconfig.xml" />
+    <meta name="application-name" content="StreamFlix" />
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- Canonical URL -->
     <link rel="canonical" href="https://streamflix2-o7vx.onrender.com/" />
 
     <!-- PWA Icons -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icon-192x192.png" />
-    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512x512.png" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Preconnect and Prefetch -->
@@ -176,6 +180,13 @@
       window.addEventListener('offline', () => {
         console.log('[PWA] Connection lost');
         // You can show a notification or update UI here
+      });
+      
+      // Handle service worker messages
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SKIP_WAITING') {
+          window.location.reload();
+        }
       });
     </script>
   </body>

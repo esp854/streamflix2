@@ -1,235 +1,243 @@
-import { Link } from "wouter";
-import { Play, Star, Plus, Heart, Share2 } from "lucide-react";
-import { TMDBTVSeries, TV_GENRE_MAP } from "@/types/movie";
-import { tmdbService } from "@/lib/tmdb";
+import { 
+  Card, 
+  CardContent, 
+  CardFooter, 
+  CardHeader 
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useState, useRef, useEffect } from "react";
+import { 
+  Calendar, 
+  Clock, 
+  Download, 
+  Eye, 
+  Play, 
+  Plus, 
+  Star, 
+  Tv 
+} from "lucide-react";
+import { Link } from "wouter";
+import { useAuth } from "@/contexts/auth-context";
 import { useFavorites } from "@/hooks/use-favorites";
-import { useShare } from "@/hooks/use-share";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useOfflineContent } from "@/hooks/useOfflineContent";
+import { useContentPreloader } from "@/hooks/useContentPreloader";
+import LazyImage from "@/components/LazyImage";
+import { useTMDBImage } from "@/hooks/useImageOptimization";
 
 interface TVCardProps {
-  series: TMDBTVSeries;
-  size?: "small" | "medium" | "large";
-  showOverlay?: boolean;
+  show: any;
+  size?: "sm" | "md" | "lg";
+  showDetails?: boolean;
+  onPlay?: () => void;
 }
 
-export default function TVCard({ series, size = "medium", showOverlay = true }: TVCardProps) {
-   const [imageError, setImageError] = useState(false);
-   const [showTrailer, setShowTrailer] = useState(false);
-   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
-   const [isHovering, setIsHovering] = useState(false);
-   const videoRef = useRef<HTMLVideoElement>(null);
-   const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
-   const { shareContent } = useShare();
-   const { shouldRedirectToPayment } = useSubscriptionCheck();
-
-   // Check if series is favorite
-   const { data: favoriteStatus } = checkFavorite(series.id);
-   const isFavorite = favoriteStatus?.isFavorite || false;
-
-  const handleImageError = () => {
-    setImageError(true);
-  };
-
-  // Load trailer when hovering
-  const loadTrailer = async () => {
-    if (trailerUrl) return; // Already loaded
-
-    try {
-      const details = await tmdbService.getTVShowDetails(series.id);
-      if (details.videos && details.videos.results) {
-        const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-        if (trailer) {
-          setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
+export default function TVCard({ 
+  show, 
+  size = "md", 
+  showDetails = false,
+  onPlay 
+}: TVCardProps) {
+  const { user } = useAuth();
+  const { toggleFavorite, checkFavorite } = useFavorites();
+  const { toast } = useToast();
+  const { saveForOffline, isContentSavedOffline } = useOfflineContent();
+  const { preloadContent, preloadSimilarContent } = useContentPreloader();
+  const posterUrl = useTMDBImage(show.poster_path, size === "sm" ? "w342" : size === "lg" ? "w780" : "w500");
+  
+  // Vérifier si la série est un favori
+  const { data: favoriteData } = checkFavorite(show.id);
+  const isFavorite = favoriteData?.isFavorite || false;
+  
+  // Vérifier si le contenu est actif dans la base de données avec React Query pour le caching
+  const { data: contentActiveData, isLoading: contentActiveLoading } = useQuery({
+    queryKey: ["content-active", show.id],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/contents/tmdb/${show.id}`);
+        if (response.ok) {
+          const content = await response.json();
+          return content.active !== false; // Si active est false, le contenu est inactif
         }
+        return true; // Par défaut, on suppose que le contenu est actif
+      } catch (error) {
+        console.error('Error checking content status:', error);
+        return true; // En cas d'erreur, on affiche le contenu
       }
-    } catch (error) {
-      console.error('Error loading trailer:', error);
-    }
-  };
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+  
+  // Ne pas afficher la série si son statut actif est false
+  if (contentActiveData === false) {
+    return null;
+  }
 
-  // Handle mouse enter
-  const handleMouseEnter = () => {
-    setIsHovering(true);
-    loadTrailer();
-    // Start trailer after a short delay
-    trailerTimeoutRef.current = setTimeout(() => {
-      if (trailerUrl) {
-        setShowTrailer(true);
-      }
-    }, 500);
-  };
-
-  // Handle mouse leave
-  const handleMouseLeave = () => {
-    setIsHovering(false);
-    setShowTrailer(false);
-    if (trailerTimeoutRef.current) {
-      clearTimeout(trailerTimeoutRef.current);
-      trailerTimeoutRef.current = null;
-    }
-    // Pause video if playing
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
-  };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (trailerTimeoutRef.current) {
-        clearTimeout(trailerTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handlePlayClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // If user should be redirected to payment page, redirect them
-    if (shouldRedirectToPayment) {
-      window.location.href = `/subscription`;
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour ajouter aux favoris.",
+        action: (
+          <Link href="/login">
+            <Button variant="outline" size="sm">Se connecter</Button>
+          </Link>
+        ),
+      });
       return;
     }
     
-    window.location.href = `/watch/tv/${series.id}/1/1`;
+    try {
+      await toggleFavorite(show, 'tv');
+      toast({
+        title: isFavorite ? "Retiré des favoris" : "Ajouté aux favoris",
+        description: isFavorite 
+          ? `"${show.name}" a été retiré de vos favoris.` 
+          : `"${show.name}" a été ajouté à vos favoris.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour les favoris.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleToggleFavorite = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await toggleFavorite(series, 'tv');
+  const handleSaveForOffline = async () => {
+    try {
+      await saveForOffline({
+        ...show,
+        contentType: 'tv'
+      });
+      toast({
+        title: "Contenu sauvegardé",
+        description: `"${show.name}" a été ajouté à votre bibliothèque hors-ligne.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le contenu.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleAddToList = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // TODO: Implement watchlist functionality (separate from favorites)
-    console.log('Add to watchlist:', series.name);
-  };
-
-  const handleShare = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await shareContent(series, 'tv');
+  const handleMouseEnter = () => {
+    // Précharger le contenu de la série quand l'utilisateur passe la souris sur la carte
+    preloadContent({
+      id: show.id.toString(),
+      type: 'tv',
+      url: `/tv/${show.id}`,
+      priority: 'medium'
+    });
+    
+    // Précharger les contenus similaires
+    preloadSimilarContent(show.id.toString(), 'tv');
   };
 
   const sizeClasses = {
-    small: "w-32 sm:w-40 md:w-48",
-    medium: "w-40 sm:w-48 md:w-56",
-    large: "w-48 sm:w-56 md:w-64",
+    sm: "w-48",
+    md: "w-56",
+    lg: "w-64"
   };
 
-  const heightClasses = {
-    small: "h-48 sm:h-60 md:h-72",
-    medium: "h-60 sm:h-72 md:h-80",
-    large: "h-72 sm:h-80 md:h-96",
+  const posterSize = {
+    sm: "h-64",
+    md: "h-72",
+    lg: "h-80"
   };
-
-  const genres = series.genre_ids?.slice(0, 2).map(id => TV_GENRE_MAP[id]).filter(Boolean) || [];
 
   return (
-    <Link
-      href={`/tv/${series.id}`}
-      className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer tv-card block`}
-      data-testid={`tv-card-${series.id}`}
+    <Card 
+      className={`${sizeClasses[size]} flex-shrink-0 transition-all duration-300 hover:scale-105 hover:shadow-lg`}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
-        <div className="relative overflow-hidden rounded-md transition-transform duration-300 group-hover:scale-105">
-          {showTrailer && trailerUrl ? (
-            <iframe
-              ref={videoRef as any}
-              src={trailerUrl}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              title={`${series.name} trailer`}
+      <CardHeader className="p-0 relative group">
+        <Link href={`/tv/${show.id}`}>
+          <div className="relative overflow-hidden rounded-t-lg">
+            <LazyImage
+              src={posterUrl}
+              alt={show.name}
+              className={`${posterSize[size]} w-full object-cover transition-transform duration-300 group-hover:scale-110`}
+              loading="lazy"
             />
-          ) : (
-            <img
-              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(series.poster_path)}
-              alt={series.name}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              onError={handleImageError}
-              data-testid={`tv-poster-${series.id}`}
-            />
-          )}
-          
-          {showOverlay && (
-            <>
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
-              
-              {/* Play overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <button 
-                  onClick={handlePlayClick}
-                  className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
-                >
-                  <Play className="w-5 h-5 ml-1" />
-                </button>
-              </div>
-              
-              {/* Rating badge */}
-              {series.vote_average > 0 && (
-                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`tv-rating-${series.id}`}>
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>{series.vote_average.toFixed(1)}</span>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+              <div className="text-white space-y-2 w-full">
+                <h3 className="font-bold text-lg line-clamp-2">{show.name}</h3>
+                <div className="flex items-center gap-2 text-sm">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span>{show.vote_average?.toFixed(1)}</span>
+                  <span>•</span>
+                  <Calendar className="w-4 h-4" />
+                  <span>{show.first_air_date?.substring(0, 4) || 'N/A'}</span>
                 </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleToggleFavorite}
-                  disabled={isAddingToFavorites}
-                  className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
-                  data-testid={`button-favorite-${series.id}`}
-                  title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                >
-                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleAddToList}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-add-list-${series.id}`}
-                  title="Ajouter à ma liste"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleShare}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-share-${series.id}`}
-                  title="Partager"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
               </div>
-            </>
-          )}
-        </div>
-        
-        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${series.id}`}>
-          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${series.id}`}>
-            {series.name}
-          </h3>
-          <div className="flex items-center justify-between mt-1">
-            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${series.id}`}>
-              {series.first_air_date ? new Date(series.first_air_date).getFullYear() : "Date inconnue"} • {genres.join(", ")}
-            </p>
+            </div>
+            
+            {/* Bouton de sauvegarde hors-ligne */}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSaveForOffline();
+              }}
+              disabled={isContentSavedOffline(show.id)}
+            >
+              <Download className="w-4 h-4" />
+            </Button>
           </div>
-        </div>
-    </Link>
+        </Link>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 left-2 bg-black/50 hover:bg-black/70 text-white rounded-full w-8 h-8"
+          onClick={handleToggleFavorite}
+        >
+          <Plus className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+        </Button>
+      </CardHeader>
+      
+      {showDetails && (
+        <CardContent className="p-4">
+          <div className="space-y-2">
+            <Badge variant="secondary" className="text-xs">
+              Série
+            </Badge>
+            
+            <p className="text-sm text-muted-foreground line-clamp-3">
+              {show.overview}
+            </p>
+            
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Tv className="w-4 h-4" />
+                <span>{show.number_of_seasons || 'N/A'} saison{show.number_of_seasons && show.number_of_seasons > 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Eye className="w-4 h-4" />
+                <span>{show.vote_count || 0}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      )}
+      
+      <CardFooter className="p-4 pt-0">
+        <Button 
+          className="w-full" 
+          onClick={onPlay || (() => window.location.href = `/watch/tv/${show.id}`)}
+        >
+          <Play className="w-4 h-4 mr-2" />
+          Regarder
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
