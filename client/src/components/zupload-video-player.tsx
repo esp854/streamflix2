@@ -139,12 +139,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           });
         }
         
-        console.warn('Pas de Ad dans le VAST');
+        console.warn('Pas de Ad dans le VAST - Lecture de la vidéo principale');
         if (mainVideoRef.current) {
           mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
         }
         setIsLoading(false);
         setIsAdPlaying(false);
+        setShowAd(false);
+        setAdSkipped(true);
         return;
       }
 
@@ -167,12 +169,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       });
 
       if (!adUrls.length) {
-        console.warn('Pas de MediaFile dans le VAST');
+        console.warn('Pas de MediaFile dans le VAST - Lecture de la vidéo principale');
         if (mainVideoRef.current) {
           mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
         }
         setIsLoading(false);
         setIsAdPlaying(false);
+        setShowAd(false);
+        setAdSkipped(true);
         return;
       }
 
@@ -222,9 +226,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         console.log('La publicité peut être lue');
         // Démarrer la lecture automatiquement sur mobile
         if (isMobileDevice()) {
-          videoEl.play().catch(error => {
-            console.error('Erreur de lecture automatique de la pub sur mobile:', error);
-          });
+          // Ajouter un petit délai pour s'assurer que le DOM est prêt
+          setTimeout(() => {
+            videoEl.play().catch(error => {
+              console.error('Erreur de lecture automatique de la pub sur mobile:', error);
+              // En cas d'erreur, passer à la vidéo principale
+              if (mainVideoRef.current) {
+                mainVideoRef.current.src = videoUrl;
+                mainVideoRef.current.play().catch(playError => {
+                  console.error('Erreur de lecture de la vidéo principale:', playError);
+                });
+              }
+              setIsAdPlaying(false);
+              setIsLoading(false);
+              setShowAd(false);
+              setAdSkipped(true);
+            });
+          }, 100);
         }
       };
       
@@ -235,7 +253,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         playNextAd();
       };
       
-      // Sur mobile, essayer de jouer automatiquement
+      // Sur desktop, essayer de jouer automatiquement
       if (!isMobileDevice()) {
         videoEl.play().catch(error => {
           console.error('Erreur de lecture de la pub:', error);
@@ -274,6 +292,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       setIsAdPlaying(false);
       setIsLoading(false);
+      setShowAd(false);
+      setAdSkipped(true);
       
       // Nettoyer le timeout du bouton skip
       if (skipButtonTimeoutRef.current) {
@@ -323,6 +343,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   // Fonction pour agrandir/réduire la publicité
   const toggleAdExpand = () => {
     setAdExpanded(!adExpanded);
+    // Ajout d'un log pour le debugging
+    console.log('Toggle ad expand:', !adExpanded);
   };
 
   // Effet pour mettre à jour le temps de la pub
@@ -351,6 +373,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle video error
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    // Si c'est une erreur de publicité, passer à la suivante
+    if (isAdPlaying && showAd) {
+      console.log('Erreur de lecture de la publicité, passage à la suivante ou à la vidéo principale');
+      playNextAd();
+      return;
+    }
+    
     setIsLoading(false);
     setError('Failed to load video content');
     onVideoError?.('Failed to load video content');
@@ -364,7 +393,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     
     // Pour les URLs d'iframe, réduire le temps d'affichage du loader
     // Optimisation du loader pour une meilleure expérience utilisateur
-    const loaderDelay = isMobileDevice() ? 800 : 800; // 0.8 seconde pour tous les appareils
+    const loaderDelay = isMobileDevice() ? 500 : 800; // 0.5 seconde sur mobile, 0.8 sur desktop
     
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
@@ -386,14 +415,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       // Précharger la vidéo principale pendant la lecture de la pub
       // Préchargement optimisé pour tous les appareils
-      const preloadDelay = isMobile ? 2500 : 2500; // 2.5 secondes pour tous les appareils
+      const preloadDelay = isMobile ? 1500 : 2500; // 1.5 secondes sur mobile, 2.5 sur desktop
       
       setTimeout(() => {
         preloadMainVideo();
       }, preloadDelay);
       
       // Ajuster la durée de la pub - expérience utilisateur équilibrée
-      const adDuration = isMobile ? 20000 : 20000; // 20 secondes pour tous les appareils
+      const adDuration = isMobile ? 15000 : 20000; // 15 secondes sur mobile, 20 sur desktop
       
       const timer = setTimeout(() => {
         setShowAd(false);
@@ -452,6 +481,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture après avoir passé la pub:', error);
+          // Même en cas d'erreur, masquer la pub
+          setIsLoading(false);
         });
       }
     }
@@ -478,6 +509,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const handleTouch = (e: React.TouchEvent) => {
+    // Ne pas empêcher le comportement par défaut si on interagit avec les contrôles de pub
+    if (showAd && e.target instanceof HTMLElement && e.target.closest('.ad-controls')) {
+      return;
+    }
+    
+    // Pour les publicités, permettre le contrôle tactile sans interférer
+    if (showAd && isAdPlaying) {
+      // Permettre le contrôle tactile pour les pubs
+      return;
+    }
+    
     e.preventDefault();
     tapCountRef.current++;
     
@@ -514,6 +556,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Show controls on mouse move (desktop) or touch (mobile)
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Ne pas masquer les contrôles si on interagit avec les contrôles de pub
+    if (showAd && e.target instanceof HTMLElement && e.target.closest('.ad-controls')) {
+      return;
+    }
+    
+    // Pour les publicités, ne pas interférer avec les contrôles
+    if (showAd && isAdPlaying) {
+      return;
+    }
+    
     e.preventDefault();
     setShowControls(true);
     
@@ -529,12 +581,36 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch end event
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Ne pas empêcher le comportement par défaut si on interagit avec les contrôles de pub
+    if (showAd && e.target instanceof HTMLElement && e.target.closest('.ad-controls')) {
+      return;
+    }
+    
+    // Pour les publicités, permettre le contrôle tactile sans interférer
+    if (showAd && isAdPlaying) {
+      // Permettre le contrôle tactile pour les pubs
+      return;
+    }
+    
     e.preventDefault();
     // Ne pas masquer immédiatement les contrôles après un touch
   };
 
   // Fonction play/pause pour le lecteur vidéo
   const togglePlayPause = () => {
+    // Si on est en train de regarder une publicité, contrôler la pub
+    if (adVideoRef.current && isAdPlaying && showAd) {
+      if (adVideoRef.current.paused) {
+        adVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture de la pub:', error);
+        });
+      } else {
+        adVideoRef.current.pause();
+      }
+      return;
+    }
+    
+    // Sinon, contrôler la vidéo principale
     if (mainVideoRef.current) {
       if (mainVideoRef.current.paused) {
         mainVideoRef.current.play().catch(error => {
@@ -542,16 +618,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       } else {
         mainVideoRef.current.pause();
-      }
-    }
-    
-    if (adVideoRef.current && isAdPlaying) {
-      if (adVideoRef.current.paused) {
-        adVideoRef.current.play().catch(error => {
-          console.error('Erreur de lecture de la pub:', error);
-        });
-      } else {
-        adVideoRef.current.pause();
       }
     }
   };
@@ -602,13 +668,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       {/* Ad for non-authenticated users - HilltopAds VAST integration in enhanced banner with animations */}
       {showAd && (
-        <div className={`absolute ${adExpanded ? 'inset-0 sm:inset-4 md:inset-8 lg:inset-12' : 'top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6'} z-30 bg-gradient-to-r from-black/90 to-gray-900/90 rounded-xl border border-white/30 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:shadow-2xl transform hover:scale-[1.02] animate-fade-in`}>
-          <div className="relative w-full flex items-center justify-between p-3 sm:p-4">
+        <div className={`absolute ${adExpanded ? 'inset-0 sm:inset-4 md:inset-8 lg:inset-12' : 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md sm:max-w-3xl'} z-30 bg-gradient-to-r from-black/90 to-gray-900/90 rounded-xl border border-white/30 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:shadow-2xl animate-fade-in`}>
+          <div className="relative w-full flex flex-col sm:flex-row items-center justify-between p-3 sm:p-5">
             {/* Enhanced ad player with loading indicator and progress bar */}
-            <div className="flex-1 min-w-0 mr-3 sm:mr-4">
-              <div className="bg-black rounded-lg overflow-hidden relative" style={{ height: adExpanded ? '200px' : '100px' }}>
-                <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center font-bold">
-                  <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+            <div className="flex-1 min-w-0 mr-0 sm:mr-4 mb-3 sm:mb-0 w-full">
+              <div className="bg-black rounded-lg overflow-hidden relative mx-auto" style={{ height: adExpanded ? '250px' : '150px', width: '100%' }}>
+                <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded flex items-center font-bold">
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-white rounded-full mr-1.5 sm:mr-2 animate-pulse"></span>
                   PUBLICITÉ
                 </div>
                 <video
@@ -633,7 +699,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   muted
                 />
                 {/* Progress bar for ad */}
-                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 sm:h-2 bg-black/40">
                   <div 
                     className="h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-300 rounded-r"
                     style={{ width: `${(adCurrentTime / adDuration) * 100}%` }}
@@ -642,40 +708,40 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 {/* Ad loading overlay */}
                 {isAdPlaying && adCurrentTime === 0 && (
                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
               </div>
             </div>
             
             {/* Enhanced Ad controls with improved UX and animations */}
-            <div className="flex flex-col items-center space-y-2 sm:space-y-3">
+            <div className="ad-controls flex flex-row sm:flex-col items-center space-x-2 sm:space-x-0 sm:space-y-2">
               {showSkipButton ? (
                 <button
                   onClick={skipAd}
-                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-red-700 hover:to-orange-600 transition-all duration-200 text-sm font-bold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
+                  className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg hover:from-red-700 hover:to-orange-600 transition-all duration-200 text-sm sm:text-base font-bold whitespace-nowrap shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center"
                 >
                   <span>Passer</span>
-                  <span className="ml-2 text-xs bg-white/20 px-1.5 py-0.5 rounded font-bold">
+                  <span className="ml-2 sm:ml-2.5 text-xs sm:text-sm bg-white/20 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-bold">
                     {Math.ceil(adDuration - adCurrentTime)}s
                   </span>
                 </button>
               ) : (
                 <button
                   disabled
-                  className="bg-gray-700 text-gray-400 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-bold whitespace-nowrap shadow-md opacity-70 flex items-center"
+                  className="bg-gray-700 text-gray-400 px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 text-sm sm:text-base font-bold whitespace-nowrap shadow-md opacity-70 flex items-center"
                 >
                   <span>Passer</span>
-                  <span className="ml-2 text-xs bg-black/30 px-1.5 py-0.5 rounded font-bold">
+                  <span className="ml-2 sm:ml-2.5 text-xs sm:text-sm bg-black/30 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded font-bold">
                     {Math.ceil(adDuration - adCurrentTime)}s
                   </span>
                 </button>
               )}
               <button
                 onClick={toggleAdExpand}
-                className="bg-white/10 text-white px-3 py-1 rounded-lg hover:bg-white/20 transition-all duration-200 text-xs font-medium whitespace-nowrap border border-white/30 hover:border-white/50 transform hover:scale-105"
+                className="bg-white/10 text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg hover:bg-white/20 transition-all duration-200 text-xs sm:text-sm font-medium whitespace-nowrap border border-white/30 hover:border-white/50 transform hover:scale-105"
               >
-                {adExpanded ? 'Réduire' : 'Voir la pub'}
+                {adExpanded ? 'Réduire' : 'Agrandir'}
               </button>
             </div>
           </div>
