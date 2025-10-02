@@ -152,44 +152,6 @@
   animation: fadeIn 0.3s ease-out forwards;
 }
 
-/* Amélioration de la visibilité des publicités */
-.advertising-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.advertising-label {
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  background: linear-gradient(45deg, #ff0000, #ff6b00);
-  color: white;
-  font-weight: bold;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  z-index: 10;
-  box-shadow: 0 2px 10px rgba(255, 0, 0, 0.3);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 2px 10px rgba(255, 0, 0, 0.3);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 4px 20px rgba(255, 0, 0, 0.5);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 10px rgba(255, 0, 0, 0.3);
-  }
-}
-
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

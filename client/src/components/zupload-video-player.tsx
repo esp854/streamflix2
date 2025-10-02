@@ -578,7 +578,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   return (
     <div 
-      className="relative w-full h-screen bg-black transition-colors duration-3300"
+      className="relative w-full h-screen bg-black transition-colors duration-300"
       onMouseMove={handleMouseMove}
       onTouchStart={handleTouch}
       onTouchMove={handleTouch}
@@ -602,12 +602,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       {/* Ad for non-authenticated users - HilltopAds VAST integration in enhanced banner with animations */}
       {showAd && (
-        <div className={`absolute ${adExpanded ? 'inset-0 sm:inset-4 md:inset-8 lg:inset-12' : 'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2'} z-30 bg-gradient-to-r from-black/90 to-gray-900/90 rounded-xl border-4 border-red-500 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:shadow-2xl animate-fade-in advertising-container`}>
-          <div className="advertising-label">PUBLICITÉ</div>
+        <div className={`absolute ${adExpanded ? 'inset-0 sm:inset-4 md:inset-8 lg:inset-12' : 'top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6'} z-30 bg-gradient-to-r from-black/90 to-gray-900/90 rounded-xl border border-white/30 backdrop-blur-sm shadow-2xl transition-all duration-300 hover:shadow-2xl transform hover:scale-[1.02] animate-fade-in`}>
           <div className="relative w-full flex items-center justify-between p-3 sm:p-4">
             {/* Enhanced ad player with loading indicator and progress bar */}
             <div className="flex-1 min-w-0 mr-3 sm:mr-4">
-              <div className="bg-black rounded-lg overflow-hidden relative mx-auto" style={{ height: adExpanded ? '250px' : '150px', width: adExpanded ? '250px' : '150px' }}>
+              <div className="bg-black rounded-lg overflow-hidden relative" style={{ height: adExpanded ? '200px' : '100px' }}>
+                <div className="absolute top-2 left-2 z-10 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center font-bold">
+                  <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                  PUBLICITÉ
+                </div>
                 <video
                   ref={adVideoRef}
                   controls={false}
@@ -628,7 +631,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   }}
                   playsInline
                   muted
-                  autoPlay
                 />
                 {/* Progress bar for ad */}
                 <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40">
