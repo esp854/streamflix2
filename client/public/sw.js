@@ -1,27 +1,14 @@
 // Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.2.0';
-const STATIC_CACHE = 'streamflix-static-v1.2.0';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.2.0';
-const IMAGE_CACHE = 'streamflix-images-v1.2.0';
-const VIDEO_CACHE = 'streamflix-videos-v1.2.0';
+const CACHE_NAME = 'streamflix-v1.1.0';
+const STATIC_CACHE = 'streamflix-static-v1.1.0';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.1.0';
+const IMAGE_CACHE = 'streamflix-images-v1.1.0';
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/index.html',
-  '/src/main.tsx',
-  '/src/App.tsx',
-  '/src/index.css'
-];
-
-// Critical resources to cache during installation
-const CRITICAL_ASSETS = [
-  '/src/components/layout/navbar.tsx',
-  '/src/pages/home.tsx',
-  '/src/components/movie-card.tsx',
-  '/src/components/movie-row.tsx',
-  '/src/components/hero-carousel.tsx'
+  '/index.html'
 ];
 
 // Install event - cache static assets
@@ -41,11 +28,8 @@ self.addEventListener('install', (event) => {
       // Pre-cache critical CSS/JS chunks
       caches.open(DYNAMIC_CACHE)
         .then((cache) => {
-          console.log('[SW] Caching critical assets');
-          return cache.addAll(CRITICAL_ASSETS).catch((error) => {
-            console.error('[SW] Failed to cache critical assets:', error);
-            return Promise.resolve();
-          });
+          // Add critical resources that should be cached during install
+          return Promise.resolve();
         })
     ]).then(() => {
       return self.skipWaiting();
@@ -60,7 +44,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE && cacheName !== VIDEO_CACHE) {
+          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE) {
             console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -71,25 +55,6 @@ self.addEventListener('activate', (event) => {
       return self.clients.claim();
     })
   );
-});
-
-// Handle messages from client
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  if (event.data.command === 'CLEAR_API_CACHE') {
-    clearAPICache();
-  }
-  
-  if (event.data.command === 'INVALIDATE_CONTENT_CACHE') {
-    invalidateContentCache();
-  }
-  
-  if (event.data.command === 'PREFETCH_CONTENT') {
-    prefetchContent(event.data.urls);
-  }
 });
 
 // Fetch event - serve cached content when offline
@@ -118,30 +83,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle video requests with specific video cache
-  if (request.destination === 'video' || url.pathname.includes('.mp4') || url.pathname.includes('.m3u8') || url.pathname.includes('.ts')) {
-    event.respondWith(
-      caches.match(request)
-        .then((cachedResponse) => {
-          // Return cached response if available
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          
-          // For video content, we don't cache during fetch to avoid storage issues
-          // Instead, we let the browser handle video caching natively
-          return fetch(request)
-            .catch((error) => {
-              console.error('[SW] Video fetch failed:', error);
-              return new Response(null, { status: 503, statusText: 'Offline' });
-            });
-        })
-    );
-    return;
-  }
-
   // Handle image requests with specific image cache
-  if (url.hostname === 'image.tmdb.org' || request.destination === 'image') {
+  if (url.hostname === 'image.tmdb.org') {
     event.respondWith(
       caches.match(request)
         .then((cachedResponse) => {
@@ -240,7 +183,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle static assets (JS, CSS, etc.) - try network first
-  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'font') {
+  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'font' || request.destination === 'image') {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -327,13 +270,12 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'background-sync') {
     event.waitUntil(doBackgroundSync());
   }
-  
-  if (event.tag === 'favorite-sync') {
-    event.waitUntil(syncFavorites());
-  }
-  
-  if (event.tag === 'watch-history-sync') {
-    event.waitUntil(syncWatchHistory());
+});
+
+// Message handler for cache invalidation
+self.addEventListener('message', (event) => {
+  if (event.data.command === 'CLEAR_API_CACHE') {
+    clearAPICache();
   }
 });
 
@@ -345,13 +287,10 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
-        primaryKey: data.primaryKey,
-        url: data.url || '/'
+        primaryKey: data.primaryKey
       }
     };
 
@@ -379,26 +318,6 @@ async function doBackgroundSync() {
     console.log('[SW] Performing background sync');
   } catch (error) {
     console.error('[SW] Background sync failed:', error);
-  }
-}
-
-// Sync favorites when connection is restored
-async function syncFavorites() {
-  try {
-    console.log('[SW] Syncing favorites');
-    // Implement favorites sync logic here
-  } catch (error) {
-    console.error('[SW] Favorites sync failed:', error);
-  }
-}
-
-// Sync watch history when connection is restored
-async function syncWatchHistory() {
-  try {
-    console.log('[SW] Syncing watch history');
-    // Implement watch history sync logic here
-  } catch (error) {
-    console.error('[SW] Watch history sync failed:', error);
   }
 }
 
@@ -430,52 +349,4 @@ function clearAPICache() {
       });
     });
   });
-}
-
-// Invalidate content cache (for when content is updated)
-function invalidateContentCache() {
-  Promise.all([
-    caches.open(IMAGE_CACHE),
-    caches.open(DYNAMIC_CACHE)
-  ]).then(([imageCache, dynamicCache]) => {
-    Promise.all([
-      imageCache.keys(),
-      dynamicCache.keys()
-    ]).then(([imageKeys, dynamicKeys]) => {
-      // Delete all content-related cache entries
-      imageKeys.forEach(request => {
-        if (request.url.includes('image.tmdb.org')) {
-          imageCache.delete(request);
-        }
-      });
-      
-      dynamicKeys.forEach(request => {
-        if (request.url.includes('/api/tmdb/') || request.url.includes('/api/content')) {
-          dynamicCache.delete(request);
-        }
-      });
-    });
-  });
-}
-
-// Handle content prefetching
-async function prefetchContent(urls) {
-  try {
-    console.log('[SW] Prefetching content:', urls);
-    const cache = await caches.open(DYNAMIC_CACHE);
-    
-    // Fetch and cache each URL
-    for (const url of urls) {
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          await cache.put(url, response.clone());
-        }
-      } catch (error) {
-        console.error('[SW] Failed to prefetch:', url, error);
-      }
-    }
-  } catch (error) {
-    console.error('[SW] Content prefetching failed:', error);
-  }
 }
