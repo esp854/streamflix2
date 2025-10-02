@@ -204,6 +204,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   };
 
+  // Handle video playing - for better loading indication
+  const handleVideoPlaying = () => {
+    if (!isAdPlaying) {
+      setIsLoading(false);
+      setError(null);
+    }
+  };
+
   // Handle video error
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     setIsLoading(false);
@@ -216,6 +224,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsLoading(true);
     setError(null);
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
+    
+    // Pour les URLs d'iframe, réduire le temps d'affichage du loader
+    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+      const loaderTimeout = setTimeout(() => {
+        setIsLoading(false);
+      }, 3000); // Masquer le loader après 3 secondes pour les iframes
+      
+      return () => clearTimeout(loaderTimeout);
+    }
   }, [videoUrl]);
 
   // Handle ad for non-authenticated users
@@ -234,6 +251,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setAdSkipped(true);
         // Réinitialiser l'état de chargement après la fin de la pub
         setIsLoading(true);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
       }, 60000); // 60 seconds ad (augmenté pour gérer plusieurs pubs)
       return () => {
         clearTimeout(timer);
@@ -250,6 +274,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setTimeout(() => {
           preloadMainVideo();
         }, 100);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
       }
     }
   }, [isAuthenticated, adSkipped]);
@@ -348,6 +379,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 preload="auto"
                 className="w-full h-full"
                 onLoad={handleVideoLoad}
+                onPlaying={handleVideoPlaying}
                 onError={handleVideoError}
                 onEnded={() => {
                   if (isAdPlaying) {
@@ -505,6 +537,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           preload="auto"
           className="w-full h-full"
           onLoad={handleVideoLoad}
+          onPlaying={handleVideoPlaying}
           onError={handleVideoError}
           onEnded={onVideoEnd}
         />
