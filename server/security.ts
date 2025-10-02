@@ -134,8 +134,8 @@ export const validateCSRFToken = (userId: string, token: string, userAgent: stri
   // Check if token matches
   const isValid = record.token === token;
   
-  // Delete the token after use (one-time use)
-  delete csrfTokens[userId];
+  // Ne pas supprimer le token après utilisation pour permettre plusieurs requêtes
+  // Le token expirera naturellement après 1 heure
   
   return isValid;
 };
