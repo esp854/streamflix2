@@ -36,21 +36,129 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAd, setShowAd] = useState(!isAuthenticated);
   const [adSkipped, setAdSkipped] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [showSkipButton, setShowSkipButton] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
+  const currentAdIndexRef = useRef(0); // Index de la pub actuelle
 
-  // Handle iframe load
-  const handleIframeLoad = () => {
-    setIsLoading(false);
+  // URL VAST de HilltopAds
+  const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
+
+  // Fonction pour charger la pub VAST via IMA
+  async function loadVastAd() {
+    if (!videoRef.current) return;
+
+    const videoEl = videoRef.current;
+
+    try {
+      const response = await fetch(vastTag);
+      const xmlText = await response.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "text/xml");
+
+      // Récupère tous les Ad du VAST
+      const ads = xml.querySelectorAll('Ad');
+      if (!ads.length) {
+        console.warn('Pas de Ad dans le VAST');
+        videoEl.src = videoUrl; // pas de pub, lance la vidéo normale
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Récupère tous les MediaFile des pubs
+      const adUrls: string[] = [];
+      ads.forEach(ad => {
+        const mediaFile = ad.querySelector('MediaFile');
+        if (mediaFile) {
+          const adUrl = mediaFile.textContent?.trim();
+          if (adUrl) {
+            adUrls.push(adUrl);
+          }
+        }
+      });
+
+      if (!adUrls.length) {
+        console.warn('Pas de MediaFile dans le VAST');
+        videoEl.src = videoUrl; // pas de pub, lance la vidéo normale
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Initialiser la file d'attente des pubs
+      adQueueRef.current = adUrls;
+      currentAdIndexRef.current = 0;
+
+      // Lecture de la première pub
+      playNextAd();
+    } catch (err) {
+      console.error('Erreur chargement VAST:', err);
+      videoEl.src = videoUrl; // fallback
+      setIsAdPlaying(false);
+      videoEl.play();
+      setIsLoading(false);
+    }
+  }
+
+  // Fonction pour jouer la pub suivante
+  const playNextAd = () => {
+    if (!videoRef.current) return;
+
+    const videoEl = videoRef.current;
+    
+    // Vérifier s'il y a une pub suivante
+    if (currentAdIndexRef.current < adQueueRef.current.length) {
+      const adUrl = adQueueRef.current[currentAdIndexRef.current];
+      
+      // Lecture de la pub
+      videoEl.src = adUrl;
+      setIsAdPlaying(true);
+      videoEl.play();
+      
+      // Incrémenter l'index pour la prochaine pub
+      currentAdIndexRef.current++;
+      
+      // Masquer le bouton de skip pendant 15 secondes
+      setShowSkipButton(false);
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      skipButtonTimeoutRef.current = setTimeout(() => {
+        setShowSkipButton(true);
+      }, 15000); // 15 secondes
+    } else {
+      // Toutes les pubs ont été jouées, lancer la vidéo principale
+      videoEl.src = videoUrl;
+      setIsAdPlaying(false);
+      videoEl.play();
+      setIsLoading(false);
+      
+      // Nettoyer le timeout du bouton skip
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      setShowSkipButton(false);
+    }
   };
 
-  // Handle iframe error
-  const handleIframeError = (e: React.SyntheticEvent<HTMLIFrameElement, Event>) => {
+  // Handle video load
+  const handleVideoLoad = () => {
+    if (!isAdPlaying) {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle video error
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     setIsLoading(false);
     setError('Failed to load video content');
     onVideoError?.('Failed to load video content');
@@ -66,12 +174,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   useEffect(() => {
     if (!isAuthenticated && !adSkipped) {
       setShowAd(true);
+      loadVastAd();
+      
       const timer = setTimeout(() => {
         setShowAd(false);
         setAdSkipped(true);
         // Réinitialiser l'état de chargement après la fin de la pub
         setIsLoading(true);
-      }, 30000); // 30 seconds ad
+      }, 60000); // 60 seconds ad (augmenté pour gérer plusieurs pubs)
       return () => clearTimeout(timer);
     } else {
       setShowAd(false);
@@ -83,10 +193,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   }, [isAuthenticated, adSkipped]);
 
   const skipAd = () => {
+    if (videoRef.current) {
+      // Passer toutes les pubs restantes et lancer la vidéo principale
+      videoRef.current.src = videoUrl;
+      setIsAdPlaying(false);
+      videoRef.current.play();
+      
+      // Nettoyer les files d'attente
+      adQueueRef.current = [];
+      currentAdIndexRef.current = 0;
+    }
     setShowAd(false);
     setAdSkipped(true);
     // Réinitialiser l'état de chargement après avoir passé la pub
-    setIsLoading(true);
+    setIsLoading(false);
+    
+    // Nettoyer le timeout du bouton skip
+    if (skipButtonTimeoutRef.current) {
+      clearTimeout(skipButtonTimeoutRef.current);
+    }
+    setShowSkipButton(false);
   };
 
   // Show controls on mouse move and auto-hide after 3 seconds
@@ -102,23 +228,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }, 3000);
   };
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
     };
   }, []);
-
-  // Modified video URL to include branding removal parameters and disable download
-  // Simplified parameters to avoid potential issues with Zupload API changes
-  const modifiedVideoUrl = videoUrl.includes('?')
-    ? `${videoUrl}&autoplay=1`
-    : `${videoUrl}?autoplay=1`;
-
-  // URL VAST de HilltopAds
-  const vastTagUrl = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
 
   return (
     <div 
@@ -138,52 +258,34 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
           <div className="relative w-full h-full">
             {/* HilltopAds VAST integration */}
-            <div 
-              id="hilltopads-zone-1" 
-              className="w-full h-full flex items-center justify-center"
-            >
-              {/* Conteneur pour HilltopAds VAST */}
-              <div dangerouslySetInnerHTML={{ 
-                __html: `
-                <script type="text/javascript">
-                  // Création du lecteur Zupload avec intégration VAST
-                  if (window.ZuploadPlayer) {
-                    const player = new ZuploadPlayer({
-                      container: '#hilltopads-zone-1',
-                      vastTag: '${vastTagUrl}',
-                      autoplay: true,
-                      controls: true
-                    });
-                    player.init();
+            <div className="w-full h-full flex items-center justify-center">
+              <video
+                ref={videoRef}
+                controls
+                width="100%"
+                height="100%"
+                preload="auto"
+                className="w-full h-full"
+                onLoad={handleVideoLoad}
+                onError={handleVideoError}
+                onEnded={() => {
+                  if (isAdPlaying) {
+                    // Pub terminée, jouer la pub suivante ou la vidéo principale
+                    playNextAd();
                   } else {
-                    // Fallback si ZuploadPlayer n'est pas disponible
-                    var atOptions = {
-                      'key' : 'd0a26cf005980043c2e129630f0053e0',
-                      'format' : 'iframe',
-                      'height' : '100%',
-                      'width' : '100%',
-                      'params' : {}
-                    };
-                    if (document.getElementById('hilltopads-script-1')) {
-                      document.getElementById('hilltopads-script-1').remove();
-                    }
-                    var script = document.createElement('script');
-                    script.id = 'hilltopads-script-1';
-                    script.type = 'text/javascript';
-                    script.async = true;
-                    script.src = 'https://hilltopads.net/pcode/adult.php?' + Math.floor(Math.random()*99999999999);
-                    document.getElementById('hilltopads-zone-1').appendChild(script);
+                    onVideoEnd?.();
                   }
-                </script>
-                `
-              }} />
+                }}
+              />
             </div>
-            <button
-              onClick={skipAd}
-              className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
-            >
-              Passer la pub (30s)
-            </button>
+            {showSkipButton && (
+              <button
+                onClick={skipAd}
+                className="absolute top-4 right-4 bg-black/80 text-white px-4 py-2 rounded hover:bg-black/90 transition-colors z-40"
+              >
+                Passer la pub
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -312,41 +414,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         </div>
       </div>
 
-      {/* Overlay to block clicks in the top-right area (likely download button region) */}
+      {/* Main video player for authenticated users or after ad is skipped */}
       {!showAd && (
-        <div
-          className="absolute z-10 top-0 right-0"
-          style={{ width: '12rem', height: '3rem', cursor: 'default' }}
-          onClick={(e) => e.preventDefault()}
-          onMouseDown={(e) => e.preventDefault()}
-          onPointerDown={(e) => e.preventDefault()}
-          onDoubleClick={(e) => e.preventDefault()}
-        />
-      )}
-      
-      {/* Direct Zupload iframe integration without custom controls */}
-      {!showAd && (
-        <iframe
-          ref={iframeRef}
-          src={modifiedVideoUrl}
+        <video
+          ref={videoRef}
+          controls
+          width="100%"
+          height="100%"
+          preload="auto"
           className="w-full h-full"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          title={`Lecture de ${title}`}
-          // More restrictive sandbox to prevent downloads
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          loading="lazy"
-          // Additional attributes to prevent downloads
-          referrerPolicy="no-referrer"
-          // Styling to blend seamlessly
-          style={{
-            backgroundColor: 'black',
-            border: 'none',
-            outline: 'none',
-            zIndex: 0,
-          }}
+          onLoad={handleVideoLoad}
+          onError={handleVideoError}
+          onEnded={onVideoEnd}
         />
       )}
     </div>
