@@ -148,6 +148,11 @@ export default function PayPalButton({
             
             if (result.status === "COMPLETED") {
               onPaymentSuccess();
+              
+              // Recharger la page après 2 secondes pour refléter l'activation de l'abonnement
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
             } else {
               throw new Error("Le paiement n'a pas pu être complété");
             }

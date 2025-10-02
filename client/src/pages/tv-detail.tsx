@@ -9,6 +9,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
 import TVRow from "@/components/tv-row";
 import CommentsSection from "@/components/CommentsSection";
+import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function TVDetail() {
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set([1])); // First season expanded by default
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
+  const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   const { data: tvDetails, isLoading, error } = useQuery({
     queryKey: [`/api/tmdb/tv/${tvId}`],
@@ -269,12 +271,21 @@ export default function TVDetail() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="tv-actions">
-            <Link href={`/watch/tv/${tv.id}/1/1`} className="w-full sm:w-auto">
-              <Button className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" data-testid="button-watch">
-                <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Regarder</span>
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => {
+                // If user should be redirected to payment page, redirect them
+                if (shouldRedirectToPayment) {
+                  window.location.href = `/subscription`;
+                  return;
+                }
+                window.location.href = `/watch/tv/${tv.id}/1/1`;
+              }}
+              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
+              data-testid="button-watch"
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Regarder</span>
+            </Button>
 
             <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
               <Button

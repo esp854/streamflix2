@@ -1577,51 +1577,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle PayPal webhook
   app.post("/api/webhook/paypal", async (req: any, res: any) => {
     try {
-      console.log("PayPal webhook received:", req.body);
-      
-      // For now, we'll process all webhooks without verification
-      // In production, you should verify the webhook signature
-      
-      // Process the webhook event
-      const event = req.body;
-      const eventType = event.event_type;
-      
-      console.log(`Processing PayPal event: ${eventType}`);
-      
-      switch (eventType) {
-        case 'PAYMENT.CAPTURE.COMPLETED':
-          // Payment completed successfully
-          await handlePayPalPaymentCompleted(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.DENIED':
-          // Payment was denied
-          await handlePayPalPaymentDenied(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.REFUNDED':
-          // Payment was refunded
-          await handlePayPalPaymentRefunded(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CREATED':
-          // Subscription created
-          await handlePayPalSubscriptionCreated(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CANCELLED':
-          // Subscription cancelled
-          await handlePayPalSubscriptionCancelled(event);
-          break;
-          
-        default:
-          console.log(`Unhandled PayPal event type: ${eventType}`);
-      }
-      
-      res.status(200).json({ success: true });
+      // Just send a success response for now
+      res.json({ message: "Webhook received successfully" });
     } catch (error) {
-      console.error("Error processing PayPal webhook:", error);
-      res.status(500).json({ error: "Failed to process webhook" });
+      console.error("Error handling PayPal webhook:", error);
+      res.status(500).json({ error: "Failed to handle PayPal webhook" });
     }
   });
 
@@ -4053,8 +4013,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("PayPal webhook received:", req.body);
       
-      // For now, we'll process all webhooks without verification
-      // In production, you should verify the webhook signature
+      // Verify webhook signature for security
+      const isValid = await paymentService.verifyPayPalWebhook(req);
+      if (!isValid) {
+        console.error("Invalid PayPal webhook signature");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
       
       // Process the webhook event
       const event = req.body;
@@ -4157,6 +4121,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("Subscription activated for user:", userId);
+      
+      // Send confirmation email to user
+      try {
+        const user = await storage.getUserById(userId);
+        if (user && user.email) {
+          const subject = "Confirmation d'abonnement StreamFlix";
+          const html = `
+            <h2>Votre abonnement StreamFlix est maintenant actif !</h2>
+            <p>Bonjour ${user.username},</p>
+            <p>Nous vous confirmons que votre abonnement au plan ${selectedPlan.name} a été activé avec succès.</p>
+            <p>Vous pouvez maintenant profiter de tous les contenus disponibles sur StreamFlix.</p>
+            <p>Merci pour votre confiance !</p>
+            <p>Cordialement,<br>L'équipe StreamFlix</p>
+          `;
+          
+          // Note: We would need to implement the sendEmail function here
+          // await sendEmail(user.email, subject, html);
+          console.log(`Confirmation email would be sent to ${user.email}`);
+        }
+      } catch (emailError) {
+        console.error("Error sending confirmation email:", emailError);
+      }
     } catch (error) {
       console.error("Error handling PayPal payment completed:", error);
     }

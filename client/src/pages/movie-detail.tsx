@@ -7,12 +7,14 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
 import MovieRow from "@/components/movie-row";
 import CommentsSection from "@/components/CommentsSection";
+import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
+  const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   const { data: movieDetails, isLoading } = useQuery({
     queryKey: [`/api/tmdb/movie/${movieId}`],
@@ -158,12 +160,21 @@ export default function MovieDetail() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="movie-actions">
-            <Link href={`/watch/movie/${movieId}`} className="w-full sm:w-auto">
-              <Button className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" data-testid="watch-button">
-                <Play className="w-5 h-5" />
-                <span>Regarder</span>
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => {
+                // If user should be redirected to payment page, redirect them
+                if (shouldRedirectToPayment) {
+                  window.location.href = `/subscription`;
+                  return;
+                }
+                window.location.href = `/watch/movie/${movieId}`;
+              }}
+              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
+              data-testid="watch-button"
+            >
+              <Play className="w-5 h-5" />
+              <span>Regarder</span>
+            </Button>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 sm:flex-none">
               <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto" onClick={handleAddToList} data-testid="add-list-button">
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />

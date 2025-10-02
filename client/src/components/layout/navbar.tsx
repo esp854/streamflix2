@@ -386,7 +386,7 @@ export default function Navbar() {
                     Inscription
                   </Button>
                   
-                  {/* Mobile: Authentication button with red circle for login */}
+                  {/* Mobile: Icon buttons */}
                   <Button 
                     variant="ghost"
                     size="icon"
@@ -394,14 +394,24 @@ export default function Navbar() {
                       setAuthModalTab("login");
                       setAuthModalOpen(true);
                     }}
-                    className="sm:hidden relative"
+                    className="sm:hidden"
                     title="Connexion"
-                    data-testid="mobile-auth-button"
+                    data-testid="mobile-login-button"
                   >
                     <User className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                      !
-                    </span>
+                  </Button>
+                  <Button 
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAuthModalTab("register");
+                      setAuthModalOpen(true);
+                    }}
+                    className="sm:hidden"
+                    title="Inscription"
+                    data-testid="mobile-register-button"
+                  >
+                    <UserPlus className="h-5 w-5" />
                   </Button>
                 </div>
               )}

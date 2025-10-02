@@ -1,14 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/auth-context';
 
-// Hook to check if user has an active subscription
+// Hook to check if user has a paid subscription
 export const useSubscriptionCheck = () => {
-  const { user, isAuthenticated } = useAuth();
-  
-  // Check if user is admin
-  const isAdmin = user?.role === 'admin';
-  
-  // Fetch user's current subscription
+  const { isAuthenticated, user } = useAuth();
+
   const { data: subscriptionData, isLoading, error } = useQuery({
     queryKey: ['/api/subscription/current'],
     queryFn: async () => {
@@ -22,64 +18,41 @@ export const useSubscriptionCheck = () => {
       if (!response.ok) throw new Error('Failed to fetch current subscription');
       return response.json();
     },
-    enabled: isAuthenticated && !isAdmin, // Only fetch if user is authenticated and not admin
+    enabled: isAuthenticated, // Only fetch if user is authenticated
   });
-  
-  // If user is admin, they have access
-  if (isAdmin) {
-    return { 
-      hasAccess: true, 
-      isLoading: false, 
-      error: null, 
-      accessType: 'admin',
-      isAdmin: true
-    };
-  }
-  
-  // If user is authenticated, check their subscription
-  if (isAuthenticated) {
-    // If still loading subscription data
-    if (isLoading) {
-      return { 
-        hasAccess: false, 
-        isLoading: true, 
-        error: null, 
-        accessType: 'loading',
-        isAdmin: false
-      };
-    }
+
+  // Check if user has a paid subscription
+  const hasPaidSubscription = () => {
+    // If user is not authenticated, they can't have a paid subscription
+    if (!isAuthenticated) return false;
     
-    // If there was an error fetching subscription
-    if (error) {
-      return { 
-        hasAccess: false, 
-        isLoading: false, 
-        error, 
-        accessType: 'error',
-        isAdmin: false
-      };
-    }
+    // If still loading, assume no paid subscription
+    if (isLoading) return false;
     
-    // Check if user has an active subscription
-    const subscription = subscriptionData?.subscription;
-    const hasActiveSubscription = subscription && subscription.status === 'active';
+    // If there's an error fetching subscription data, assume no paid subscription
+    if (error) return false;
     
-    return { 
-      hasAccess: hasActiveSubscription, 
-      isLoading: false, 
-      error: null, 
-      accessType: hasActiveSubscription ? 'subscribed' : 'no_subscription',
-      isAdmin: false,
-      subscription
-    };
-  }
-  
-  // If user is not authenticated, they have limited free access
-  return { 
-    hasAccess: true, 
-    isLoading: false, 
-    error: null, 
-    accessType: 'free_with_ads',
-    isAdmin: false
+    // Get the plan ID from subscription data
+    const planId = subscriptionData?.subscription?.planId;
+    
+    // User has a paid subscription if planId exists and is not 'free'
+    return planId && planId !== 'free';
+  };
+
+  // Check if user is admin (admins don't need to pay)
+  const isAdmin = user?.role === 'admin';
+
+  // User should be redirected to payment page if:
+  // 1. They are authenticated
+  // 2. They are not an admin
+  // 3. They don't have a paid subscription
+  const shouldRedirectToPayment = isAuthenticated && !isAdmin && !hasPaidSubscription();
+
+  return {
+    hasPaidSubscription: hasPaidSubscription(),
+    shouldRedirectToPayment,
+    isLoading,
+    error,
+    subscriptionData
   };
 };

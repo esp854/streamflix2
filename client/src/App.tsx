@@ -23,7 +23,6 @@ import Privacy from "@/pages/privacy";
 import HelpCenter from "@/pages/help-center";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Subscription from "@/pages/subscription";
-import PayPalPayment from "@/pages/paypal-payment";
 import PaymentSuccess from "@/pages/payment-success";
 import PaymentCancelled from "@/pages/payment-cancelled";
 import PlanDemo from "@/pages/plan-demo";
@@ -85,12 +84,6 @@ function Router() {
       {/* Admin route */}
       <Route path="/admin" component={AdminDashboard} />
       
-      {/* Payment routes */}
-      <Route path="/paypal-payment" component={PayPalPayment} />
-      <Route path="/payment-success" component={PaymentSuccess} />
-      <Route path="/paiement/success" component={PaymentSuccess} />
-      <Route path="/paiement/cancel" component={PaymentCancelled} />
-      
       {/* Test routes */}
       <Route path="/zupload-test" component={ZuploadTest} />
       <Route path="/zupload-episode-test" component={ZuploadEpisodeTest} />
@@ -108,6 +101,9 @@ function Router() {
       <Route path="/continue-watching" component={ContinueWatching} />
       <Route path="/profile" component={Profile} />
       <Route path="/subscription" component={Subscription} />
+      <Route path="/payment-success" component={PaymentSuccess} />
+      <Route path="/paiement/success" component={PaymentSuccess} />
+      <Route path="/paiement/cancel" component={PaymentCancelled} />
       <Route path="/plan-demo" component={PlanDemo} />
       <Route path="/contact" component={Contact} />
       <Route path="/help" component={HelpCenter} />

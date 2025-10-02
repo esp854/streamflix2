@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
+import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 interface MovieCardProps {
   movie: TMDBMovie;
@@ -22,6 +23,7 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
    const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
    const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
    const { shareContent } = useShare();
+   const { shouldRedirectToPayment } = useSubscriptionCheck();
 
    // Check if movie is favorite
    const { data: favoriteStatus } = checkFavorite(movie.id);
@@ -86,6 +88,13 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // If user should be redirected to payment page, redirect them
+    if (shouldRedirectToPayment) {
+      window.location.href = `/subscription`;
+      return;
+    }
+    
     window.location.href = `/watch/movie/${movie.id}`;
   };
 
