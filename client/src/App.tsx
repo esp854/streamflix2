@@ -24,6 +24,7 @@ import HelpCenter from "@/pages/help-center";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Subscription from "@/pages/subscription";
 import PaymentSuccess from "@/pages/payment-success";
+import PaymentCancelled from "@/pages/payment-cancelled";
 import PlanDemo from "@/pages/plan-demo";
 import NotFound from "@/pages/not-found";
 import Series from "@/pages/series";
@@ -101,6 +102,8 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/subscription" component={Subscription} />
       <Route path="/payment-success" component={PaymentSuccess} />
+      <Route path="/paiement/success" component={PaymentSuccess} />
+      <Route path="/paiement/cancel" component={PaymentCancelled} />
       <Route path="/plan-demo" component={PlanDemo} />
       <Route path="/contact" component={Contact} />
       <Route path="/help" component={HelpCenter} />
