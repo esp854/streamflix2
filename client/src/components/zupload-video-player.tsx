@@ -46,26 +46,38 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   /** --- Open Popunder Window --- **/
   const openPopunder = () => {
+    // URL de la publicité popunder
+    const popunderUrl = "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH";
+    
     try {
-      // URL de la publicité popunder
-      const popunderUrl = "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH";
+      // Créer un lien temporaire pour contourner les restrictions mobile
+      const link = document.createElement('a');
+      link.href = popunderUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.style.display = 'none';
       
-      // Ouvrir la fenêtre popunder
-      const popup = window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
+      // Ajouter le lien au document
+      document.body.appendChild(link);
       
-      if (popup) {
-        console.log('Popunder window opened successfully');
-        // Essayer de mettre la fenêtre en arrière-plan
-        popup.blur();
-        window.focus();
-        return true;
-      } else {
-        console.log('Popunder blocked by browser');
-        return false;
-      }
+      // Simuler un clic sur le lien
+      link.click();
+      
+      // Nettoyer
+      document.body.removeChild(link);
+      
+      console.log('Popunder window opened successfully');
+      return true;
     } catch (err) {
       console.error('Error opening popunder:', err);
-      return false;
+      // Fallback: ouvrir dans un nouvel onglet
+      try {
+        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
+        return true;
+      } catch (fallbackErr) {
+        console.error('Fallback error opening popunder:', fallbackErr);
+        return false;
+      }
     }
   };
 
@@ -237,46 +249,46 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     >
       {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
       {step === 'banner1' && !isAuthenticated && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-6 rounded-lg z-30 overflow-y-auto">
-          <div className="bg-blue-900/90 rounded-xl p-6 max-w-md w-full">
-            <h2 className="text-xl mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
-            <p className="mb-6 text-gray-200 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
+          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
+            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
+            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
               Pour continuer, clique simplement sur le bouton ci-dessous. Une fenêtre publicitaire va s'ouvrir : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder Movix gratuit et sans coupure pour tout le monde ! Merci 🙏
             </p>
             
-            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
               <div className="flex items-start">
-                <span className="text-yellow-500 text-lg mr-2">⚠️</span>
+                <span className="text-yellow-500 text-base sm:text-lg mr-1 sm:mr-2">⚠️</span>
                 <div>
-                  <p className="font-bold mb-2">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
+                  <p className="font-bold mb-1 sm:mb-2 text-sm sm:text-base">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
                     <li>NE CLIQUE PAS n'importe où sur la page de pub</li>
                     <li>NE SCANNE AUCUN QR code</li>
                     <li>NE TÉLÉCHARGE RIEN</li>
                   </ul>
-                  <p className="mt-2 text-sm">Referme la page de pub dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
-                  <p className="mt-2 text-sm">
+                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Referme la page de pub dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
+                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">
                     <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la page dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-col space-y-4">
+            <div className="flex flex-col space-y-3 sm:space-y-4">
               <button
                 onClick={handleBanner1Click}
-                className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+                className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-sm sm:text-base"
               >
                 <span>Voir une publicité</span>
               </button>
               
-              <p className="text-gray-300 text-sm text-center">
+              <p className="text-gray-300 text-xs sm:text-sm text-center">
                 💡 Tu peux fermer la pub dès qu'elle s'affiche !
               </p>
               
               <button
                 onClick={handleBanner2Click}
-                className="text-gray-400 hover:text-white transition text-sm"
+                className="text-gray-400 hover:text-white transition text-xs sm:text-sm"
               >
                 Passer et continuer sans publicité
               </button>
@@ -287,22 +299,22 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
       {/* Seconde bannière - après retour sur la page */}
       {step === 'banner2' && !isAuthenticated && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-6 rounded-lg z-30 overflow-y-auto">
-          <div className="bg-blue-900/90 rounded-xl p-6 max-w-md w-full">
-            <h2 className="text-xl mb-4 text-center">Merci pour ton aide ! 🙏</h2>
-            <p className="mb-6 text-gray-200 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
+          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
+            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Merci pour ton aide ! 🙏</h2>
+            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
               Merci d'avoir soutenu Streamflix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
             </p>
             
-            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-4 mb-6 rounded-lg">
-              <p className="font-bold mb-2">Astuces pour une meilleure expérience :</p>
-              <div className="space-y-3">
+            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
+              <p className="font-bold mb-2 text-sm sm:text-base">Astuces pour une meilleure expérience :</p>
+              <div className="space-y-2 sm:space-y-3">
                 <div>
-                  <p className="flex items-center font-medium">
-                    <Settings className="w-4 h-4 mr-2" />
+                  <p className="flex items-center font-medium text-xs sm:text-sm">
+                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Pour les lecteurs HLS (Nightflix) :
                   </p>
-                  <ul className="list-disc list-inside mt-1 text-sm ml-6 space-y-1">
+                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
                     <li>Change tes DNS pour accéder sans problème à ces lecteurs</li>
                     <li>Utilise le bouton engrenage ⚙️ pour changer de source</li>
                     <li>Si une source HLS ne fonctionne pas, clique sur le bouton engrenage ⚙️ pour changer de source</li>
@@ -310,11 +322,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 </div>
                 
                 <div>
-                  <p className="flex items-center font-medium">
-                    <Subtitles className="w-4 h-4 mr-2" />
+                  <p className="flex items-center font-medium text-xs sm:text-sm">
+                    <Subtitles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Pour les lecteurs classiques :
                   </p>
-                  <ul className="list-disc list-inside mt-1 text-sm ml-6 space-y-1">
+                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
                     <li>Utilise le bouton source en haut à droite pour changer de source</li>
                     <li>Change de source avec le boutton sources en haut à droite si une source ne fonctionne pas</li>
                   </ul>
@@ -324,7 +336,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             
             <button
               onClick={handleBanner2Click}
-              className="w-full px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
+              className="w-full px-4 py-2 sm:px-6 sm:py-3 bg-green-600 rounded-lg hover:bg-green-700 transition text-sm sm:text-base"
             >
               Lecture
             </button>
@@ -335,23 +347,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Loading indicator - Optimized for mobile */}
       {isLoading && step === 'video' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-6 max-w-xs">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
-            <p className="text-white text-lg sm:text-xl px-4 font-medium">Chargement de la vidéo...</p>
+          <div className="text-center p-4 sm:p-6 max-w-xs">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4 sm:mb-6"></div>
+            <p className="text-white text-base sm:text-lg px-2 sm:px-4 font-medium">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
 
       {/* Error display - Optimized for mobile */}
       {error && step === 'video' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
-          <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
-            <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
-            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-2 sm:p-4">
+          <div className="text-center p-6 sm:p-8 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
+            <div className="text-red-500 text-4xl sm:text-5xl mb-4 sm:mb-6">⚠️</div>
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">Erreur de chargement</h3>
+            <p className="text-gray-300 mb-4 sm:mb-6 text-sm sm:text-base">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-base sm:text-lg font-medium"
             >
               Réessayer
             </button>
@@ -363,14 +375,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {step === 'video' && (
         <div className="absolute inset-0 z-20 pointer-events-none">
           {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-1 sm:space-x-2">
+          <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-1">
               {onSeasonChange && (
                 <Select 
                   value={currentSeason.toString()} 
                   onValueChange={(value) => onSeasonChange(parseInt(value))}
                 >
-                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectTrigger className="w-12 sm:w-14 bg-black/70 text-white border-white/20 text-xs">
                     <SelectValue placeholder="S" />
                   </SelectTrigger>
                   <SelectContent>
@@ -388,7 +400,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   value={currentEpisode.toString()} 
                   onValueChange={(value) => onEpisodeChange(parseInt(value))}
                 >
-                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectTrigger className="w-12 sm:w-14 bg-black/70 text-white border-white/20 text-xs">
                     <SelectValue placeholder="E" />
                   </SelectTrigger>
                   <SelectContent>
@@ -406,51 +418,51 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {onSkipIntro && (
                 <button
                   onClick={onSkipIntro}
-                  className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                  className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
                 >
-                  <RotateCw className="w-5 h-5 mr-2" />
-                  <span className="hidden xs:inline sm:inline">Passer l'intro</span>
+                  <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                  <span className="hidden xs:inline">Passer l'intro</span>
                 </button>
               )}
               
               {onNextEpisode && (
                 <button
                   onClick={onNextEpisode}
-                  className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                  className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
                 >
-                  <SkipForward className="w-5 h-5 mr-2" />
-                  <span className="hidden xs:inline sm:inline">Épisode suivant</span>
+                  <SkipForward className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                  <span className="hidden xs:inline">Épisode suivant</span>
                 </button>
               )}
             </div>
           </div>
           
           {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-          <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-1 sm:space-x-2">
+          <div className="absolute top-1/2 left-2 sm:left-3 right-2 sm:right-3 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-1">
               {onPreviousEpisode && (
                 <Button
                   onClick={onPreviousEpisode}
                   variant="ghost"
                   size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full"
                   disabled={currentEpisode <= 1}
                 >
-                  <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </Button>
               )}
             </div>
             
-            <div className="flex items-center space-x-1 sm:space-x-2">
+            <div className="flex items-center space-x-1">
               {onNextEpisode && (
                 <Button
                   onClick={onNextEpisode}
                   variant="ghost"
                   size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full"
                   disabled={currentEpisode >= totalEpisodes}
                 >
-                  <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </Button>
               )}
             </div>
