@@ -4,6 +4,13 @@ import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'luc
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
+// Extension de l'interface Window pour inclure notre propriété personnalisée
+declare global {
+  interface Window {
+    __popunderInjected?: boolean;
+  }
+}
+
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
   title: string;
@@ -36,6 +43,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
+  const [step, setStep] = useState<'banner1' | 'banner2' | 'video'>('banner1');
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,43 +51,36 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  // Script popunder pour les utilisateurs non authentifiés
-  useEffect(() => {
-    if (!isAuthenticated) {
-      // Fonction pour injecter le script popunder
-      const injectPopunderScript = () => {
-        try {
-          // Création d'une fonction IIFE (Immediately Invoked Function Expression)
-          (function(mfyfr) {
-            // Votre script popunder personnalisé ici
-            var host = 'mfyfr.com';
-            var slot = '484977';
-            var form = '484977';
-            
-            var url = 'https://' + host + '/' + slot + '.js';
-            var cdnUrl = 'https://pp.mfyfr.com/' + slot + '.js';
-            
-            var s = document.createElement('script');
-            s.type = 'text/javascript';
-            s.async = true;
-            
-            if (mfyfr[host] && mfyfr[host][slot]) {
-              s.src = cdnUrl;
-            } else {
-              s.src = url;
-            }
-            
-            document.head.appendChild(s);
-          })({});
-        } catch (err) {
-          console.error('Error injecting popunder script:', err);
+  /** --- Inject Popunder Script --- **/
+  const injectPopunder = () => {
+    if (!window.__popunderInjected && !isAuthenticated) {
+      (function(mfyfr: any) {
+        var d = document,
+            s = d.createElement('script'),
+            l = d.scripts[d.scripts.length - 1];
+        // @ts-ignore - pour ignorer l'erreur TypeScript sur la propriété settings
+        s.settings = mfyfr || {};
+        s.src = "//selfishzone.com/c.D_9u6kbg2R5el/SdWTQx9RNPjJYc2wNEjfIS4GOnSz0a2-NojNYZ2sMOj/kCwe";
+        s.async = true;
+        s.referrerPolicy = 'no-referrer-when-downgrade';
+        if (l && l.parentNode) {
+          l.parentNode.insertBefore(s, l);
         }
-      };
-      
-      // Injection du script popunder
-      injectPopunderScript();
+        window.__popunderInjected = true;
+        console.log('Popunder script injected');
+      })({});
     }
-  }, [isAuthenticated]);
+  };
+
+  /** --- Handlers --- **/
+  const handleBanner1Click = () => {
+    injectPopunder(); // Lancer popunder
+    setStep('banner2'); // Passer à la bannière 2
+  };
+
+  const handleBanner2Click = () => {
+    setStep('video'); // Lancer la vidéo
+  };
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
@@ -166,7 +167,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setIsLoading(false);
       }, 1000);
     }
-  }, [videoUrl]);
+    
+    // Pour les utilisateurs authentifiés, passer directement à la vidéo
+    if (isAuthenticated) {
+      setStep('video');
+    }
+  }, [videoUrl, isAuthenticated]);
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
@@ -229,8 +235,34 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
+      {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
+      {step === 'banner1' && !isAuthenticated && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30">
+          <h2 className="text-xl mb-4">Profitez de notre offre spéciale !</h2>
+          <button
+            onClick={handleBanner1Click}
+            className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+          >
+            Voir la publicité
+          </button>
+        </div>
+      )}
+
+      {/* Seconde bannière - après retour sur la page */}
+      {step === 'banner2' && !isAuthenticated && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30">
+          <h2 className="text-xl mb-4">Vous êtes prêt à regarder ?</h2>
+          <button
+            onClick={handleBanner2Click}
+            className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
+          >
+            Lecture
+          </button>
+        </div>
+      )}
+
       {/* Loading indicator - Optimized for mobile */}
-      {isLoading && (
+      {isLoading && step === 'video' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
           <div className="text-center p-6 max-w-xs">
             <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
@@ -240,7 +272,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       )}
 
       {/* Error display - Optimized for mobile */}
-      {error && (
+      {error && step === 'video' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
           <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
             <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
@@ -257,104 +289,106 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       )}
 
       {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onSeasonChange && (
-              <Select 
-                value={currentSeason.toString()} 
-                onValueChange={(value) => onSeasonChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="S" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                      S{seasonNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+      {step === 'video' && (
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          {/* Top Controls - Season and Episode Selection - Mobile optimized */}
+          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {onSeasonChange && (
+                <Select 
+                  value={currentSeason.toString()} 
+                  onValueChange={(value) => onSeasonChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                    <SelectValue placeholder="S" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                      <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                        S{seasonNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {onEpisodeChange && (
+                <Select 
+                  value={currentEpisode.toString()} 
+                  onValueChange={(value) => onEpisodeChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                    <SelectValue placeholder="E" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                      <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                        E{episodeNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             
-            {onEpisodeChange && (
-              <Select 
-                value={currentEpisode.toString()} 
-                onValueChange={(value) => onEpisodeChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="E" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                      E{episodeNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex space-x-1">
+              {onSkipIntro && (
+                <button
+                  onClick={onSkipIntro}
+                  className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                >
+                  <RotateCw className="w-5 h-5 mr-2" />
+                  <span className="hidden xs:inline sm:inline">Passer l'intro</span>
+                </button>
+              )}
+              
+              {onNextEpisode && (
+                <button
+                  onClick={onNextEpisode}
+                  className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                >
+                  <SkipForward className="w-5 h-5 mr-2" />
+                  <span className="hidden xs:inline sm:inline">Épisode suivant</span>
+                </button>
+              )}
+            </div>
           </div>
           
-          <div className="flex space-x-1">
-            {onSkipIntro && (
-              <button
-                onClick={onSkipIntro}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
-              >
-                <RotateCw className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
-              </button>
-            )}
+          {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
+          <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {onPreviousEpisode && (
+                <Button
+                  onClick={onPreviousEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                  disabled={currentEpisode <= 1}
+                >
+                  <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                </Button>
+              )}
+            </div>
             
-            {onNextEpisode && (
-              <button
-                onClick={onNextEpisode}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
-              >
-                <SkipForward className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
-              </button>
-            )}
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {onNextEpisode && (
+                <Button
+                  onClick={onNextEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                  disabled={currentEpisode >= totalEpisodes}
+                >
+                  <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-        
-        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onPreviousEpisode && (
-              <Button
-                onClick={onPreviousEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
-                disabled={currentEpisode <= 1}
-              >
-                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onNextEpisode && (
-              <Button
-                onClick={onNextEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
-                disabled={currentEpisode >= totalEpisodes}
-              >
-                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
-      {videoUrl.includes('embed') ? (
+      {step === 'video' && videoUrl.includes('embed') ? (
         <iframe
           src={videoUrl}
           className="w-full h-full touch-manipulation"
@@ -375,7 +409,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             onVideoError?.('Impossible de charger la vidéo');
           }}
         />
-      ) : (
+      ) : step === 'video' ? (
         // For direct video files
         <video
           ref={mainVideoRef}
@@ -390,7 +424,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           onEnded={onVideoEnd}
           playsInline
         />
-      )}
+      ) : null}
     </div>
   );
 };
