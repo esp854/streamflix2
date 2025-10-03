@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import AdsenseAd from "@/components/adsense-ad";
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -46,75 +47,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   /** --- Open Popunder Window --- **/
   const openPopunder = () => {
-    // Liste de différentes URLs de publicités popunder
-    const popunderUrls = [
-      "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH"
-    ];
-    
-    // Sélectionner une URL aléatoire parmi la liste
-    const randomIndex = Math.floor(Math.random() * popunderUrls.length);
-    const popunderUrl = popunderUrls[randomIndex];
-    
-    try {
-      // Vérifier si on est sur mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Pour mobile, utiliser une approche différente
-        console.log('Mobile detected, using alternative approach for popunder');
-        
-        // Créer un iframe temporaire (approche plus compatible mobile)
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '1px';
-        iframe.style.height = '1px';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '-9999px';
-        iframe.src = popunderUrl;
-        
-        document.body.appendChild(iframe);
-        
-        // Supprimer l'iframe après un court délai
-        setTimeout(() => {
-          if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
-          }
-        }, 1000);
-        
-        console.log('Popunder opened via iframe for mobile');
-        return true;
-      } else {
-        // Pour desktop, utiliser l'approche normale
-        // Créer un lien temporaire pour contourner les restrictions
-        const link = document.createElement('a');
-        link.href = popunderUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        
-        // Ajouter le lien au document
-        document.body.appendChild(link);
-        
-        // Simuler un clic sur le lien
-        link.click();
-        
-        // Nettoyer
-        document.body.removeChild(link);
-        
-        console.log('Popunder window opened successfully with ad:', popunderUrl);
-        return true;
-      }
-    } catch (err) {
-      console.error('Error opening popunder:', err);
-      // Fallback: ouvrir dans un nouvel onglet
-      try {
-        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
-        return true;
-      } catch (fallbackErr) {
-        console.error('Fallback error opening popunder:', fallbackErr);
-        return false;
-      }
-    }
+    // Avec AdSense, nous n'avons plus besoin du système popunder
+    // Passer directement à la bannière 2
+    setStep('banner2');
+    return true;
   };
 
   /** --- Handlers --- **/
@@ -289,8 +225,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
             <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
             <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Pour continuer, clique simplement sur le bouton ci-dessous. Une fenêtre publicitaire va s'ouvrir : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder Movix gratuit et sans coupure pour tout le monde ! Merci 🙏
+              Pour continuer, clique simplement sur le bouton ci-dessous. Une publicité va s'afficher : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder StreamFlix gratuit et sans coupure pour tout le monde ! Merci 🙏
             </p>
+            
+            {/* Publicité AdSense intégrée */}
+            <div className="mb-4 sm:mb-6">
+              <AdsenseAd 
+                adSlot="YOUR_AD_SLOT_HERE" 
+                adFormat="rectangle" 
+                fullWidthResponsive={false}
+                style={{ 
+                  width: '300px', 
+                  height: '250px',
+                  margin: '0 auto'
+                }}
+                className="flex justify-center"
+              />
+            </div>
             
             <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
               <div className="flex items-start">
@@ -339,8 +290,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
             <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Merci pour ton aide ! 🙏</h2>
             <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Merci d'avoir soutenu Streamflix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
+              Merci d'avoir soutenu StreamFlix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
             </p>
+            
+            {/* Publicité AdSense intégrée optionnelle */}
+            <div className="mb-4 sm:mb-6">
+              <AdsenseAd 
+                adSlot="YOUR_SECONDARY_AD_SLOT_HERE" 
+                adFormat="rectangle" 
+                fullWidthResponsive={false}
+                style={{ 
+                  width: '300px', 
+                  height: '250px',
+                  margin: '0 auto'
+                }}
+                className="flex justify-center"
+              />
+            </div>
             
             <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
               <p className="font-bold mb-2 text-sm sm:text-base">Astuces pour une meilleure expérience :</p>
