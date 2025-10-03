@@ -56,61 +56,62 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     const popunderUrl = popunderUrls[randomIndex];
     
     try {
-      // Créer un iframe caché pour charger la publicité (technique anti-AdBlock)
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'absolute';
-      iframe.style.width = '1px';
-      iframe.style.height = '1px';
-      iframe.style.left = '-9999px';
-      iframe.style.top = '-9999px';
-      iframe.style.border = 'none';
-      iframe.style.visibility = 'hidden';
-      iframe.src = popunderUrl;
+      // Vérifier si on est sur mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      // Ajouter l'iframe au document
-      document.body.appendChild(iframe);
-      
-      // Supprimer l'iframe après un court délai pour éviter les fuites de mémoire
-      setTimeout(() => {
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe);
-        }
-      }, 3000);
-      
-      console.log('Popunder loaded via iframe (anti-AdBlock technique)');
-      return true;
+      if (isMobile) {
+        // Pour mobile, utiliser une approche différente
+        console.log('Mobile detected, using alternative approach for popunder');
+        
+        // Créer un iframe temporaire (approche plus compatible mobile)
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.style.left = '-9999px';
+        iframe.style.top = '-9999px';
+        iframe.src = popunderUrl;
+        
+        document.body.appendChild(iframe);
+        
+        // Supprimer l'iframe après un court délai
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 1000);
+        
+        console.log('Popunder opened via iframe for mobile');
+        return true;
+      } else {
+        // Pour desktop, utiliser l'approche normale
+        // Créer un lien temporaire pour contourner les restrictions
+        const link = document.createElement('a');
+        link.href = popunderUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.style.display = 'none';
+        
+        // Ajouter le lien au document
+        document.body.appendChild(link);
+        
+        // Simuler un clic sur le lien
+        link.click();
+        
+        // Nettoyer
+        document.body.removeChild(link);
+        
+        console.log('Popunder window opened successfully with ad:', popunderUrl);
+        return true;
+      }
     } catch (err) {
-      console.error('Error loading popunder via iframe:', err);
-      
-      // Fallback : charger via fetch + eval (technique avancée anti-AdBlock)
+      console.error('Error opening popunder:', err);
+      // Fallback: ouvrir dans un nouvel onglet
       try {
-        fetch(popunderUrl)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Network response was not ok');
-            }
-            return response.text();
-          })
-          .then(scriptContent => {
-            // Exécuter le script dans un contexte isolé
-            const script = document.createElement('script');
-            script.textContent = scriptContent;
-            script.async = true;
-            document.head.appendChild(script);
-            
-            // Nettoyer après exécution
-            setTimeout(() => {
-              if (script.parentNode) {
-                script.parentNode.removeChild(script);
-              }
-            }, 1000);
-          })
-          .catch(fetchErr => {
-            console.error('Fetch fallback error:', fetchErr);
-          });
+        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
         return true;
       } catch (fallbackErr) {
-        console.error('All fallback methods failed:', fallbackErr);
+        console.error('Fallback error opening popunder:', fallbackErr);
         return false;
       }
     }
@@ -223,6 +224,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
@@ -237,6 +239,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Show controls on mouse move (desktop) or touch (mobile)
   const handleMouseMove = (e: React.MouseEvent) => {
+    e.preventDefault();
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
@@ -251,6 +254,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch end event
   const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
     // Ne pas masquer immédiatement les contrôles après un touch
   };
 
