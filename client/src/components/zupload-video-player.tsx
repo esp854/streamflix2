@@ -4,13 +4,6 @@ import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-// Extension de l'interface Window pour inclure notre propriété personnalisée
-declare global {
-  interface Window {
-    __popunderInjected?: boolean;
-  }
-}
-
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
   title: string;
@@ -51,38 +44,35 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  /** --- Inject Popunder Script --- **/
-  const injectPopunder = () => {
-    if (!window.__popunderInjected && !isAuthenticated) {
-      try {
-        // Créer un lien temporaire pour déclencher le popunder
-        const tempLink = document.createElement('a');
-        tempLink.href = "//selfishzone.com/c.D_9u6kbg2R5el/SdWTQx9RNPjJYc2wNEjfIS4GOnSz0a2-NojNYZ2sMOj/kCwe";
-        tempLink.target = '_blank';
-        tempLink.style.display = 'none';
-        
-        // Ajouter à la page et cliquer automatiquement
-        document.body.appendChild(tempLink);
-        tempLink.click();
-        document.body.removeChild(tempLink);
-        
-        // Marquer comme injecté
-        window.__popunderInjected = true;
-        console.log('Popunder déclenché avec succès');
-        
+  /** --- Open Popunder Window --- **/
+  const openPopunder = () => {
+    try {
+      // URL de la publicité popunder
+      const popunderUrl = "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH";
+      
+      // Ouvrir la fenêtre popunder
+      const popup = window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
+      
+      if (popup) {
+        console.log('Popunder window opened successfully');
+        // Essayer de mettre la fenêtre en arrière-plan
+        popup.blur();
+        window.focus();
         return true;
-      } catch (err) {
-        console.error('Erreur lors du déclenchement du popunder:', err);
+      } else {
+        console.log('Popunder blocked by browser');
         return false;
       }
+    } catch (err) {
+      console.error('Error opening popunder:', err);
+      return false;
     }
-    return false;
   };
 
   /** --- Handlers --- **/
   const handleBanner1Click = () => {
-    const success = injectPopunder(); // Lancer popunder
-    console.log('Popunder injection result:', success);
+    const success = openPopunder(); // Ouvrir le popunder
+    console.log('Popunder open result:', success);
     
     // Passer à la bannière 2 immédiatement
     setStep('banner2');
