@@ -223,7 +223,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
@@ -238,7 +237,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Show controls on mouse move (desktop) or touch (mobile)
   const handleMouseMove = (e: React.MouseEvent) => {
-    e.preventDefault();
     setShowControls(true);
     
     if (controlsTimeoutRef.current) {
@@ -253,7 +251,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch end event
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
     // Ne pas masquer immédiatement les contrôles après un touch
   };
 
