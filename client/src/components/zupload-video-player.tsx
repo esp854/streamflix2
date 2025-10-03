@@ -46,36 +46,71 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   /** --- Open Popunder Window --- **/
   const openPopunder = () => {
-    // URL de la publicité popunder
-    const popunderUrl = "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH";
+    // Liste de différentes URLs de publicités popunder
+    const popunderUrls = [
+      "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH"
+    ];
+    
+    // Sélectionner une URL aléatoire parmi la liste
+    const randomIndex = Math.floor(Math.random() * popunderUrls.length);
+    const popunderUrl = popunderUrls[randomIndex];
     
     try {
-      // Créer un lien temporaire pour contourner les restrictions mobile
-      const link = document.createElement('a');
-      link.href = popunderUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
+      // Créer un iframe caché pour charger la publicité (technique anti-AdBlock)
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '-9999px';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      iframe.src = popunderUrl;
       
-      // Ajouter le lien au document
-      document.body.appendChild(link);
+      // Ajouter l'iframe au document
+      document.body.appendChild(iframe);
       
-      // Simuler un clic sur le lien
-      link.click();
+      // Supprimer l'iframe après un court délai pour éviter les fuites de mémoire
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      }, 3000);
       
-      // Nettoyer
-      document.body.removeChild(link);
-      
-      console.log('Popunder window opened successfully');
+      console.log('Popunder loaded via iframe (anti-AdBlock technique)');
       return true;
     } catch (err) {
-      console.error('Error opening popunder:', err);
-      // Fallback: ouvrir dans un nouvel onglet
+      console.error('Error loading popunder via iframe:', err);
+      
+      // Fallback : charger via fetch + eval (technique avancée anti-AdBlock)
       try {
-        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
+        fetch(popunderUrl)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+            return response.text();
+          })
+          .then(scriptContent => {
+            // Exécuter le script dans un contexte isolé
+            const script = document.createElement('script');
+            script.textContent = scriptContent;
+            script.async = true;
+            document.head.appendChild(script);
+            
+            // Nettoyer après exécution
+            setTimeout(() => {
+              if (script.parentNode) {
+                script.parentNode.removeChild(script);
+              }
+            }, 1000);
+          })
+          .catch(fetchErr => {
+            console.error('Fetch fallback error:', fetchErr);
+          });
         return true;
       } catch (fallbackErr) {
-        console.error('Fallback error opening popunder:', fallbackErr);
+        console.error('All fallback methods failed:', fallbackErr);
         return false;
       }
     }
