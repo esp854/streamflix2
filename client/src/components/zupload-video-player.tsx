@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -75,7 +75,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   /** --- Handlers --- **/
   const handleBanner1Click = () => {
     injectPopunder(); // Lancer popunder
-    setStep('banner2'); // Passer à la bannière 2
+    // Ajout d'un délai pour permettre au popunder de se déclencher
+    setTimeout(() => {
+      setStep('banner2'); // Passer à la bannière 2
+    }, 500);
   };
 
   const handleBanner2Click = () => {
@@ -237,21 +240,86 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     >
       {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
       {step === 'banner1' && !isAuthenticated && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30">
-          <h2 className="text-xl mb-4">Profitez de notre offre spéciale !</h2>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30 overflow-y-auto">
+          <h2 className="text-xl mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
+          <p className="mb-6 text-gray-300 text-center">
+            Pour continuer, clique simplement sur le bouton ci-dessous. Une fenêtre publicitaire va s'ouvrir : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder Movix gratuit et sans coupure pour tout le monde ! Merci 🙏
+          </p>
+          
+          <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-4 mb-6 w-full max-w-md">
+            <div className="flex items-start">
+              <span className="text-yellow-500 text-lg mr-2">⚠️</span>
+              <div>
+                <p className="font-bold mb-2">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>NE CLIQUE PAS n'importe où sur la page de pub</li>
+                  <li>NE SCANNE AUCUN QR code</li>
+                  <li>NE TÉLÉCHARGE RIEN</li>
+                </ul>
+                <p className="mt-2 text-sm">Referme la page de pub dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
+                <p className="mt-2 text-sm">
+                  <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la page dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <button
             onClick={handleBanner1Click}
-            className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+            className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center mb-4"
           >
-            Voir la publicité
+            <span>Voir une publicité</span>
+          </button>
+          
+          <p className="text-gray-400 text-sm text-center">
+            💡 Tu peux fermer la pub dès qu'elle s'affiche !
+          </p>
+          
+          <button
+            onClick={handleBanner2Click}
+            className="mt-6 text-gray-400 hover:text-white transition text-sm"
+          >
+            Passer et continuer sans publicité
           </button>
         </div>
       )}
 
       {/* Seconde bannière - après retour sur la page */}
       {step === 'banner2' && !isAuthenticated && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30">
-          <h2 className="text-xl mb-4">Vous êtes prêt à regarder ?</h2>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-6 rounded-lg z-30 overflow-y-auto">
+          <h2 className="text-xl mb-4 text-center">Merci pour ton aide ! 🙏</h2>
+          <p className="mb-6 text-gray-300 text-center">
+            Merci d'avoir soutenu Streamflix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
+          </p>
+          
+          <div className="bg-blue-900/50 border-l-4 border-blue-500 p-4 mb-6 w-full max-w-md">
+            <p className="font-bold mb-2">Astuces pour une meilleure expérience :</p>
+            <div className="space-y-3">
+              <div>
+                <p className="flex items-center font-medium">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Pour les lecteurs HLS (Nightflix) :
+                </p>
+                <ul className="list-disc list-inside mt-1 text-sm ml-6 space-y-1">
+                  <li>Change tes DNS pour accéder sans problème à ces lecteurs</li>
+                  <li>Utilise le bouton engrenage ⚙️ pour changer de source</li>
+                  <li>Si une source HLS ne fonctionne pas, clique sur le bouton engrenage ⚙️ pour changer de source</li>
+                </ul>
+              </div>
+              
+              <div>
+                <p className="flex items-center font-medium">
+                  <Subtitles className="w-4 h-4 mr-2" />
+                  Pour les lecteurs classiques :
+                </p>
+                <ul className="list-disc list-inside mt-1 text-sm ml-6 space-y-1">
+                  <li>Utilise le bouton source en haut à droite pour changer de source</li>
+                  <li>Change de source avec le boutton sources en haut à droite si une source ne fonctionne pas</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
           <button
             onClick={handleBanner2Click}
             className="px-6 py-3 bg-green-600 rounded-lg hover:bg-green-700 transition"
