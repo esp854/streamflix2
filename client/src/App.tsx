@@ -36,7 +36,6 @@ import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
-import usePopunder from "@/hooks/usePopunder";
 
 // Login route component that opens the AuthModal
 function LoginRoute() {
@@ -120,12 +119,6 @@ function App() {
   const isWatchPage = location.startsWith("/watch/");
   const isAdminPage = location === "/admin";
   const [showSplash, setShowSplash] = useState(true);
-
-  // Remplace par ton URL (utilise https)
-  const popunderSrc = "https://selfishzone.com/c.D_9u6kbg2R5el/SdWTQx9RNPjJYc2wNEjfIS4GOnSz0a2-NojNYZ2sMOj/kCwe";
-
-  // injecte après la première interaction (sessionStorage empêche multi-injections)
-  usePopunder({ src: popunderSrc, oncePerSession: true });
 
   useEffect(() => {
     // Simulate a delay for the splash screen

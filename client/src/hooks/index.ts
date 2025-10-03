@@ -7,4 +7,3 @@ export * from './useAuthCheck';
 export * from './usePWA';
 export * from './usePlanFeatures';
 export * from './useSubscriptionCheck';
-export * from './usePopunder';
