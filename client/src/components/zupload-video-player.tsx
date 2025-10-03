@@ -54,31 +54,38 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   /** --- Inject Popunder Script --- **/
   const injectPopunder = () => {
     if (!window.__popunderInjected && !isAuthenticated) {
-      (function(mfyfr: any) {
-        var d = document,
-            s = d.createElement('script'),
-            l = d.scripts[d.scripts.length - 1];
-        // @ts-ignore - pour ignorer l'erreur TypeScript sur la propriété settings
-        s.settings = mfyfr || {};
-        s.src = "//selfishzone.com/c.D_9u6kbg2R5el/SdWTQx9RNPjJYc2wNEjfIS4GOnSz0a2-NojNYZ2sMOj/kCwe";
-        s.async = true;
-        s.referrerPolicy = 'no-referrer-when-downgrade';
-        if (l && l.parentNode) {
-          l.parentNode.insertBefore(s, l);
-        }
+      try {
+        // Créer un lien temporaire pour déclencher le popunder
+        const tempLink = document.createElement('a');
+        tempLink.href = "//selfishzone.com/c.D_9u6kbg2R5el/SdWTQx9RNPjJYc2wNEjfIS4GOnSz0a2-NojNYZ2sMOj/kCwe";
+        tempLink.target = '_blank';
+        tempLink.style.display = 'none';
+        
+        // Ajouter à la page et cliquer automatiquement
+        document.body.appendChild(tempLink);
+        tempLink.click();
+        document.body.removeChild(tempLink);
+        
+        // Marquer comme injecté
         window.__popunderInjected = true;
-        console.log('Popunder script injected');
-      })({});
+        console.log('Popunder déclenché avec succès');
+        
+        return true;
+      } catch (err) {
+        console.error('Erreur lors du déclenchement du popunder:', err);
+        return false;
+      }
     }
+    return false;
   };
 
   /** --- Handlers --- **/
   const handleBanner1Click = () => {
-    injectPopunder(); // Lancer popunder
-    // Ajout d'un délai pour permettre au popunder de se déclencher
-    setTimeout(() => {
-      setStep('banner2'); // Passer à la bannière 2
-    }, 500);
+    const success = injectPopunder(); // Lancer popunder
+    console.log('Popunder injection result:', success);
+    
+    // Passer à la bannière 2 immédiatement
+    setStep('banner2');
   };
 
   const handleBanner2Click = () => {
