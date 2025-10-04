@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publicité StreamFlix</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #vast-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background: #000;
+        }
+        
+        #video-player {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #overlay {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 5;
+        }
+        
+        .overlay-text {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        #retry-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        #retry-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="vast-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Chargement de la publicité...</p>
+        </div>
+        
+        <div id="overlay">
+            <div class="overlay-text">Publicité</div>
+            <div class="overlay-text">StreamFlix</div>
+        </div>
+        
+        <div id="error-message">
+            <h3>Erreur de chargement</h3>
+            <p>Impossible de charger la publicité</p>
+            <button id="retry-button">Réessayer</button>
+        </div>
+        
+        <video id="video-player" controls playsinline></video>
+    </div>
+
+    <script>
+        // Récupérer l'URL VAST des paramètres
+        const urlParams = new URLSearchParams(window.location.search);
+        const vastUrl = urlParams.get('vastUrl');
+        
+        if (vastUrl) {
+            loadVASTAd(decodeURIComponent(vastUrl));
+        } else {
+            showError('URL VAST non spécifiée');
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('error-message').querySelector('p').textContent = message;
+        }
+        
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+        
+        // Fonction pour parser le XML VAST et extraire l'URL de la vidéo
+        async function parseVAST(url) {
+            try {
+                const response = await fetch(url);
+                const xmlText = await response.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                // Chercher l'URL de la vidéo dans le VAST
+                const mediaFiles = xmlDoc.querySelectorAll('MediaFile');
+                if (mediaFiles.length > 0) {
+                    // Prendre le premier MediaFile disponible
+                    return mediaFiles[0].textContent;
+                }
+                
+                // Si pas de MediaFile, chercher d'autres formats possibles
+                const videoClicks = xmlDoc.querySelector('VideoClicks ClickThrough');
+                if (videoClicks) {
+                    return videoClicks.textContent;
+                }
+                
+                throw new Error('No media file found in VAST response');
+            } catch (err) {
+                console.error('Error parsing VAST:', err);
+                throw err;
+            }
+        }
+        
+        // Charger et jouer la publicité VAST
+        async function loadVASTAd(url) {
+            const videoPlayer = document.getElementById('video-player');
+            const loadingElement = document.getElementById('loading');
+            
+            try {
+                loadingElement.style.display = 'block';
+                hideError();
+                
+                // Parser le VAST pour obtenir l'URL de la vidéo
+                const videoUrl = await parseVAST(url);
+                
+                if (videoUrl) {
+                    videoPlayer.src = videoUrl;
+                    videoPlayer.load();
+                    
+                    // Essayer de jouer automatiquement
+                    const playPromise = videoPlayer.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn('Auto-play prevented:', error);
+                            // Afficher les contrôles si l'autoplay est bloqué
+                            videoPlayer.controls = true;
+                            loadingElement.style.display = 'none';
+                        });
+                    }
+                    
+                    videoPlayer.addEventListener('loadeddata', () => {
+                        loadingElement.style.display = 'none';
+                    });
+                    
+                    videoPlayer.addEventListener('ended', () => {
+                        // Fermer automatiquement après la lecture
+                        window.close();
+                    });
+                } else {
+                    throw new Error('Impossible de récupérer l\'URL de la vidéo');
+                }
+            } catch (err) {
+                console.error('Error loading VAST ad:', err);
+                showError('Impossible de charger la publicité: ' + err.message);
+                loadingElement.style.display = 'none';
+            }
+        }
+        
+        // Gérer le bouton de réessai
+        document.getElementById('retry-button').addEventListener('click', () => {
+            if (vastUrl) {
+                loadVASTAd(decodeURIComponent(vastUrl));
+            }
+        });
+        
+        // Gérer les erreurs de lecture
+        document.getElementById('video-player').addEventListener('error', (e) => {
+            console.error('Video player error:', e);
+            showError('Erreur de lecture de la vidéo');
+        });
+    </script>
+</body>
+</html>

@@ -3,6 +3,9 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import NativeAd from "@/components/native-ad";
+import VASTVideoPlayer from "@/components/vast-video-player";
+import { useAdaptiveAd } from '@/hooks/use-adaptive-ad';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -44,85 +47,33 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  /** --- Open Popunder Window --- **/
-  const openPopunder = () => {
-    // Liste de différentes URLs de publicités popunder
-    const popunderUrls = [
-      "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH"
-    ];
-    
-    // Sélectionner une URL aléatoire parmi la liste
-    const randomIndex = Math.floor(Math.random() * popunderUrls.length);
-    const popunderUrl = popunderUrls[randomIndex];
-    
+  /** --- Show Appropriate Ad Based on Device --- **/
+  const showAppropriateAd = async () => {
     try {
-      // Vérifier si on est sur mobile
+      // Vérifier si l'utilisateur est sur mobile
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // Pour mobile, utiliser une approche différente
-        console.log('Mobile detected, using alternative approach for popunder');
-        
-        // Créer un iframe temporaire (approche plus compatible mobile)
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '1px';
-        iframe.style.height = '1px';
-        iframe.style.left = '-9999px';
-        iframe.style.top = '-9999px';
-        iframe.src = popunderUrl;
-        
-        document.body.appendChild(iframe);
-        
-        // Supprimer l'iframe après un court délai
-        setTimeout(() => {
-          if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
-          }
-        }, 1000);
-        
-        console.log('Popunder opened via iframe for mobile');
+        // Pour mobile, utiliser In-Page Push
+        console.log('Showing In-Page Push ad for mobile device');
+        // Le script fancyresponse gère automatiquement l'affichage
         return true;
       } else {
-        // Pour desktop, utiliser l'approche normale
-        // Créer un lien temporaire pour contourner les restrictions
-        const link = document.createElement('a');
-        link.href = popunderUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.style.display = 'none';
-        
-        // Ajouter le lien au document
-        document.body.appendChild(link);
-        
-        // Simuler un clic sur le lien
-        link.click();
-        
-        // Nettoyer
-        document.body.removeChild(link);
-        
-        console.log('Popunder window opened successfully with ad:', popunderUrl);
+        // Pour desktop, utiliser VAST
+        console.log('Showing VAST ad for desktop device');
+        // Ici, vous pouvez implémenter la logique VAST
+        // Pour l'instant, nous simulons l'affichage
         return true;
       }
     } catch (err) {
-      console.error('Error opening popunder:', err);
-      // Fallback: ouvrir dans un nouvel onglet
-      try {
-        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
-        return true;
-      } catch (fallbackErr) {
-        console.error('Fallback error opening popunder:', fallbackErr);
-        return false;
-      }
+      console.error('Error showing appropriate ad:', err);
+      return false;
     }
   };
 
   /** --- Handlers --- **/
   const handleBanner1Click = () => {
-    const success = openPopunder(); // Ouvrir le popunder
-    console.log('Popunder open result:', success);
-    
-    // Passer à la bannière 2 immédiatement
+    // Le hook useAdaptiveAd gère maintenant l'affichage de la publicité appropriée
     setStep('banner2');
   };
 
@@ -286,31 +237,36 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
       {step === 'banner1' && !isAuthenticated && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
+          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6 flex flex-col items-center">
             <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
             <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Pour continuer, clique simplement sur le bouton ci-dessous. Une fenêtre publicitaire va s'ouvrir : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder Movix gratuit et sans coupure pour tout le monde ! Merci 🙏
+              Pour continuer, clique simplement sur le bouton ci-dessous. Une publicité va s'afficher selon votre appareil : vous pouvez la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder StreamFlix gratuit et sans coupure pour tout le monde ! Merci 🙏
             </p>
             
-            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
+            {/* Publicité adaptative (VAST pour desktop, In-Page Push pour mobile) */}
+            <div className="mb-4 sm:mb-6 w-full flex justify-center">
+              <NativeAd />
+            </div>
+            
+            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg w-full">
               <div className="flex items-start">
                 <span className="text-yellow-500 text-base sm:text-lg mr-1 sm:mr-2">⚠️</span>
                 <div>
                   <p className="font-bold mb-1 sm:mb-2 text-sm sm:text-base">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
                   <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                    <li>NE CLIQUE PAS n'importe où sur la page de pub</li>
+                    <li>NE CLIQUE PAS n'importe où sur la publicité</li>
                     <li>NE SCANNE AUCUN QR code</li>
                     <li>NE TÉLÉCHARGE RIEN</li>
                   </ul>
-                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Referme la page de pub dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
+                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Referme la publicité dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
                   <p className="mt-1 sm:mt-2 text-xs sm:text-sm">
-                    <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la page dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
+                    <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la publicité dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
                   </p>
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-col space-y-3 sm:space-y-4">
+            <div className="flex flex-col space-y-3 sm:space-y-4 w-full">
               <button
                 onClick={handleBanner1Click}
                 className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-sm sm:text-base"
@@ -336,13 +292,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Seconde bannière - après retour sur la page */}
       {step === 'banner2' && !isAuthenticated && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
+          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6 flex flex-col items-center">
             <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Merci pour ton aide ! 🙏</h2>
             <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Merci d'avoir soutenu Streamflix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
+              Merci d'avoir soutenu StreamFlix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
             </p>
             
-            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
+            {/* Publicité adaptative optionnelle */}
+            <div className="mb-4 sm:mb-6 w-full flex justify-center">
+              <NativeAd />
+            </div>
+            
+            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg w-full">
               <p className="font-bold mb-2 text-sm sm:text-base">Astuces pour une meilleure expérience :</p>
               <div className="space-y-2 sm:space-y-3">
                 <div>
