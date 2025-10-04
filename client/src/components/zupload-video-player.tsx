@@ -98,11 +98,30 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
     try {
       console.log('Chargement du tag VAST:', vastTag);
-      const response = await fetch(vastTag);
+      // Ajout d'options pour améliorer la compatibilité mobile
+      const response = await fetch(vastTag, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'User-Agent': navigator.userAgent,
+        }
+      });
       
       // Vérifier si la réponse est OK
       if (!response.ok) {
         console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Erreur VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoUrl;
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
@@ -112,6 +131,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Vérifier si la réponse est vide ou invalide
       if (!xmlText || xmlText.trim().length === 0) {
         console.warn('Réponse VAST vide');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Réponse VAST vide sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoUrl;
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
         throw new Error('Réponse VAST vide');
       }
       
@@ -122,6 +153,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       const parserError = xml.querySelector('parsererror');
       if (parserError) {
         console.warn('Erreur de parsing XML VAST:', parserError.textContent);
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Erreur de parsing XML VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoUrl;
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
         throw new Error('Erreur de parsing XML VAST');
       }
 
@@ -140,6 +183,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
         
         console.warn('Pas de Ad dans le VAST');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Pas de Ad dans le VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoUrl;
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
         if (mainVideoRef.current) {
           mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
         }
@@ -168,6 +223,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
       if (!adUrls.length) {
         console.warn('Pas de MediaFile dans le VAST');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Pas de MediaFile dans le VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoUrl;
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
         if (mainVideoRef.current) {
           mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
         }
@@ -192,6 +259,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
           mainVideoRef.current.play().catch(playError => {
             console.error('Erreur de lecture automatique de la vidéo:', playError);
+            // Sur mobile, on ignore cette erreur
+            if (isMobileDevice) {
+              console.log('Erreur de lecture automatique ignorée sur mobile');
+            }
           });
         }
       }
@@ -199,6 +270,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setIsLoading(false);
       setShowAd(false);
       setAdSkipped(true);
+      // Sur mobile, on affiche un message d'erreur plus spécifique si nécessaire
+      if (isMobileDevice) {
+        setError('Impossible de charger la publicité sur mobile. La vidéo va démarrer.');
+      }
     }
   }
 
@@ -227,17 +302,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       videoEl.onerror = (e) => {
         console.error('Erreur de chargement de la publicité:', e);
+        // Sur mobile, on continue quand même vers la vidéo principale
+        if (isMobileDevice) {
+          console.log('Erreur de publicité sur mobile, passage à la vidéo principale');
+          skipAd();
+          return;
+        }
         // Passer à la pub suivante ou à la vidéo principale
         currentAdIndexRef.current++;
         playNextAd();
       };
       
+      // Sur mobile, l'utilisateur peut avoir besoin d'interagir avec l'écran avant la lecture
       if (isMobileDevice) {
         // Ajouter un écouteur pour la première interaction de l'utilisateur
         const handleFirstInteraction = () => {
           if (adVideoRef.current && isAdPlaying) {
             adVideoRef.current.play().catch(err => {
               console.log('Erreur de lecture après interaction utilisateur:', err);
+              // Même en cas d'erreur, on continue vers la vidéo principale sur mobile
+              skipAd();
             });
           }
         };
@@ -245,9 +329,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         window.addEventListener('touchstart', handleFirstInteraction, { once: true });
         window.addEventListener('click', handleFirstInteraction, { once: true });
         
-        // Essayer de jouer automatiquement
+        // Essayer de jouer automatiquement avec des attributs supplémentaires pour mobile
+        videoEl.setAttribute('autoplay', 'true');
+        videoEl.setAttribute('muted', 'true');
+        videoEl.setAttribute('playsinline', 'true');
+        
         videoEl.play().catch(err => {
           console.log('Autoplay bloqué, en attente d\'interaction utilisateur:', err);
+          // Même si autoplay échoue, on continue vers la vidéo principale sur mobile
+          if (isMobileDevice) {
+            setTimeout(() => {
+              skipAd();
+            }, 2000);
+          }
         });
       } else {
         // Sur desktop, jouer directement
@@ -277,10 +371,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Toutes les pubs ont été jouées, lancer la vidéo principale
       if (mainVideoRef.current) {
         mainVideoRef.current.src = videoUrl;
+        // Ajout d'attributs pour améliorer la compatibilité mobile
+        if (isMobileDevice) {
+          mainVideoRef.current.setAttribute('playsinline', 'true');
+          mainVideoRef.current.setAttribute('muted', 'false'); // La vidéo principale peut avoir le son
+        }
+        
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture de la vidéo principale:', error);
           // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
           if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+            setIsLoading(false);
+          }
+          // Sur mobile, on continue malgré l'erreur
+          if (isMobileDevice) {
+            console.log('Erreur de lecture principale ignorée sur mobile');
             setIsLoading(false);
           }
         });
@@ -313,8 +418,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle video error
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    console.error('Erreur de chargement de la vidéo:', e);
     setIsLoading(false);
-    setError('Failed to load video content');
+    // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
+    if (isMobileDevice && videoUrl.includes('embed')) {
+      setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
+    } else {
+      setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
+    }
     onVideoError?.('Failed to load video content');
   };
 
@@ -328,10 +439,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     // Sur mobile, masquer encore plus rapidement
     const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
     
+    // Ajustement pour s'assurer que le loader s'affiche correctement
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
       }, loaderDelay);
+      
+      return () => clearTimeout(loaderTimeout);
+    } else {
+      // Pour les vidéos directes, masquer le loader après un court délai
+      const loaderTimeout = setTimeout(() => {
+        setIsLoading(false);
+      }, isMobileDevice ? 500 : 1000);
       
       return () => clearTimeout(loaderTimeout);
     }
@@ -347,6 +466,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
       const preloadDelay = isMobileDevice ? 5000 : 3000; // 5 secondes sur mobile, 3 sur desktop
       
+      // Réactivation du préchargement avec des ajustements pour mobile
       setTimeout(() => {
         preloadMainVideo();
       }, preloadDelay);
@@ -388,6 +508,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           setTimeout(() => {
             setIsLoading(false);
           }, 1000);
+        }
+        // Sur mobile, on masque le loader immédiatement pour les utilisateurs authentifiés
+        else if (isMobileDevice) {
+          setIsLoading(false);
         }
       }
     }
@@ -520,6 +644,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 }}
                 playsInline
                 muted
+                // Ajout d'attributs supplémentaires pour améliorer la compatibilité mobile
+                autoPlay
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  backgroundColor: 'black'
+                }}
+                // Sur mobile, s'assurer que la vidéo est visible
+                {...(isMobileDevice && { 
+                  playsInline: true,
+                  muted: true,
+                  autoPlay: true,
+                  controls: true
+                })}
               />
             </div>
             {showSkipButton && (
@@ -679,8 +818,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onError={(e) => {
                 console.error('Erreur de chargement de l\'iframe Zupload:', e);
                 setIsLoading(false);
-                setError('Impossible de charger la vidéo');
+                // Sur mobile, on affiche un message plus spécifique
+                if (isMobileDevice) {
+                  setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
+                } else {
+                  setError('Impossible de charger la vidéo');
+                }
                 onVideoError?.('Impossible de charger la vidéo');
+              }}
+              // Ajout de propriétés pour améliorer la compatibilité mobile
+              style={{ 
+                width: '100%', 
+                height: '100%',
+                minHeight: isMobileDevice ? '200px' : 'auto'
               }}
             />
           ) : (
@@ -697,6 +847,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onError={handleVideoError}
               onEnded={onVideoEnd}
               playsInline
+              // Ajout de propriétés pour améliorer la compatibilité mobile
+              style={{ 
+                width: '100%', 
+                height: '100%',
+                objectFit: 'cover'
+              }}
+              // Sur mobile, on tente de forcer le chargement
+              {...(isMobileDevice && { autoPlay: true, muted: true })}
             />
           )}
         </>
