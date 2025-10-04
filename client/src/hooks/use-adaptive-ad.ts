@@ -106,7 +106,7 @@ export function useAdaptiveAd() {
         position: relative;
       `;
       
-      // Créer un iframe pour le lecteur VAST
+      // Créer un iframe pour le lecteur VAST avec l'URL VAST
       const iframe = document.createElement('iframe');
       iframe.src = `/vast-player.html?vastUrl=${encodeURIComponent(VAST_URL)}`;
       iframe.style.cssText = `
@@ -136,7 +136,13 @@ export function useAdaptiveAd() {
         if (isInPagePushReady) {
           // Le script gère automatiquement l'affichage
           console.log('In-Page Push ad should be displayed');
-          return { success: true, type: 'in-page-push' };
+          // Déclencher l'affichage de l'In-Page Push
+          if (window.jfj) {
+            // Simuler l'affichage - dans une implémentation réelle, 
+            // vous appelleriez les fonctions appropriées du SDK
+            return { success: true, type: 'in-page-push' };
+          }
+          return { success: false, type: 'in-page-push' };
         } else {
           console.warn('In-Page Push script not ready');
           return { success: false, type: 'in-page-push' };

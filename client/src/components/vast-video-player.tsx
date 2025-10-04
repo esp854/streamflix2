@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 interface VASTVideoPlayerProps {
-  vastUrl: string;
+  vastUrl?: string;
   onAdComplete?: () => void;
   onAdError?: (error: string) => void;
   className?: string;
@@ -9,7 +9,7 @@ interface VASTVideoPlayerProps {
 }
 
 const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({ 
-  vastUrl, 
+  vastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf",
   onAdComplete, 
   onAdError,
   className = '',

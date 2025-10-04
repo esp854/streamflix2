@@ -124,7 +124,9 @@
         if (vastUrl) {
             loadVASTAd(decodeURIComponent(vastUrl));
         } else {
-            showError('URL VAST non spécifiée');
+            // Utiliser l'URL VAST par défaut si aucune URL n'est spécifiée
+            const defaultVastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
+            loadVASTAd(defaultVastUrl);
         }
         
         function showError(message) {
@@ -212,8 +214,14 @@
         
         // Gérer le bouton de réessai
         document.getElementById('retry-button').addEventListener('click', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const vastUrl = urlParams.get('vastUrl');
+            
             if (vastUrl) {
                 loadVASTAd(decodeURIComponent(vastUrl));
+            } else {
+                const defaultVastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
+                loadVASTAd(defaultVastUrl);
             }
         });
         

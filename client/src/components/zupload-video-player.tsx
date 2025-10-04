@@ -3,8 +3,6 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import NativeAd from "@/components/native-ad";
-import VASTVideoPlayer from "@/components/vast-video-player";
 import { useAdaptiveAd } from '@/hooks/use-adaptive-ad';
 
 interface ZuploadVideoPlayerProps {
@@ -39,7 +37,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState<'banner1' | 'banner2' | 'video'>('banner1');
+  const [step, setStep] = useState<'ad' | 'video'>('ad');
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,39 +45,40 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  /** --- Show Appropriate Ad Based on Device --- **/
-  const showAppropriateAd = async () => {
-    try {
-      // Vérifier si l'utilisateur est sur mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Pour mobile, utiliser In-Page Push
-        console.log('Showing In-Page Push ad for mobile device');
-        // Le script fancyresponse gère automatiquement l'affichage
-        return true;
-      } else {
-        // Pour desktop, utiliser VAST
-        console.log('Showing VAST ad for desktop device');
-        // Ici, vous pouvez implémenter la logique VAST
-        // Pour l'instant, nous simulons l'affichage
-        return true;
-      }
-    } catch (err) {
-      console.error('Error showing appropriate ad:', err);
-      return false;
-    }
-  };
+  const { showAdaptiveAd } = useAdaptiveAd();
 
   /** --- Handlers --- **/
-  const handleBanner1Click = () => {
-    // Le hook useAdaptiveAd gère maintenant l'affichage de la publicité appropriée
-    setStep('banner2');
+  const handleShowAd = () => {
+    // Afficher la publicité appropriée selon le type d'appareil
+    showAdaptiveAd().then(result => {
+      console.log('Ad shown:', result);
+      // Passer directement à la vidéo après l'affichage de la publicité
+      setStep('video');
+    });
   };
 
-  const handleBanner2Click = () => {
-    setStep('video'); // Lancer la vidéo
-  };
+  // Pour les utilisateurs authentifiés, passer directement à la vidéo
+  useEffect(() => {
+    if (isAuthenticated) {
+      setStep('video');
+    }
+  }, [isAuthenticated]);
+
+  // Précharger la vidéo pour tous les utilisateurs
+  useEffect(() => {
+    setIsLoading(true);
+    // Précharger la vidéo immédiatement
+    setTimeout(() => {
+      preloadMainVideo();
+    }, 100);
+    
+    // Pour les URLs d'iframe, masquer rapidement le loader
+    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
+    }
+  }, [videoUrl]);
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
@@ -152,27 +151,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   }, [videoUrl]);
 
-  // Précharger la vidéo pour tous les utilisateurs
-  useEffect(() => {
-    setIsLoading(true);
-    // Précharger la vidéo immédiatement
-    setTimeout(() => {
-      preloadMainVideo();
-    }, 100);
-    
-    // Pour les URLs d'iframe, masquer rapidement le loader
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-    }
-    
-    // Pour les utilisateurs authentifiés, passer directement à la vidéo
-    if (isAuthenticated) {
-      setStep('video');
-    }
-  }, [videoUrl, isAuthenticated]);
-
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
     e.preventDefault();
@@ -234,108 +212,31 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
-      {step === 'banner1' && !isAuthenticated && (
+      {/* Affichage de la publicité adaptative pour les utilisateurs non authentifiés */}
+      {step === 'ad' && !isAuthenticated && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6 flex flex-col items-center">
-            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
-            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Pour continuer, clique simplement sur le bouton ci-dessous. Une publicité va s'afficher selon votre appareil : vous pouvez la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder StreamFlix gratuit et sans coupure pour tout le monde ! Merci 🙏
+          <div className="bg-blue-900/90 rounded-xl p-6 max-w-md w-full mx-4 flex flex-col items-center">
+            <h2 className="text-xl mb-4 text-center">Publicité</h2>
+            <p className="mb-6 text-gray-200 text-center">
+              Une publicité va s'afficher selon votre appareil. Vous pouvez la fermer dès qu'elle apparaît.
             </p>
-            
-            {/* Publicité adaptative (VAST pour desktop, In-Page Push pour mobile) */}
-            <div className="mb-4 sm:mb-6 w-full flex justify-center">
-              <NativeAd />
-            </div>
-            
-            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg w-full">
-              <div className="flex items-start">
-                <span className="text-yellow-500 text-base sm:text-lg mr-1 sm:mr-2">⚠️</span>
-                <div>
-                  <p className="font-bold mb-1 sm:mb-2 text-sm sm:text-base">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
-                  <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                    <li>NE CLIQUE PAS n'importe où sur la publicité</li>
-                    <li>NE SCANNE AUCUN QR code</li>
-                    <li>NE TÉLÉCHARGE RIEN</li>
-                  </ul>
-                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Referme la publicité dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
-                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">
-                    <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la publicité dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-col space-y-3 sm:space-y-4 w-full">
-              <button
-                onClick={handleBanner1Click}
-                className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-sm sm:text-base"
-              >
-                <span>Voir une publicité</span>
-              </button>
-              
-              <p className="text-gray-300 text-xs sm:text-sm text-center">
-                💡 Tu peux fermer la pub dès qu'elle s'affiche !
-              </p>
-              
-              <button
-                onClick={handleBanner2Click}
-                className="text-gray-400 hover:text-white transition text-xs sm:text-sm"
-              >
-                Passer et continuer sans publicité
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Seconde bannière - après retour sur la page */}
-      {step === 'banner2' && !isAuthenticated && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6 flex flex-col items-center">
-            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Merci pour ton aide ! 🙏</h2>
-            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Merci d'avoir soutenu StreamFlix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
-            </p>
-            
-            {/* Publicité adaptative optionnelle */}
-            <div className="mb-4 sm:mb-6 w-full flex justify-center">
-              <NativeAd />
-            </div>
-            
-            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg w-full">
-              <p className="font-bold mb-2 text-sm sm:text-base">Astuces pour une meilleure expérience :</p>
-              <div className="space-y-2 sm:space-y-3">
-                <div>
-                  <p className="flex items-center font-medium text-xs sm:text-sm">
-                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Pour les lecteurs HLS (Nightflix) :
-                  </p>
-                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
-                    <li>Change tes DNS pour accéder sans problème à ces lecteurs</li>
-                    <li>Utilise le bouton engrenage ⚙️ pour changer de source</li>
-                    <li>Si une source HLS ne fonctionne pas, clique sur le bouton engrenage ⚙️ pour changer de source</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <p className="flex items-center font-medium text-xs sm:text-sm">
-                    <Subtitles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Pour les lecteurs classiques :
-                  </p>
-                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
-                    <li>Utilise le bouton source en haut à droite pour changer de source</li>
-                    <li>Change de source avec le boutton sources en haut à droite si une source ne fonctionne pas</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
             
             <button
-              onClick={handleBanner2Click}
-              className="w-full px-4 py-2 sm:px-6 sm:py-3 bg-green-600 rounded-lg hover:bg-green-700 transition text-sm sm:text-base"
+              onClick={handleShowAd}
+              className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-base mb-4"
             >
-              Lecture
+              <span>Voir la publicité</span>
+            </button>
+            
+            <p className="text-gray-300 text-sm text-center">
+              💡 Vous pouvez fermer la pub dès qu'elle s'affiche !
+            </p>
+            
+            <button
+              onClick={() => setStep('video')}
+              className="text-gray-400 hover:text-white transition text-sm mt-4"
+            >
+              Continuer sans publicité
             </button>
           </div>
         </div>
