@@ -17,9 +17,16 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Mail, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertContactMessageSchema } from "@shared/schema";
-import type { InsertContactMessage } from "@shared/schema";
+import { z } from "zod";
 
+// Définition locale du schéma pour les messages de contact
+const insertContactMessageSchema = z.object({
+  name: z.string().min(1, "Le nom est requis").max(100, "Le nom ne doit pas dépasser 100 caractères"),
+  email: z.string().email("Email invalide").min(1, "L'email est requis").max(255, "L'email ne doit pas dépasser 255 caractères"),
+  message: z.string().min(10, "Le message doit contenir au moins 10 caractères").max(1000, "Le message ne doit pas dépasser 1000 caractères"),
+});
+
+type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
 type ContactFormValues = InsertContactMessage;
 
 export default function Contact() {

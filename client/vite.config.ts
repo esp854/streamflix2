@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      '@shared': resolve(__dirname, '../shared'),
     },
   },
   server: {
@@ -34,7 +35,7 @@ export default defineConfig({
         `default-src 'self'; ` +
         `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com; ` +
         `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ` +
-        `img-src 'self' data: https: https://image.tmdb.org https://i.pinimg.com https://www.google-analytics.com https://www.googletagmanager.com https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com; ` +
+        `img-src 'self' data: https: https://image.tmdb.org https://i.pinimg.com https.com https://www.googletagmanager.com https://www.paypal.com https://www.sandbox.paypal.com https://*.paypal.com; ` +
         `font-src 'self' https://fonts.gstatic.com data:; ` +
         `connect-src 'self' ws://localhost:5173 ws://127.0.0.1:5000 https://api.themoviedb.org https://image.tmdb.org https://www.paypal.com https://www.sandbox.paypal.com https://fonts.googleapis.com https://i.pinimg.com https://fonts.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com https://selfishzone.com https://*.selfishzone.com; ` +
         `media-src 'self' blob: https: https://selfishzone.com https://*.selfishzone.com; ` +
@@ -44,6 +45,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      external: ['@shared/schema'], // Externalize shared schema to avoid bundling issues
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
