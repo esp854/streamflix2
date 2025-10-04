@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
+import VASTVideoPlayer from './vast-video-player';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import VASTVideoPlayer from './vast-video-player';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -230,7 +230,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* VAST Ad Player - Only for non-authenticated users */}
       {step === 'ad' && !isAuthenticated && (
         <VASTVideoPlayer 
+          videoUrl={videoUrl}
           vastUrl={VAST_URL}
+          title={title}
           onAdComplete={handleAdComplete}
           onAdError={handleAdError}
         />
