@@ -50,6 +50,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
+  
+  // Fonction utilitaire pour détecter les appareils mobiles
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   // URL VAST de HilltopAds
   const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
@@ -87,28 +90,31 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }, 30000);
   };
 
-  // Fonction pour charger la pub VAST via IMA
+  // Fonction pour charger la pub VAST via proxy first-party
   async function loadVastAd() {
     if (!adVideoRef.current) return;
 
     const videoEl = adVideoRef.current;
 
     try {
-      console.log('Chargement du tag VAST:', vastTag);
-      const response = await fetch(vastTag);
+      // Utiliser le proxy VAST pour contourner les bloqueurs de pub
+      const proxyUrl = `/api/proxy-vast?tag=${encodeURIComponent(vastTag)}&t=${Date.now()}`;
+      console.log('Chargement du tag VAST via proxy:', proxyUrl);
+      
+      const response = await fetch(proxyUrl);
       
       // Vérifier si la réponse est OK
       if (!response.ok) {
-        console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
+        console.warn('Erreur HTTP lors du chargement du VAST via proxy:', response.status, response.statusText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const xmlText = await response.text();
-      console.log('Réponse VAST reçue:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
+      console.log('Réponse VAST reçue via proxy:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
       
       // Vérifier si la réponse est vide ou invalide
       if (!xmlText || xmlText.trim().length === 0) {
-        console.warn('Réponse VAST vide');
+        console.warn('Réponse VAST vide via proxy');
         throw new Error('Réponse VAST vide');
       }
       
@@ -181,7 +187,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Lecture de la première pub
       playNextAd();
     } catch (err) {
-      console.error('Erreur chargement VAST:', err);
+      console.error('Erreur chargement VAST via proxy:', err);
       // En cas d'erreur, passer directement à la vidéo principale
       if (mainVideoRef.current) {
         mainVideoRef.current.src = videoUrl;
@@ -214,6 +220,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       videoEl.src = adUrl;
       setIsAdPlaying(true);
       
+      // Pour l'autoplay sur mobile, la vidéo doit être muette
+      videoEl.muted = true;
+      
       // Ajouter un gestionnaire d'erreurs pour la lecture
       videoEl.oncanplay = () => {
         console.log('La publicité peut être lue');
@@ -226,12 +235,32 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         playNextAd();
       };
       
-      videoEl.play().catch(error => {
-        console.error('Erreur de lecture de la pub:', error);
-        // Passer à la pub suivante ou à la vidéo principale
-        currentAdIndexRef.current++;
-        playNextAd();
-      });
+      if (isMobileDevice) {
+        // Ajouter un écouteur pour la première interaction de l'utilisateur
+        const handleFirstInteraction = () => {
+          if (adVideoRef.current && isAdPlaying) {
+            adVideoRef.current.play().catch(err => {
+              console.log('Erreur de lecture après interaction utilisateur:', err);
+            });
+          }
+        };
+        
+        window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+        window.addEventListener('click', handleFirstInteraction, { once: true });
+        
+        // Essayer de jouer automatiquement
+        videoEl.play().catch(err => {
+          console.log('Autoplay bloqué, en attente d\'interaction utilisateur:', err);
+        });
+      } else {
+        // Sur desktop, jouer directement
+        videoEl.play().catch(error => {
+          console.error('Erreur de lecture de la pub:', error);
+          // Passer à la pub suivante ou à la vidéo principale
+          currentAdIndexRef.current++;
+          playNextAd();
+        });
+      }
       
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
@@ -242,8 +271,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         clearTimeout(skipButtonTimeoutRef.current);
       }
       // Détecter si on est sur mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const skipDelay = isMobile ? 5000 : 10000; // 5 secondes sur mobile, 10 sur desktop
+      const skipDelay = isMobileDevice ? 5000 : 10000; // 5 secondes sur mobile, 10 sur desktop
       skipButtonTimeoutRef.current = setTimeout(() => {
         setShowSkipButton(true);
       }, skipDelay);
@@ -301,8 +329,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     
     // Pour les URLs d'iframe, réduire le temps d'affichage du loader
     // Sur mobile, masquer encore plus rapidement
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const loaderDelay = isMobile ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
+    const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
     
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
       const loaderTimeout = setTimeout(() => {
@@ -319,19 +346,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setShowAd(true);
       loadVastAd();
       
-      // Déterminer si on est sur mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
       // Précharger la vidéo principale pendant la lecture de la pub
       // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
-      const preloadDelay = isMobile ? 5000 : 3000; // 5 secondes sur mobile, 3 sur desktop
+      const preloadDelay = isMobileDevice ? 5000 : 3000; // 5 secondes sur mobile, 3 sur desktop
       
       setTimeout(() => {
         preloadMainVideo();
       }, preloadDelay);
       
       // Ajuster la durée de la pub selon le type d'appareil
-      const adDuration = isMobile ? 30000 : 45000; // 30 secondes sur mobile, 45 sur desktop
+      const adDuration = isMobileDevice ? 30000 : 45000; // 30 secondes sur mobile, 45 sur desktop
       
       const timer = setTimeout(() => {
         setShowAd(false);
@@ -498,6 +522,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   }
                 }}
                 playsInline
+                muted
               />
             </div>
             {showSkipButton && (

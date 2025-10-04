@@ -6,6 +6,7 @@ import notificationsRoutes from "./routes/notifications.js";
 import adminRoutes from "./routes/admin.js";
 import tmdbRoutes from "./routes/tmdb.js";
 import authRoutes from "./routes/auth.js";
+import vastRoutes from "./routes/vast.js";
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +26,7 @@ app.use("/api", notificationsRoutes);
 app.use("/api", adminRoutes);
 app.use("/api", tmdbRoutes);
 app.use("/api", authRoutes);
+app.use("/api", vastRoutes);
 
 app.listen(5000, () => {
   console.log("Serveur backend en écoute sur le port 5000");
