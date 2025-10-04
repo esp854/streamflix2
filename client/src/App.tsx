@@ -34,7 +34,6 @@ import ZuploadDirectTest from "@/pages/zupload-direct-test";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
-import PWAInstallBanner from "@/components/pwa-install-banner";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 
@@ -145,7 +144,6 @@ function App() {
                 <Router />
               </main>
               {!isWatchPage && !isAdminPage && <Footer />}
-              <PWAInstallBanner />
             </div>
           </ErrorBoundary>
           <Toaster />

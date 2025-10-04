@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -36,71 +36,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState<'banner1' | 'banner2' | 'video'>('banner1');
+  const adVideoRef = useRef<HTMLVideoElement>(null);
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAd, setShowAd] = useState(!isAuthenticated);
+  const [adSkipped, setAdSkipped] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [showSkipButton, setShowSkipButton] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
+  const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  /** --- Open Popunder Window --- **/
-  const openPopunder = () => {
-    // Liste de différentes URLs de publicités popunder
-    const popunderUrls = [
-      "https://selfishzone.com/bB3CV_0.PE2FlGjHP-XJBKzLJMm_9O0PPQURN-nTSUlVRWU_aYEZlaKbW-Wd5eKfdgl_liXjUkmll-ZnVozpVqr_Ss2tluCva-Ex0yyzWAT_FCODMEkFp-pHWIlJRKJ_eMFNlO6PU-mRxSNTeUk_FW6XTYnZp-rbecUd1eq_agGhhiajR-GlMmznTo0_RqorbsUt1-qvSwTxBya_RAEBNCUDd-2FZG6HRI0_JKqLaMlNA-1PdQ0RUSt_JUnVJWyXa-WZQa9bMcm_Me4fMgGhN-ljZkDlAm1_MojpFqirO-GtMu2vNwz_BymzMADBB-iDZEWFMGz_YImJVKiLY-zNMO4PNQD_kSmTdUnVQ-9XMYTZca1_OcTdQe1fM-zhMizjMkS_1mlnMoDpB-hrYsmtUux_NwjxAyxzN-TBZCjDMET_YG4HMIGJY-1LYMWNFOi_YQTRES2TM-zVUW3XOYT_JakbYcidZ-6fbg2h5il_akWlQm9nN-jpYq2rNsj_Iu4vOwSx0-2zNAjBYC2_MEjFkGwH",
-      "https://selfishzone.com/different-ad-url-2",
-      "https://selfishzone.com/different-ad-url-3"
-    ];
-    
-    // Sélectionner une URL aléatoire parmi la liste
-    const randomIndex = Math.floor(Math.random() * popunderUrls.length);
-    const popunderUrl = popunderUrls[randomIndex];
-    
-    try {
-      // Créer un lien temporaire pour contourner les restrictions mobile
-      const link = document.createElement('a');
-      link.href = popunderUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.style.display = 'none';
-      
-      // Ajouter le lien au document
-      document.body.appendChild(link);
-      
-      // Simuler un clic sur le lien
-      link.click();
-      
-      // Nettoyer
-      document.body.removeChild(link);
-      
-      console.log('Popunder window opened successfully with ad:', popunderUrl);
-      return true;
-    } catch (err) {
-      console.error('Error opening popunder:', err);
-      // Fallback: ouvrir dans un nouvel onglet
-      try {
-        window.open(popunderUrl, '_blank', 'width=1001,height=800,scrollbars=yes,resizable=yes');
-        return true;
-      } catch (fallbackErr) {
-        console.error('Fallback error opening popunder:', fallbackErr);
-        return false;
-      }
-    }
-  };
-
-  /** --- Handlers --- **/
-  const handleBanner1Click = () => {
-    const success = openPopunder(); // Ouvrir le popunder
-    console.log('Popunder open result:', success);
-    
-    // Passer à la bannière 2 immédiatement
-    setStep('banner2');
-  };
-
-  const handleBanner2Click = () => {
-    setStep('video'); // Lancer la vidéo
-  };
+  // URL VAST de HilltopAds
+  const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
@@ -135,15 +87,203 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }, 30000);
   };
 
+  // Fonction pour charger la pub VAST via IMA
+  async function loadVastAd() {
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+
+    try {
+      console.log('Chargement du tag VAST:', vastTag);
+      const response = await fetch(vastTag);
+      
+      // Vérifier si la réponse est OK
+      if (!response.ok) {
+        console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const xmlText = await response.text();
+      console.log('Réponse VAST reçue:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
+      
+      // Vérifier si la réponse est vide ou invalide
+      if (!xmlText || xmlText.trim().length === 0) {
+        console.warn('Réponse VAST vide');
+        throw new Error('Réponse VAST vide');
+      }
+      
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "text/xml");
+      
+      // Vérifier les erreurs de parsing XML
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) {
+        console.warn('Erreur de parsing XML VAST:', parserError.textContent);
+        throw new Error('Erreur de parsing XML VAST');
+      }
+
+      // Récupère tous les Ad du VAST
+      const ads = xml.querySelectorAll('Ad');
+      console.log('Nombre de balises Ad trouvées:', ads.length);
+      
+      if (!ads.length) {
+        // Vérifier s'il y a d'autres éléments qui pourraient indiquer une erreur
+        const errorElements = xml.querySelectorAll('Error');
+        if (errorElements.length > 0) {
+          console.warn('Éléments Error trouvés dans le VAST:', errorElements.length);
+          errorElements.forEach((errorEl, index) => {
+            console.warn(`Error ${index + 1}:`, errorEl.textContent);
+          });
+        }
+        
+        console.warn('Pas de Ad dans le VAST');
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Récupère tous les MediaFile des pubs
+      const adUrls: string[] = [];
+      ads.forEach((ad, index) => {
+        console.log(`Traitement de l'Ad ${index + 1}:`, ad);
+        const mediaFile = ad.querySelector('MediaFile');
+        if (mediaFile) {
+          const adUrl = mediaFile.textContent?.trim();
+          if (adUrl) {
+            console.log(`MediaFile trouvé pour Ad ${index + 1}:`, adUrl);
+            adUrls.push(adUrl);
+          } else {
+            console.warn(`MediaFile vide pour Ad ${index + 1}`);
+          }
+        } else {
+          console.warn(`Aucun MediaFile trouvé pour Ad ${index + 1}`);
+        }
+      });
+
+      if (!adUrls.length) {
+        console.warn('Pas de MediaFile dans le VAST');
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Initialiser la file d'attente des pubs
+      adQueueRef.current = adUrls;
+      currentAdIndexRef.current = 0;
+      console.log('File d\'attente des pubs initialisée:', adUrls);
+
+      // Lecture de la première pub
+      playNextAd();
+    } catch (err) {
+      console.error('Erreur chargement VAST:', err);
+      // En cas d'erreur, passer directement à la vidéo principale
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoUrl;
+        // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+        if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+          mainVideoRef.current.play().catch(playError => {
+            console.error('Erreur de lecture automatique de la vidéo:', playError);
+          });
+        }
+      }
+      setIsAdPlaying(false);
+      setIsLoading(false);
+      setShowAd(false);
+      setAdSkipped(true);
+    }
+  }
+
+  // Fonction pour jouer la pub suivante
+  const playNextAd = () => {
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+    
+    // Vérifier s'il y a une pub suivante
+    if (currentAdIndexRef.current < adQueueRef.current.length) {
+      const adUrl = adQueueRef.current[currentAdIndexRef.current];
+      console.log('Lecture de la publicité:', currentAdIndexRef.current + 1, '/', adQueueRef.current.length, adUrl);
+      
+      // Lecture de la pub
+      videoEl.src = adUrl;
+      setIsAdPlaying(true);
+      
+      // Ajouter un gestionnaire d'erreurs pour la lecture
+      videoEl.oncanplay = () => {
+        console.log('La publicité peut être lue');
+      };
+      
+      videoEl.onerror = (e) => {
+        console.error('Erreur de chargement de la publicité:', e);
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
+      };
+      
+      videoEl.play().catch(error => {
+        console.error('Erreur de lecture de la pub:', error);
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
+      });
+      
+      // Incrémenter l'index pour la prochaine pub
+      currentAdIndexRef.current++;
+      
+      // Masquer le bouton de skip pendant 5 secondes sur mobile, 10 sur desktop
+      setShowSkipButton(false);
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      // Détecter si on est sur mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const skipDelay = isMobile ? 5000 : 10000; // 5 secondes sur mobile, 10 sur desktop
+      skipButtonTimeoutRef.current = setTimeout(() => {
+        setShowSkipButton(true);
+      }, skipDelay);
+    } else {
+      console.log('Toutes les publicités ont été jouées, lecture de la vidéo principale');
+      // Toutes les pubs ont été jouées, lancer la vidéo principale
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoUrl;
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture de la vidéo principale:', error);
+          // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
+          if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+            setIsLoading(false);
+          }
+        });
+      }
+      setIsAdPlaying(false);
+      setIsLoading(false);
+      
+      // Nettoyer le timeout du bouton skip
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      setShowSkipButton(false);
+    }
+  };
+
   // Handle video load
   const handleVideoLoad = () => {
-    setIsLoading(false);
+    if (!isAdPlaying) {
+      setIsLoading(false);
+    }
   };
 
   // Handle video playing - for better loading indication
   const handleVideoPlaying = () => {
-    setIsLoading(false);
-    setError(null);
+    if (!isAdPlaying) {
+      setIsLoading(false);
+      setError(null);
+    }
   };
 
   // Handle video error
@@ -173,26 +313,103 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   }, [videoUrl]);
 
-  // Précharger la vidéo pour tous les utilisateurs
+  // Handle ad for non-authenticated users
   useEffect(() => {
-    setIsLoading(true);
-    // Précharger la vidéo immédiatement
-    setTimeout(() => {
-      preloadMainVideo();
-    }, 100);
-    
-    // Pour les URLs d'iframe, masquer rapidement le loader
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+    if (!isAuthenticated && !adSkipped) {
+      setShowAd(true);
+      loadVastAd();
+      
+      // Déterminer si on est sur mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Précharger la vidéo principale pendant la lecture de la pub
+      // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
+      const preloadDelay = isMobile ? 5000 : 3000; // 5 secondes sur mobile, 3 sur desktop
+      
       setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
+        preloadMainVideo();
+      }, preloadDelay);
+      
+      // Ajuster la durée de la pub selon le type d'appareil
+      const adDuration = isMobile ? 30000 : 45000; // 30 secondes sur mobile, 45 sur desktop
+      
+      const timer = setTimeout(() => {
+        setShowAd(false);
+        setAdSkipped(true);
+        // Réinitialiser l'état de chargement après la fin de la pub
+        setIsLoading(true);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
+      }, adDuration);
+      return () => {
+        clearTimeout(timer);
+        if (skipButtonTimeoutRef.current) {
+          clearTimeout(skipButtonTimeoutRef.current);
+        }
+      };
+    } else {
+      setShowAd(false);
+      // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
+      if (!isAuthenticated || adSkipped) {
+        setIsLoading(true);
+        // Précharger la vidéo immédiatement pour les utilisateurs authentifiés
+        setTimeout(() => {
+          preloadMainVideo();
+        }, 100);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
+      }
+    }
+  }, [isAuthenticated, adSkipped]);
+
+  const skipAd = () => {
+    console.log('Passage des publicités demandé par l\'utilisateur');
+    
+    if (adVideoRef.current) {
+      // Arrêter la lecture de la pub
+      adVideoRef.current.pause();
+      adVideoRef.current.oncanplay = null;
+      adVideoRef.current.onerror = null;
     }
     
-    // Pour les utilisateurs authentifiés, passer directement à la vidéo
-    if (isAuthenticated) {
-      setStep('video');
+    // Passer toutes les pubs restantes et lancer la vidéo principale
+    if (mainVideoRef.current) {
+      mainVideoRef.current.src = videoUrl;
+      
+      // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture après avoir passé la pub:', error);
+        });
+      }
     }
-  }, [videoUrl, isAuthenticated]);
+    
+    // Vider la file d'attente des pubs
+    adQueueRef.current = [];
+    currentAdIndexRef.current = 0;
+    
+    setIsAdPlaying(false);
+    setShowAd(false);
+    setAdSkipped(true);
+    // Réinitialiser l'état de chargement après avoir passé la pub
+    setIsLoading(false);
+    
+    // Nettoyer le timeout du bouton skip
+    if (skipButtonTimeoutRef.current) {
+      clearTimeout(skipButtonTimeoutRef.current);
+    }
+    setShowSkipButton(false);
+  };
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
@@ -236,6 +453,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -255,123 +475,63 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Première bannière pop-up - pour les utilisateurs non authentifiés */}
-      {step === 'banner1' && !isAuthenticated && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
-            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Juste une petite étape avant de lancer la vidéo...</h2>
-            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Pour continuer, clique simplement sur le bouton ci-dessous. Une fenêtre publicitaire va s'ouvrir : tu peux la fermer dès qu'elle apparaît. Ce petit geste nous aide à garder Movix gratuit et sans coupure pour tout le monde ! Merci 🙏
-            </p>
-            
-            <div className="bg-yellow-900/50 border-l-4 border-yellow-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
-              <div className="flex items-start">
-                <span className="text-yellow-500 text-base sm:text-lg mr-1 sm:mr-2">⚠️</span>
-                <div>
-                  <p className="font-bold mb-1 sm:mb-2 text-sm sm:text-base">Ce qu'il NE FAUT SURTOUT PAS FAIRE</p>
-                  <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm">
-                    <li>NE CLIQUE PAS n'importe où sur la page de pub</li>
-                    <li>NE SCANNE AUCUN QR code</li>
-                    <li>NE TÉLÉCHARGE RIEN</li>
-                  </ul>
-                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">Referme la page de pub dès qu'elle s'affiche. Merci pour ta vigilance ! 🙏</p>
-                  <p className="mt-1 sm:mt-2 text-xs sm:text-sm">
-                    <span className="font-bold">🚫</span> Cette publicité peut contenir des images ou contenus réservés à un public averti. Ferme la page dès qu'elle s'affiche si tu préfères éviter ce type de contenu.
-                  </p>
-                </div>
-              </div>
+      {/* Ad for non-authenticated users - HilltopAds VAST integration */}
+      {showAd && (
+        <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
+          <div className="relative w-full h-full">
+            {/* HilltopAds VAST integration */}
+            <div className="w-full h-full flex items-center justify-center">
+              <video
+                ref={adVideoRef}
+                controls
+                width="100%"
+                height="100%"
+                preload="auto"
+                className="w-full h-full touch-manipulation"
+                onLoad={handleVideoLoad}
+                onPlaying={handleVideoPlaying}
+                onError={handleVideoError}
+                onEnded={() => {
+                  if (isAdPlaying) {
+                    // Pub terminée, jouer la pub suivante ou la vidéo principale
+                    playNextAd();
+                  }
+                }}
+                playsInline
+              />
             </div>
-            
-            <div className="flex flex-col space-y-3 sm:space-y-4">
+            {showSkipButton && (
               <button
-                onClick={handleBanner1Click}
-                className="px-4 py-2 sm:px-6 sm:py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-sm sm:text-base"
+                onClick={skipAd}
+                className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
               >
-                <span>Voir une publicité</span>
+                Passer la pub
               </button>
-              
-              <p className="text-gray-300 text-xs sm:text-sm text-center">
-                💡 Tu peux fermer la pub dès qu'elle s'affiche !
-              </p>
-              
-              <button
-                onClick={handleBanner2Click}
-                className="text-gray-400 hover:text-white transition text-xs sm:text-sm"
-              >
-                Passer et continuer sans publicité
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Seconde bannière - après retour sur la page */}
-      {step === 'banner2' && !isAuthenticated && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-4 max-w-md w-full mx-2 my-4 sm:mx-4 sm:my-8 sm:p-6">
-            <h2 className="text-lg sm:text-xl mb-3 sm:mb-4 text-center">Merci pour ton aide ! 🙏</h2>
-            <p className="mb-4 sm:mb-6 text-gray-200 text-center text-xs sm:text-sm">
-              Merci d'avoir soutenu Streamflix ! 🎉 Ton action nous permet de maintenir la plateforme gratuite et sans interruption. Profite bien de ton film et oublie pas si tu veux changer la langue des sous titres, utilise le boutton sous titres sur le lecteur si disponible 🍿
-            </p>
-            
-            <div className="bg-blue-800/50 border-l-4 border-blue-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
-              <p className="font-bold mb-2 text-sm sm:text-base">Astuces pour une meilleure expérience :</p>
-              <div className="space-y-2 sm:space-y-3">
-                <div>
-                  <p className="flex items-center font-medium text-xs sm:text-sm">
-                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Pour les lecteurs HLS (Nightflix) :
-                  </p>
-                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
-                    <li>Change tes DNS pour accéder sans problème à ces lecteurs</li>
-                    <li>Utilise le bouton engrenage ⚙️ pour changer de source</li>
-                    <li>Si une source HLS ne fonctionne pas, clique sur le bouton engrenage ⚙️ pour changer de source</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <p className="flex items-center font-medium text-xs sm:text-sm">
-                    <Subtitles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                    Pour les lecteurs classiques :
-                  </p>
-                  <ul className="list-disc list-inside mt-1 text-xs sm:text-sm ml-4 sm:ml-6 space-y-1">
-                    <li>Utilise le bouton source en haut à droite pour changer de source</li>
-                    <li>Change de source avec le boutton sources en haut à droite si une source ne fonctionne pas</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleBanner2Click}
-              className="w-full px-4 py-2 sm:px-6 sm:py-3 bg-green-600 rounded-lg hover:bg-green-700 transition text-sm sm:text-base"
-            >
-              Lecture
-            </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Loading indicator - Optimized for mobile */}
-      {isLoading && step === 'video' && (
+      {isLoading && !showAd && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-4 sm:p-6 max-w-xs">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4 sm:mb-6"></div>
-            <p className="text-white text-base sm:text-lg px-2 sm:px-4 font-medium">Chargement de la vidéo...</p>
+          <div className="text-center p-6 max-w-xs">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
+            <p className="text-white text-lg sm:text-xl px-4 font-medium">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
 
       {/* Error display - Optimized for mobile */}
-      {error && step === 'video' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-2 sm:p-4">
-          <div className="text-center p-6 sm:p-8 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
-            <div className="text-red-500 text-4xl sm:text-5xl mb-4 sm:mb-6">⚠️</div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-4 sm:mb-6 text-sm sm:text-base">{error}</p>
+      {error && !showAd && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
+          <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
+            <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
+            <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 sm:px-6 sm:py-3 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-base sm:text-lg font-medium"
+              className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
             >
               Réessayer
             </button>
@@ -380,142 +540,145 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       )}
 
       {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      {step === 'video' && (
-        <div className="absolute inset-0 z-20 pointer-events-none">
-          {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-          <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-1">
-              {onSeasonChange && (
-                <Select 
-                  value={currentSeason.toString()} 
-                  onValueChange={(value) => onSeasonChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-12 sm:w-14 bg-black/70 text-white border-white/20 text-xs">
-                    <SelectValue placeholder="S" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                      <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                        S{seasonNum}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              
-              {onEpisodeChange && (
-                <Select 
-                  value={currentEpisode.toString()} 
-                  onValueChange={(value) => onEpisodeChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-12 sm:w-14 bg-black/70 text-white border-white/20 text-xs">
-                    <SelectValue placeholder="E" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                      <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                        E{episodeNum}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+      <div className="absolute inset-0 z-20 pointer-events-none">
+        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
+        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            {onSeasonChange && (
+              <Select 
+                value={currentSeason.toString()} 
+                onValueChange={(value) => onSeasonChange(parseInt(value))}
+              >
+                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectValue placeholder="S" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                      S{seasonNum}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             
-            <div className="flex space-x-1">
-              {onSkipIntro && (
-                <button
-                  onClick={onSkipIntro}
-                  className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-                >
-                  <RotateCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                  <span className="hidden xs:inline">Passer l'intro</span>
-                </button>
-              )}
-              
-              {onNextEpisode && (
-                <button
-                  onClick={onNextEpisode}
-                  className="bg-black/70 text-white px-2 py-1 sm:px-3 sm:py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-                >
-                  <SkipForward className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                  <span className="hidden xs:inline">Épisode suivant</span>
-                </button>
-              )}
-            </div>
+            {onEpisodeChange && (
+              <Select 
+                value={currentEpisode.toString()} 
+                onValueChange={(value) => onEpisodeChange(parseInt(value))}
+              >
+                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectValue placeholder="E" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                      E{episodeNum}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           
-          {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-          <div className="absolute top-1/2 left-2 sm:left-3 right-2 sm:right-3 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-            <div className="flex items-center space-x-1">
-              {onPreviousEpisode && (
-                <Button
-                  onClick={onPreviousEpisode}
-                  variant="ghost"
-                  size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full"
-                  disabled={currentEpisode <= 1}
-                >
-                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                </Button>
-              )}
-            </div>
+          <div className="flex space-x-1">
+            {onSkipIntro && (
+              <button
+                onClick={onSkipIntro}
+                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+              >
+                <RotateCw className="w-5 h-5 mr-2" />
+                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
+              </button>
+            )}
             
-            <div className="flex items-center space-x-1">
-              {onNextEpisode && (
-                <Button
-                  onClick={onNextEpisode}
-                  variant="ghost"
-                  size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full"
-                  disabled={currentEpisode >= totalEpisodes}
-                >
-                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                </Button>
-              )}
-            </div>
+            {onNextEpisode && (
+              <button
+                onClick={onNextEpisode}
+                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+              >
+                <SkipForward className="w-5 h-5 mr-2" />
+                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
+              </button>
+            )}
           </div>
         </div>
-      )}
+        
+        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
+        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            {onPreviousEpisode && (
+              <Button
+                onClick={onPreviousEpisode}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                disabled={currentEpisode <= 1}
+              >
+                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            {onNextEpisode && (
+              <Button
+                onClick={onNextEpisode}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                disabled={currentEpisode >= totalEpisodes}
+              >
+                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
-      {step === 'video' && videoUrl.includes('embed') ? (
-        <iframe
-          src={videoUrl}
-          className="w-full h-full touch-manipulation"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-          title={title}
-          loading="lazy"
-          onLoad={() => {
-            console.log('Iframe Zupload chargée');
-            setIsLoading(false);
-            setError(null);
-          }}
-          onError={(e) => {
-            console.error('Erreur de chargement de l\'iframe Zupload:', e);
-            setIsLoading(false);
-            setError('Impossible de charger la vidéo');
-            onVideoError?.('Impossible de charger la vidéo');
-          }}
-        />
-      ) : step === 'video' ? (
-        // For direct video files
-        <video
-          ref={mainVideoRef}
-          controls
-          width="100%"
-          height="100%"
-          preload="auto"
-          className="w-full h-full touch-manipulation"
-          onLoad={handleVideoLoad}
-          onPlaying={handleVideoPlaying}
-          onError={handleVideoError}
-          onEnded={onVideoEnd}
-          playsInline
-        />
-      ) : null}
+      {!showAd && (
+        <>
+          {/* For iframe embeds (Zupload) - Mobile optimized */}
+          {videoUrl.includes('embed') ? (
+            <iframe
+              src={videoUrl}
+              className="w-full h-full touch-manipulation"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              title={title}
+              loading="lazy"
+              onLoad={() => {
+                console.log('Iframe Zupload chargée');
+                setIsLoading(false);
+                setError(null);
+              }}
+              onError={(e) => {
+                console.error('Erreur de chargement de l\'iframe Zupload:', e);
+                setIsLoading(false);
+                setError('Impossible de charger la vidéo');
+                onVideoError?.('Impossible de charger la vidéo');
+              }}
+            />
+          ) : (
+            // For direct video files
+            <video
+              ref={mainVideoRef}
+              controls
+              width="100%"
+              height="100%"
+              preload="auto"
+              className="w-full h-full touch-manipulation"
+              onLoad={handleVideoLoad}
+              onPlaying={handleVideoPlaying}
+              onError={handleVideoError}
+              onEnded={onVideoEnd}
+              playsInline
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };
