@@ -1,89 +1,129 @@
-# StreamFlix
+# StreamFlix - Plateforme de Streaming
 
-StreamFlix est une plateforme de streaming légal pour films et séries.
+StreamFlix est une plateforme de streaming de films et séries avec système d'abonnement, gestion de contenu et interface utilisateur moderne.
 
 ## Fonctionnalités
 
-- Streaming de films et séries en haute qualité
-- Système d'authentification utilisateur
-- Lecteur vidéo responsive avec support mobile
-- Publicités VAST intégrées pour les utilisateurs non authentifiés
-- Interface utilisateur moderne et intuitive
+- 🔐 Authentification utilisateur (inscription/connexion)
+- 🎬 Catalogue de films et séries
+- ❤️ Système de favoris
+- 📺 Historique de visionnage
+- 💰 Système d'abonnement avec PayPal
+- 📱 Interface responsive
+- 🔍 Recherche et filtrage de contenu
+- 🛡️ Sécurité avancée (CSRF, rate limiting, etc.)
+- 📈 SEO optimisé (balises meta, sitemap, robots.txt)
 
-## Technologies utilisées
+## Configuration requise
 
-- Frontend: React, TypeScript, Tailwind CSS
-- Backend: Node.js, Express, PostgreSQL
-- Lecteur vidéo: Video.js avec support VAST
-- Authentification: JWT, OAuth
-- Paiements: PayPal
+- Node.js 16+
+- PostgreSQL
+- Compte PayPal pour les paiements (sandbox/production)
+- Compte Gmail pour l'envoi d'emails
 
 ## Installation
 
-1. Cloner le repository
-2. Installer les dépendances:
+1. Cloner le dépôt
+2. Installer les dépendances :
    ```bash
    npm install
-   cd client && npm install
    ```
-3. Configurer les variables d'environnement (voir `.env.example`)
-4. Démarrer le serveur de développement:
+3. Configurer la base de données PostgreSQL
+4. Configurer les variables d'environnement (voir `.env.example`)
+5. Exécuter les migrations Drizzle :
    ```bash
-   npm run dev
+   npx drizzle-kit push
    ```
 
-## Lecteur VAST
+## Configuration PayPal
 
-Le lecteur vidéo utilise Video.js avec videojs-ima pour afficher les publicités VAST. Voici comment cela fonctionne :
+Pour configurer les paiements PayPal et les webhooks :
 
-### Fonctionnalités
-
-- **Responsive**: Le lecteur s'adapte à tous les écrans (mobile et desktop)
-- **Publicités VAST**: Affichage des publicités avant la lecture du contenu
-- **Compatibilité mobile**: Gestion des restrictions d'autoplay sur mobile
-- **Muted autoplay**: Sur mobile, le son est coupé pour permettre l'autoplay
-
-### Configuration
-
-L'URL VAST utilisée est :
-```
-https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf
-```
-
-### Comportement par appareil
-
-- **Mobile**: Le lecteur démarre en mode muet pour contourner les restrictions d'autoplay
-- **Desktop**: Le lecteur démarre normalement avec le son
-
-### Pour les utilisateurs authentifiés
-
-Les utilisateurs authentifiés n'ont pas de publicités et accèdent directement au contenu.
-
-## Déploiement
-
-Pour déployer l'application :
-
-1. Construire le projet:
-   ```bash
-   npm run build
+1. Créer une application PayPal sur https://developer.paypal.com/
+2. Obtenir le Client ID et Client Secret
+3. Configurer les variables d'environnement :
    ```
-2. Démarrer le serveur:
-   ```bash
-   npm start
+   PAYPAL_CLIENT_ID=votre_client_id
+   PAYPAL_CLIENT_SECRET=votre_client_secret
+   PAYPAL_MODE=sandbox # ou 'live' pour la production
+   PAYPAL_WEBHOOK_ID=votre_webhook_id # Obtenu après création du webhook
    ```
+4. Créer un webhook PayPal avec l'URL : `https://votre-domaine.com/api/webhook/paypal`
+5. Sélectionner les événements suivants :
+   - PAYMENT.CAPTURE.COMPLETED
+   - PAYMENT.CAPTURE.DENIED
+   - PAYMENT.CAPTURE.REFUNDED
+   - BILLING.SUBSCRIPTION.CREATED
+   - BILLING.SUBSCRIPTION.CANCELLED
 
-## Tests
+## Configuration Email
 
-Pour exécuter les tests :
+Pour que les utilisateurs reçoivent des emails de bienvenue lors de l'inscription :
+
+1. Configurer EMAIL_USER et EMAIL_PASS dans le fichier `.env`
+2. Suivre les instructions détaillées dans `EMAIL_CONFIGURATION.md`
+3. Suivre le guide détaillé dans `GMAIL_SETUP_GUIDE.md` pour configurer Gmail
+4. Si vous rencontrez des problèmes d'authentification, consulter `server/TROUBLESHOOTING_CHECKLIST.md`
+5. Tester la configuration avec `npx tsx server/test-email.ts`
+
+### Outils de diagnostic
+
+- `npx tsx server/verify-gmail-setup.ts` - Vérifie la configuration des variables d'environnement
+- `npx tsx server/test-smtp-connection.ts` - Teste la connexion SMTP directement
+- `npx tsx server/test-email.ts` - Envoie un email de test complet
+- `npx tsx server/advanced-diagnostics.ts` - Tests approfondis de diagnostic
+- `npx tsx server/final-diagnostic.ts` - Diagnostic final avec logs détaillés
+
+## Optimisation SEO
+
+StreamFlix est entièrement optimisé pour le référencement naturel avec :
+
+- Balises meta optimisées (description, keywords, author, etc.)
+- Balises Open Graph pour le partage sur les réseaux sociaux
+- Balises Twitter Card pour le partage sur Twitter
+- Données structurées (JSON-LD) pour améliorer l'affichage dans les résultats de recherche
+- Fichier sitemap.xml pour aider les moteurs de recherche à indexer le contenu
+- Fichier robots.txt pour guider l'exploration par les robots
+- URLs canoniques pour éviter le contenu dupliqué
+- Préconnexion aux domaines externes pour améliorer les performances
+
+Les fichiers SEO se trouvent dans le dossier `client/public/` :
+- `index.html` - Contient toutes les balises meta et données structurées
+- `robots.txt` - Instructions pour les robots d'indexation
+- `sitemap.xml` - Carte du site pour les moteurs de recherche
+
+## Démarrage
 
 ```bash
-npm test
+# Démarrer le serveur backend
+npm run dev:server
+
+# Démarrer le client (dans un autre terminal)
+npm run dev:client
 ```
 
-## Contribution
+## Structure du projet
 
-Les contributions sont les bienvenues ! Veuillez lire le guide de contribution avant de soumettre une pull request.
+- `client/` - Application frontend React
+- `server/` - Serveur Express avec API
+- `shared/` - Schémas partagés entre client et serveur
+- `drizzle/` - Migrations de base de données
 
-## Licence
+## Technologies utilisées
 
-MIT
+- Frontend : React, TypeScript, Tailwind CSS, TanStack Query
+- Backend : Express.js, TypeScript
+- Base de données : PostgreSQL avec Drizzle ORM
+- Authentification : JWT
+- Paiements : PayPal REST API
+- Emails : Nodemailer avec Gmail
+
+## Documentation
+
+- `ADMIN_DASHBOARD_README.md` - Documentation du tableau de bord admin
+- `IMPROVED_ADMIN_DASHBOARD_README.md` - Documentation du tableau de bord admin amélioré
+- `INSTALLATION_POSTGRESQL.md` - Guide d'installation PostgreSQL
+- `LYGOS_INTEGRATION_SUMMARY.md` - Documentation de l'intégration Lygos
+- `EMAIL_CONFIGURATION.md` - Guide de configuration des emails
+- `GMAIL_SETUP_GUIDE.md` - Guide détaillé de configuration Gmail
+- `server/TROUBLESHOOTING_CHECKLIST.md` - Liste de vérification pour le dépannage des emails
