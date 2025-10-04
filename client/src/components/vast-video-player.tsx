@@ -17,8 +17,11 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [skipAvailable, setSkipAvailable] = useState(false);
+  const [skipSeconds, setSkipSeconds] = useState(5);
   const videoRef = useRef<HTMLVideoElement>(null);
   const adContainerRef = useRef<HTMLDivElement>(null);
+  const skipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fonction pour parser le XML VAST et extraire l'URL de la vidéo
   const parseVAST = async (url: string) => {
@@ -47,11 +50,26 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
     }
   };
 
+  // Initialiser le compteur de skip
+  const initSkipCounter = () => {
+    setSkipAvailable(false);
+    setSkipSeconds(5);
+    
+    if (skipTimeoutRef.current) {
+      clearTimeout(skipTimeoutRef.current);
+    }
+    
+    skipTimeoutRef.current = setTimeout(() => {
+      setSkipAvailable(true);
+    }, 5000);
+  };
+
   // Charger et jouer la publicité VAST
   const loadVASTAd = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      initSkipCounter();
       
       // Parser le VAST pour obtenir l'URL de la vidéo
       const videoUrl = await parseVAST(vastUrl);
@@ -83,19 +101,62 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
 
   // Gérer la fin de la publicité
   const handleAdEnded = () => {
+    if (skipTimeoutRef.current) {
+      clearTimeout(skipTimeoutRef.current);
+    }
     onAdComplete?.();
   };
 
   // Gérer les erreurs de lecture
   const handleAdError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error('VAST ad error:', e);
+    if (skipTimeoutRef.current) {
+      clearTimeout(skipTimeoutRef.current);
+    }
     setError('Erreur de lecture de la publicité');
     onAdError?.('Erreur de lecture de la publicité');
   };
 
+  // Passer la publicité
+  const handleSkipAd = () => {
+    if (skipAvailable) {
+      if (skipTimeoutRef.current) {
+        clearTimeout(skipTimeoutRef.current);
+      }
+      onAdComplete?.();
+    }
+  };
+
+  // Nettoyer les timers
+  useEffect(() => {
+    return () => {
+      if (skipTimeoutRef.current) {
+        clearTimeout(skipTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Mettre à jour le compteur
+  useEffect(() => {
+    if (!skipAvailable && skipSeconds > 0) {
+      const timer = setTimeout(() => {
+        setSkipSeconds(prev => prev - 1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else if (skipSeconds === 0) {
+      setSkipAvailable(true);
+    }
+  }, [skipAvailable, skipSeconds]);
+
   // Charger la publicité quand le composant est monté
   useEffect(() => {
     loadVASTAd();
+    return () => {
+      if (skipTimeoutRef.current) {
+        clearTimeout(skipTimeoutRef.current);
+      }
+    };
   }, [vastUrl]);
 
   return (
@@ -133,6 +194,24 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Compteur et bouton "Passer la pub" */}
+      {!isLoading && !error && (
+        <>
+          {!skipAvailable ? (
+            <div className="absolute bottom-5 right-5 bg-black/70 text-white px-4 py-2 rounded-lg z-10">
+              Passer dans {skipSeconds}s
+            </div>
+          ) : (
+            <button
+              onClick={handleSkipAd}
+              className="absolute bottom-5 right-5 bg-black/70 text-white px-4 py-2 rounded-lg border-2 border-white hover:bg-white/20 transition-colors z-10"
+            >
+              Passer la pub
+            </button>
+          )}
+        </>
       )}
 
       {/* Lecteur vidéo pour la publicité */}

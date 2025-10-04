@@ -4,6 +4,7 @@ import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAdaptiveAd } from '@/hooks/use-adaptive-ad';
+import VASTVideoPlayer from "@/components/vast-video-player";
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -37,7 +38,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState<'ad' | 'video'>('ad');
+  const [step, setStep] = useState<'ad' | 'vast' | 'video'>('ad');
+  const [currentVastUrl, setCurrentVastUrl] = useState<string | undefined>(undefined);
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,12 +52,36 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   /** --- Handlers --- **/
   const handleShowAd = () => {
     // Afficher la publicité appropriée selon le type d'appareil
-    showAdaptiveAd().then(result => {
+    showAdaptiveAd().then((result: any) => {
       console.log('Ad shown:', result);
-      // Passer directement à la vidéo après l'affichage de la publicité
-      setStep('video');
+      // Pour VAST desktop, afficher le lecteur intégré
+      if (result.type === 'vast' && result.url) {
+        setStep('vast');
+        setCurrentVastUrl(result.url);
+      } else if (result.type === 'in-page-push') {
+        // Pour In-Page Push mobile, passer directement à la vidéo après un court délai
+        // pour permettre l'affichage de la pub
+        setTimeout(() => {
+          setStep('video');
+        }, 1000);
+      } else {
+        // En cas d'erreur ou autre, passer directement à la vidéo
+        setStep('video');
+      }
     });
   };
+
+  // Afficher la publicité automatiquement pour les utilisateurs non authentifiés
+  useEffect(() => {
+    if (!isAuthenticated && step === 'ad') {
+      // Délai court pour permettre le chargement des scripts
+      const timer = setTimeout(() => {
+        handleShowAd();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, step]);
 
   // Pour les utilisateurs authentifiés, passer directement à la vidéo
   useEffect(() => {
@@ -212,33 +238,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Affichage de la publicité adaptative pour les utilisateurs non authentifiés */}
+      {/* Affichage automatique de la publicité adaptative pour les utilisateurs non authentifiés */}
       {step === 'ad' && !isAuthenticated && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
           <div className="bg-blue-900/90 rounded-xl p-6 max-w-md w-full mx-4 flex flex-col items-center">
-            <h2 className="text-xl mb-4 text-center">Publicité</h2>
-            <p className="mb-6 text-gray-200 text-center">
-              Une publicité va s'afficher selon votre appareil. Vous pouvez la fermer dès qu'elle apparaît.
-            </p>
-            
-            <button
-              onClick={handleShowAd}
-              className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition flex items-center justify-center text-base mb-4"
-            >
-              <span>Voir la publicité</span>
-            </button>
-            
-            <p className="text-gray-300 text-sm text-center">
-              💡 Vous pouvez fermer la pub dès qu'elle s'affiche !
-            </p>
-            
-            <button
-              onClick={() => setStep('video')}
-              className="text-gray-400 hover:text-white transition text-sm mt-4"
-            >
-              Continuer sans publicité
-            </button>
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-white text-lg">Chargement de la publicité...</p>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Lecteur VAST intégré pour desktop */}
+      {step === 'vast' && !isAuthenticated && currentVastUrl && (
+        <div className="absolute inset-0 z-30">
+          <VASTVideoPlayer 
+            vastUrl={currentVastUrl}
+            onAdComplete={() => setStep('video')}
+            onAdError={() => setStep('video')}
+          />
         </div>
       )}
 

@@ -64,6 +64,7 @@ export function useAdaptiveAd() {
         
         // Dans une implémentation réelle, vous appelleriez les fonctions appropriées du SDK
         // Par exemple: window.jfj.showNotification() ou une autre méthode du SDK
+        // Pour l'instant, nous simulons l'affichage
         return { success: true, type: 'in-page-push' };
       } else {
         console.warn('In-Page Push script not ready');
@@ -77,73 +78,11 @@ export function useAdaptiveAd() {
 
   const showVASTAd = async () => {
     try {
-      // Créer un conteneur pour la publicité VAST
-      const adContainer = document.createElement('div');
-      adContainer.id = 'vast-ad-container';
-      adContainer.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 10000;
-        width: 640px;
-        height: 480px;
-        background: #000;
-        border: 2px solid #fff;
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      `;
-      
-      // Ajouter un bouton de fermeture
-      const closeBtn = document.createElement('button');
-      closeBtn.innerHTML = '×';
-      closeBtn.style.cssText = `
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        font-size: 20px;
-        cursor: pointer;
-        z-index: 10001;
-      `;
-      
-      closeBtn.onclick = () => {
-        document.body.removeChild(adContainer);
-      };
-      
-      adContainer.appendChild(closeBtn);
-      
-      // Créer un conteneur pour le lecteur VAST
-      const playerContainer = document.createElement('div');
-      playerContainer.style.cssText = `
-        width: 100%;
-        height: 100%;
-        position: relative;
-      `;
-      
-      // Créer un iframe pour le lecteur VAST avec l'URL VAST
-      const iframe = document.createElement('iframe');
-      iframe.src = `/vast-player.html?vastUrl=${encodeURIComponent(VAST_URL)}`;
-      iframe.style.cssText = `
-        width: 100%;
-        height: 100%;
-        border: none;
-      `;
-      
-      playerContainer.appendChild(iframe);
-      adContainer.appendChild(playerContainer);
-      document.body.appendChild(adContainer);
-      
-      console.log('VAST ad displayed with video player');
-      return true;
+      // Retourner l'URL VAST pour que le composant puisse l'utiliser
+      return { success: true, type: 'vast', url: VAST_URL };
     } catch (error) {
-      console.error('Error showing VAST ad:', error);
-      return false;
+      console.error('Error preparing VAST ad:', error);
+      return { success: false, type: 'error' };
     }
   };
 
@@ -157,11 +96,11 @@ export function useAdaptiveAd() {
         return await showInPagePushAd();
       } else {
         // Pour desktop, utiliser VAST
-        console.log('Showing VAST ad for desktop device');
+        console.log('Preparing VAST ad for desktop device');
         if (isVASTReady) {
-          // Afficher la publicité VAST
-          const success = await showVASTAd();
-          return { success, type: 'vast' };
+          // Retourner l'URL VAST pour affichage intégré
+          const result = await showVASTAd();
+          return result;
         } else {
           console.warn('VAST not ready');
           return { success: false, type: 'vast' };
