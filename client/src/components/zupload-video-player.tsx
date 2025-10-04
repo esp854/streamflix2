@@ -90,31 +90,28 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }, 30000);
   };
 
-  // Fonction pour charger la pub VAST via proxy first-party
+  // Fonction pour charger la pub VAST via IMA
   async function loadVastAd() {
     if (!adVideoRef.current) return;
 
     const videoEl = adVideoRef.current;
 
     try {
-      // Utiliser le proxy VAST pour contourner les bloqueurs de pub
-      const proxyUrl = `/api/proxy-vast?tag=${encodeURIComponent(vastTag)}&t=${Date.now()}`;
-      console.log('Chargement du tag VAST via proxy:', proxyUrl);
-      
-      const response = await fetch(proxyUrl);
+      console.log('Chargement du tag VAST:', vastTag);
+      const response = await fetch(vastTag);
       
       // Vérifier si la réponse est OK
       if (!response.ok) {
-        console.warn('Erreur HTTP lors du chargement du VAST via proxy:', response.status, response.statusText);
+        console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const xmlText = await response.text();
-      console.log('Réponse VAST reçue via proxy:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
+      console.log('Réponse VAST reçue:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
       
       // Vérifier si la réponse est vide ou invalide
       if (!xmlText || xmlText.trim().length === 0) {
-        console.warn('Réponse VAST vide via proxy');
+        console.warn('Réponse VAST vide');
         throw new Error('Réponse VAST vide');
       }
       
@@ -187,7 +184,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Lecture de la première pub
       playNextAd();
     } catch (err) {
-      console.error('Erreur chargement VAST via proxy:', err);
+      console.error('Erreur chargement VAST:', err);
       // En cas d'erreur, passer directement à la vidéo principale
       if (mainVideoRef.current) {
         mainVideoRef.current.src = videoUrl;
