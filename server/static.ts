@@ -14,18 +14,23 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "../dist/public");
-
-  if (!fs.existsSync(distPath)) {
+  // Check for dist/public first (for Render deployment)
+  const distPublicPath = path.resolve(import.meta.dirname, "../dist/public");
+  const distPath = path.resolve(import.meta.dirname, "../dist");
+  
+  let staticPath = distPath;
+  if (fs.existsSync(distPublicPath)) {
+    staticPath = distPublicPath;
+  } else if (!fs.existsSync(distPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the build directory. Tried: ${distPublicPath} and ${distPath}. Make sure to build the client first.`
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(staticPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(staticPath, "index.html"));
   });
 }

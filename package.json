@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
-    "build": "cd client && npm install && npm run build && cd .. && npm install && npx esbuild server/index.ts --platform=node --packages=external --external:./server/vite.ts --external:./client/vite.config.ts --bundle --format=esm --outdir=dist",
+    "build": "node build.js",
     "start": "node dist/index.js"
   },
   "dependencies": {
