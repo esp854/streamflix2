@@ -1,239 +1,207 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 interface VASTVideoPlayerProps {
-  vastUrl?: string;
-  onAdComplete?: () => void;
+  vastUrl: string;
+  onAdComplete: () => void;
   onAdError?: (error: string) => void;
-  className?: string;
-  style?: React.CSSProperties;
 }
 
-const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({ 
-  vastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf",
-  onAdComplete, 
-  onAdError,
-  className = '',
-  style = {}
+const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
+  vastUrl,
+  onAdComplete,
+  onAdError
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [skipAvailable, setSkipAvailable] = useState(false);
-  const [skipSeconds, setSkipSeconds] = useState(5);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [isAdCompleted, setIsAdCompleted] = useState(false);
+  const [canSkip, setCanSkip] = useState(false);
+  const [adDuration, setAdDuration] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const adContainerRef = useRef<HTMLDivElement>(null);
+  const adTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fonction pour parser le XML VAST et extraire l'URL de la vidéo
-  const parseVAST = async (url: string) => {
+  // Parse VAST XML and extract ad information
+  const parseVAST = async (vastUrl: string) => {
     try {
-      const response = await fetch(url);
-      const xmlText = await response.text();
+      const response = await fetch(vastUrl);
+      const vastXML = await response.text();
       const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+      const xmlDoc = parser.parseFromString(vastXML, 'text/xml');
       
-      // Chercher l'URL de la vidéo dans le VAST
+      // Extract media file URL from VAST
       const mediaFile = xmlDoc.querySelector('MediaFile');
-      if (mediaFile) {
-        return mediaFile.textContent;
-      }
+      const mediaUrl = mediaFile?.textContent?.trim();
       
-      // Si pas de MediaFile, chercher d'autres formats possibles
-      const videoClicks = xmlDoc.querySelector('VideoClicks ClickThrough');
-      if (videoClicks) {
-        return videoClicks.textContent;
+      if (mediaUrl) {
+        return mediaUrl;
+      } else {
+        throw new Error('No media file found in VAST response');
       }
-      
-      throw new Error('No media file found in VAST response');
-    } catch (err) {
-      console.error('Error parsing VAST:', err);
-      throw err;
+    } catch (error) {
+      console.error('Error parsing VAST:', error);
+      throw error;
     }
   };
 
-  // Initialiser le compteur de skip
-  const initSkipCounter = () => {
-    setSkipAvailable(false);
-    setSkipSeconds(5);
-    
-    if (skipTimeoutRef.current) {
-      clearTimeout(skipTimeoutRef.current);
-    }
-    
-    skipTimeoutRef.current = setTimeout(() => {
-      setSkipAvailable(true);
-    }, 5000);
-  };
-
-  // Charger et jouer la publicité VAST
-  const loadVASTAd = async () => {
+  // Load and play ad
+  const loadAndPlayAd = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      initSkipCounter();
-      
-      // Parser le VAST pour obtenir l'URL de la vidéo
-      const videoUrl = await parseVAST(vastUrl);
+      setIsAdPlaying(true);
+      const adMediaUrl = await parseVAST(vastUrl);
       
       if (videoRef.current) {
-        videoRef.current.src = videoUrl || vastUrl;
+        videoRef.current.src = adMediaUrl;
         videoRef.current.load();
         
-        // Essayer de jouer automatiquement
-        const playPromise = videoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.warn('Auto-play prevented:', error);
-            // Afficher les contrôles si l'autoplay est bloqué
-            if (videoRef.current) {
-              videoRef.current.controls = true;
-            }
-          });
-        }
+        // Set up event listeners
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            setAdDuration(videoRef.current.duration);
+            setTimeRemaining(Math.ceil(videoRef.current.duration));
+          }
+        };
+        
+        videoRef.current.onended = () => {
+          handleAdComplete();
+        };
+        
+        videoRef.current.onerror = (e) => {
+          console.error('Ad video error:', e);
+          handleAdError('Failed to load advertisement');
+        };
+        
+        // Start playing the ad
+        await videoRef.current.play();
       }
-    } catch (err) {
-      console.error('Error loading VAST ad:', err);
-      setError('Impossible de charger la publicité');
-      onAdError?.('Impossible de charger la publicité');
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading ad:', error);
+      handleAdError('Failed to load advertisement');
     }
   };
 
-  // Gérer la fin de la publicité
-  const handleAdEnded = () => {
+  // Handle ad completion
+  const handleAdComplete = () => {
+    setIsAdPlaying(false);
+    setIsAdCompleted(true);
+    cleanupTimeouts();
+    onAdComplete();
+  };
+
+  // Handle ad error
+  const handleAdError = (errorMessage: string) => {
+    setIsAdPlaying(false);
+    cleanupTimeouts();
+    onAdError?.(errorMessage);
+    onAdComplete(); // Proceed to content even if ad fails
+  };
+
+  // Skip ad function
+  const skipAd = () => {
+    if (canSkip && videoRef.current) {
+      handleAdComplete();
+    }
+  };
+
+  // Cleanup timeouts
+  const cleanupTimeouts = () => {
+    if (adTimeoutRef.current) {
+      clearTimeout(adTimeoutRef.current);
+      adTimeoutRef.current = null;
+    }
     if (skipTimeoutRef.current) {
       clearTimeout(skipTimeoutRef.current);
-    }
-    onAdComplete?.();
-  };
-
-  // Gérer les erreurs de lecture
-  const handleAdError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error('VAST ad error:', e);
-    if (skipTimeoutRef.current) {
-      clearTimeout(skipTimeoutRef.current);
-    }
-    setError('Erreur de lecture de la publicité');
-    onAdError?.('Erreur de lecture de la publicité');
-  };
-
-  // Passer la publicité
-  const handleSkipAd = () => {
-    if (skipAvailable) {
-      if (skipTimeoutRef.current) {
-        clearTimeout(skipTimeoutRef.current);
-      }
-      onAdComplete?.();
+      skipTimeoutRef.current = null;
     }
   };
 
-  // Nettoyer les timers
+  // Set up skip timer (5 seconds)
   useEffect(() => {
-    return () => {
-      if (skipTimeoutRef.current) {
-        clearTimeout(skipTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Mettre à jour le compteur
-  useEffect(() => {
-    if (!skipAvailable && skipSeconds > 0) {
-      const timer = setTimeout(() => {
-        setSkipSeconds(prev => prev - 1);
-      }, 1000);
+    if (isAdPlaying) {
+      // Enable skip after 5 seconds
+      skipTimeoutRef.current = setTimeout(() => {
+        setCanSkip(true);
+      }, 5000);
       
-      return () => clearTimeout(timer);
-    } else if (skipSeconds === 0) {
-      setSkipAvailable(true);
+      // Auto-skip after 30 seconds if ad is too long
+      adTimeoutRef.current = setTimeout(() => {
+        if (isAdPlaying) {
+          handleAdComplete();
+        }
+      }, 30000);
     }
-  }, [skipAvailable, skipSeconds]);
+    
+    return cleanupTimeouts;
+  }, [isAdPlaying]);
 
-  // Charger la publicité quand le composant est monté
+  // Update time remaining
   useEffect(() => {
-    loadVASTAd();
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isAdPlaying && adDuration > 0) {
+      interval = setInterval(() => {
+        if (videoRef.current) {
+          const remaining = Math.ceil(adDuration - videoRef.current.currentTime);
+          setTimeRemaining(remaining > 0 ? remaining : 0);
+        }
+      }, 1000);
+    }
+    
     return () => {
-      if (skipTimeoutRef.current) {
-        clearTimeout(skipTimeoutRef.current);
-      }
+      if (interval) clearInterval(interval);
     };
+  }, [isAdPlaying, adDuration]);
+
+  // Load ad when component mounts
+  useEffect(() => {
+    loadAndPlayAd();
+    
+    return cleanupTimeouts;
   }, [vastUrl]);
 
   return (
-    <div 
-      ref={adContainerRef}
-      className={`relative bg-black ${className}`}
-      style={{ 
-        width: '100%', 
-        height: '100%',
-        ...style
-      }}
-    >
-      {/* Indicateur de chargement */}
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">Chargement de la publicité...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Message d'erreur */}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-6 bg-black/90 rounded-2xl max-w-xs">
-            <div className="text-red-500 text-4xl mb-4">⚠️</div>
-            <h3 className="text-xl font-bold text-white mb-3">Erreur</h3>
-            <p className="text-gray-300 mb-4">{error}</p>
-            <button
-              onClick={loadVASTAd}
-              className="px-4 py-2 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors"
-            >
-              Réessayer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Compteur et bouton "Passer la pub" */}
-      {!isLoading && !error && (
-        <>
-          {!skipAvailable ? (
-            <div className="absolute bottom-5 right-5 bg-black/70 text-white px-4 py-2 rounded-lg z-10">
-              Passer dans {skipSeconds}s
-            </div>
-          ) : (
-            <button
-              onClick={handleSkipAd}
-              className="absolute bottom-5 right-5 bg-black/70 text-white px-4 py-2 rounded-lg border-2 border-white hover:bg-white/20 transition-colors z-10"
-            >
-              Passer la pub
-            </button>
-          )}
-        </>
-      )}
-
-      {/* Lecteur vidéo pour la publicité */}
+    <div className="relative w-full h-full bg-black flex items-center justify-center">
+      {/* Ad Video Player */}
       <video
         ref={videoRef}
         className="w-full h-full"
-        controls
+        controls={false}
         playsInline
-        onEnded={handleAdEnded}
-        onError={handleAdError}
-        onLoadedData={() => setIsLoading(false)}
       />
-
-      {/* Overlay avec informations */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
-        <div className="bg-black/70 text-white px-3 py-1 rounded-lg text-sm">
-          Publicité
+      
+      {/* Ad UI Overlay */}
+      {isAdPlaying && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          {/* Skip Button */}
+          <div className="absolute top-4 right-4">
+            <button
+              onClick={skipAd}
+              disabled={!canSkip}
+              className={`px-4 py-2 rounded bg-black/70 text-white text-sm font-medium pointer-events-auto ${
+                canSkip 
+                  ? 'hover:bg-black/90 cursor-pointer' 
+                  : 'opacity-50 cursor-not-allowed'
+              }`}
+            >
+              {canSkip ? `Passer (${timeRemaining}s)` : `Publicité · ${timeRemaining}s`}
+            </button>
+          </div>
+          
+          {/* Ad Indicator */}
+          <div className="absolute bottom-4 left-4 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            Publicité
+          </div>
         </div>
-        <div className="bg-black/70 text-white px-3 py-1 rounded-lg text-sm">
-          StreamFlix
+      )}
+      
+      {/* Loading State */}
+      {!isAdPlaying && !isAdCompleted && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-white text-center">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p>Chargement de la publicité...</p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -3,304 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Publicité StreamFlix</title>
+    <title>Test Lecteur VAST</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
-            background: #000;
-            color: white;
+            padding: 20px;
             font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
         }
-        
-        #vast-container {
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .video-container {
             width: 100%;
-            height: 100vh;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
             position: relative;
-            background: #000;
+            background-color: #000;
         }
-        
-        #video-player {
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background: #000;
         }
-        
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        h1 {
             text-align: center;
-            z-index: 10;
         }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        #overlay {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            justify-content: space-between;
-            z-index: 5;
-        }
-        
-        .overlay-text {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        #error-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 20px;
-            border-radius: 8px;
-            display: none;
-        }
-        
-        #retry-button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        
-        #retry-button:hover {
-            background: #0056b3;
-        }
-        
-        #skip-button {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            border: 2px solid white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 10;
-            font-size: 16px;
-        }
-        
-        #skip-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        #countdown {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 4px;
-            z-index: 10;
-            font-size: 16px;
+        .info {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <div id="vast-container">
-        <div id="loading">
-            <div class="spinner"></div>
-            <p>Chargement de la publicité...</p>
+    <div class="container">
+        <h1>Test Lecteur VAST</h1>
+        
+        <div class="info">
+            <p>Cette page permet de tester le lecteur VAST avec l'URL :</p>
+            <p><strong>https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf</strong></p>
         </div>
         
-        <div id="overlay">
-            <div class="overlay-text">Publicité</div>
-            <div class="overlay-text">StreamFlix</div>
+        <div class="video-container">
+            <video id="vastPlayer" controls playsinline></video>
         </div>
         
-        <div id="error-message">
-            <h3>Erreur de chargement</h3>
-            <p>Impossible de charger la publicité</p>
-            <button id="retry-button">Réessayer</button>
+        <div style="margin-top: 20px; text-align: center;">
+            <button id="playAdBtn" style="padding: 10px 20px; font-size: 16px;">Jouer la publicité</button>
         </div>
-        
-        <div id="countdown">Passer dans 5s</div>
-        <button id="skip-button" style="display: none;">Passer la pub</button>
-        
-        <video id="video-player" controls playsinline></video>
     </div>
 
     <script>
-        // Récupérer l'URL VAST des paramètres
-        const urlParams = new URLSearchParams(window.location.search);
-        const vastUrl = urlParams.get('vastUrl');
+        const videoElement = document.getElementById('vastPlayer');
+        const playAdBtn = document.getElementById('playAdBtn');
+        const VAST_URL = 'https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf';
         
-        if (vastUrl) {
-            loadVASTAd(decodeURIComponent(vastUrl));
-        } else {
-            // Utiliser l'URL VAST par défaut si aucune URL n'est spécifiée
-            const defaultVastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
-            loadVASTAd(defaultVastUrl);
-        }
-        
-        // Variables pour le compteur de skip
-        let skipTimeout;
-        let skipAvailable = false;
-        
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error-message').style.display = 'block';
-            document.getElementById('error-message').querySelector('p').textContent = message;
-        }
-        
-        function hideError() {
-            document.getElementById('error-message').style.display = 'none';
-        }
-        
-        // Fonction pour parser le XML VAST et extraire l'URL de la vidéo
-        async function parseVAST(url) {
+        // Fonction pour parser le VAST et extraire l'URL de la vidéo
+        async function parseVAST(vastUrl) {
             try {
-                const response = await fetch(url);
-                const xmlText = await response.text();
+                const response = await fetch(vastUrl);
+                const vastXML = await response.text();
                 const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                const xmlDoc = parser.parseFromString(vastXML, 'text/xml');
                 
-                // Chercher l'URL de la vidéo dans le VAST
-                const mediaFiles = xmlDoc.querySelectorAll('MediaFile');
-                if (mediaFiles.length > 0) {
-                    // Prendre le premier MediaFile disponible
-                    return mediaFiles[0].textContent;
-                }
+                // Extraire l'URL du fichier média
+                const mediaFile = xmlDoc.querySelector('MediaFile');
+                const mediaUrl = mediaFile?.textContent?.trim();
                 
-                // Si pas de MediaFile, chercher d'autres formats possibles
-                const videoClicks = xmlDoc.querySelector('VideoClicks ClickThrough');
-                if (videoClicks) {
-                    return videoClicks.textContent;
-                }
-                
-                throw new Error('No media file found in VAST response');
-            } catch (err) {
-                console.error('Error parsing VAST:', err);
-                throw err;
-            }
-        }
-        
-        // Charger et jouer la publicité VAST
-        async function loadVASTAd(url) {
-            const videoPlayer = document.getElementById('video-player');
-            const loadingElement = document.getElementById('loading');
-            const skipButton = document.getElementById('skip-button');
-            const countdownElement = document.getElementById('countdown');
-            
-            try {
-                loadingElement.style.display = 'block';
-                hideError();
-                
-                // Parser le VAST pour obtenir l'URL de la vidéo
-                const videoUrl = await parseVAST(url);
-                
-                if (videoUrl) {
-                    videoPlayer.src = videoUrl;
-                    videoPlayer.load();
-                    
-                    // Initialiser le compteur de skip (5 secondes)
-                    let skipSeconds = 5;
-                    skipAvailable = false;
-                    skipButton.style.display = 'none';
-                    countdownElement.style.display = 'block';
-                    countdownElement.textContent = `Passer dans ${skipSeconds}s`;
-                    
-                    skipTimeout = setInterval(() => {
-                        skipSeconds--;
-                        if (skipSeconds > 0) {
-                            countdownElement.textContent = `Passer dans ${skipSeconds}s`;
-                        } else {
-                            clearInterval(skipTimeout);
-                            skipAvailable = true;
-                            countdownElement.style.display = 'none';
-                            skipButton.style.display = 'block';
-                        }
-                    }, 1000);
-                    
-                    // Essayer de jouer automatiquement
-                    const playPromise = videoPlayer.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(error => {
-                            console.warn('Auto-play prevented:', error);
-                            // Afficher les contrôles si l'autoplay est bloqué
-                            videoPlayer.controls = true;
-                            loadingElement.style.display = 'none';
-                        });
-                    }
-                    
-                    videoPlayer.addEventListener('loadeddata', () => {
-                        loadingElement.style.display = 'none';
-                    });
-                    
-                    videoPlayer.addEventListener('ended', () => {
-                        // Fermer automatiquement après la lecture
-                        if (skipTimeout) {
-                            clearInterval(skipTimeout);
-                        }
-                        window.close();
-                    });
+                if (mediaUrl) {
+                    return mediaUrl;
                 } else {
-                    throw new Error('Impossible de récupérer l\'URL de la vidéo');
+                    throw new Error('No media file found in VAST response');
                 }
-            } catch (err) {
-                console.error('Error loading VAST ad:', err);
-                showError('Impossible de charger la publicité: ' + err.message);
-                loadingElement.style.display = 'none';
+            } catch (error) {
+                console.error('Error parsing VAST:', error);
+                throw error;
             }
         }
         
-        // Gérer le bouton de réessai
-        document.getElementById('retry-button').addEventListener('click', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const vastUrl = urlParams.get('vastUrl');
-            
-            if (vastUrl) {
-                loadVASTAd(decodeURIComponent(vastUrl));
-            } else {
-                const defaultVastUrl = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
-                loadVASTAd(defaultVastUrl);
+        // Jouer la publicité
+        async function playAd() {
+            try {
+                playAdBtn.disabled = true;
+                playAdBtn.textContent = 'Chargement...';
+                
+                const adMediaUrl = await parseVAST(VAST_URL);
+                videoElement.src = adMediaUrl;
+                
+                // Attendre que la vidéo soit chargée
+                videoElement.onloadeddata = () => {
+                    videoElement.play()
+                        .then(() => {
+                            console.log('Ad is playing');
+                        })
+                        .catch(error => {
+                            console.error('Error playing ad:', error);
+                        });
+                };
+                
+                videoElement.onerror = (e) => {
+                    console.error('Video error:', e);
+                    playAdBtn.disabled = false;
+                    playAdBtn.textContent = 'Jouer la publicité';
+                };
+                
+                videoElement.onended = () => {
+                    playAdBtn.disabled = false;
+                    playAdBtn.textContent = 'Jouer la publicité';
+                    console.log('Ad finished');
+                };
+                
+            } catch (error) {
+                console.error('Error loading ad:', error);
+                playAdBtn.disabled = false;
+                playAdBtn.textContent = 'Jouer la publicité';
             }
-        });
+        }
         
-        // Gérer le bouton "Passer la pub"
-        document.getElementById('skip-button').addEventListener('click', () => {
-            if (skipAvailable) {
-                if (skipTimeout) {
-                    clearInterval(skipTimeout);
-                }
-                window.close();
-            }
-        });
-        
-        // Gérer les erreurs de lecture
-        document.getElementById('video-player').addEventListener('error', (e) => {
-            console.error('Video player error:', e);
-            showError('Erreur de lecture de la vidéo');
-        });
+        playAdBtn.addEventListener('click', playAd);
     </script>
 </body>
 </html>

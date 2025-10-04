@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Settings, Subtitles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useAdaptiveAd } from '@/hooks/use-adaptive-ad';
-import VASTVideoPlayer from "@/components/vast-video-player";
+import VASTVideoPlayer from './vast-video-player';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -38,8 +37,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState<'ad' | 'vast' | 'video'>('ad');
-  const [currentVastUrl, setCurrentVastUrl] = useState<string | undefined>(undefined);
+  const [step, setStep] = useState<'ad' | 'video'>('ad');
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,66 +45,30 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
-  const { showAdaptiveAd } = useAdaptiveAd();
+  // VAST URL for advertisements
+  const VAST_URL = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
 
-  /** --- Handlers --- **/
-  const handleShowAd = () => {
-    // Afficher la publicité appropriée selon le type d'appareil
-    showAdaptiveAd().then((result: any) => {
-      console.log('Ad shown:', result);
-      // Pour VAST desktop, afficher le lecteur intégré
-      if (result.type === 'vast' && result.url) {
-        setStep('vast');
-        setCurrentVastUrl(result.url);
-      } else if (result.type === 'in-page-push') {
-        // Pour In-Page Push mobile, passer directement à la vidéo après un court délai
-        // pour permettre l'affichage de la pub
-        setTimeout(() => {
-          setStep('video');
-        }, 1000);
-      } else {
-        // En cas d'erreur ou autre, passer directement à la vidéo
-        setStep('video');
-      }
-    });
-  };
-
-  // Afficher la publicité automatiquement pour les utilisateurs non authentifiés
-  useEffect(() => {
-    if (!isAuthenticated && step === 'ad') {
-      // Délai court pour permettre le chargement des scripts
-      const timer = setTimeout(() => {
-        handleShowAd();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, step]);
-
-  // Pour les utilisateurs authentifiés, passer directement à la vidéo
-  useEffect(() => {
-    if (isAuthenticated) {
-      setStep('video');
-    }
-  }, [isAuthenticated]);
-
-  // Précharger la vidéo pour tous les utilisateurs
-  useEffect(() => {
-    setIsLoading(true);
-    // Précharger la vidéo immédiatement
+  // Handle ad completion
+  const handleAdComplete = () => {
+    setStep('video');
+    // Précharger la vidéo principale après les publicités
     setTimeout(() => {
       preloadMainVideo();
     }, 100);
-    
-    // Pour les URLs d'iframe, masquer rapidement le loader
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-    }
-  }, [videoUrl]);
+  };
 
-  // Précharger la vidéo principale pour accélérer le chargement
+  // Handle ad error
+  const handleAdError = (errorMessage: string) => {
+    console.error('Ad error:', errorMessage);
+    // Proceed to video content even if ad fails
+    setStep('video');
+    // Précharger la vidéo principale après les publicités
+    setTimeout(() => {
+      preloadMainVideo();
+    }, 100);
+  };
+
+  // Précharger la vidéo pour tous les utilisateurs
   const preloadMainVideo = () => {
     // Ne pas tenter de précharger les URLs d'iframe (Zupload embed)
     if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
@@ -238,29 +200,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }}
     >
-      {/* Affichage automatique de la publicité adaptative pour les utilisateurs non authentifiés */}
-      {step === 'ad' && !isAuthenticated && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white p-4 z-30">
-          <div className="bg-blue-900/90 rounded-xl p-6 max-w-md w-full mx-4 flex flex-col items-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white text-lg">Chargement de la publicité...</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lecteur VAST intégré pour desktop */}
-      {step === 'vast' && !isAuthenticated && currentVastUrl && (
-        <div className="absolute inset-0 z-30">
-          <VASTVideoPlayer 
-            vastUrl={currentVastUrl}
-            onAdComplete={() => setStep('video')}
-            onAdError={() => setStep('video')}
-          />
-        </div>
-      )}
-
       {/* Loading indicator - Optimized for mobile */}
       {isLoading && step === 'video' && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
@@ -287,6 +226,54 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           </div>
         </div>
       )}
+
+      {/* VAST Ad Player - Only for non-authenticated users */}
+      {step === 'ad' && !isAuthenticated && (
+        <VASTVideoPlayer 
+          vastUrl={VAST_URL}
+          onAdComplete={handleAdComplete}
+          onAdError={handleAdError}
+        />
+      )}
+
+      {/* Main video player - Handle both direct video URLs and iframe embeds */}
+      {step === 'video' && videoUrl.includes('embed') ? (
+        <iframe
+          src={videoUrl}
+          className="w-full h-full touch-manipulation"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          title={title}
+          loading="lazy"
+          onLoad={() => {
+            console.log('Iframe Zupload chargée');
+            setIsLoading(false);
+            setError(null);
+          }}
+          onError={(e) => {
+            console.error('Erreur de chargement de l\'iframe Zupload:', e);
+            setIsLoading(false);
+            setError('Impossible de charger la vidéo');
+            onVideoError?.('Impossible de charger la vidéo');
+          }}
+        />
+      ) : step === 'video' ? (
+        // For direct video files
+        <video
+          ref={mainVideoRef}
+          controls
+          width="100%"
+          height="100%"
+          preload="auto"
+          className="w-full h-full touch-manipulation"
+          onLoad={handleVideoLoad}
+          onPlaying={handleVideoPlaying}
+          onError={handleVideoError}
+          onEnded={onVideoEnd}
+          playsInline
+        />
+      ) : null}
 
       {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
       {step === 'video' && (
@@ -386,45 +373,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           </div>
         </div>
       )}
-
-      {/* Main video player - Handle both direct video URLs and iframe embeds */}
-      {step === 'video' && videoUrl.includes('embed') ? (
-        <iframe
-          src={videoUrl}
-          className="w-full h-full touch-manipulation"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-          title={title}
-          loading="lazy"
-          onLoad={() => {
-            console.log('Iframe Zupload chargée');
-            setIsLoading(false);
-            setError(null);
-          }}
-          onError={(e) => {
-            console.error('Erreur de chargement de l\'iframe Zupload:', e);
-            setIsLoading(false);
-            setError('Impossible de charger la vidéo');
-            onVideoError?.('Impossible de charger la vidéo');
-          }}
-        />
-      ) : step === 'video' ? (
-        // For direct video files
-        <video
-          ref={mainVideoRef}
-          controls
-          width="100%"
-          height="100%"
-          preload="auto"
-          className="w-full h-full touch-manipulation"
-          onLoad={handleVideoLoad}
-          onPlaying={handleVideoPlaying}
-          onError={handleVideoError}
-          onEnded={onVideoEnd}
-          playsInline
-        />
-      ) : null}
     </div>
   );
 };
