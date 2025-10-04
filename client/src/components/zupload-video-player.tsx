@@ -37,7 +37,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onPreviousEpisode
 }) => {
   const { isAuthenticated } = useAuth();
-  const [step, setStep] = useState<'ad' | 'video'>('ad');
+  const [step, setStep] = useState<'ad' | 'video'>(isAuthenticated ? 'video' : 'ad');
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -237,7 +237,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       )}
 
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
-      {step === 'video' && videoUrl.includes('embed') ? (
+      {(step === 'video' || isAuthenticated) && videoUrl.includes('embed') ? (
         <iframe
           src={videoUrl}
           className="w-full h-full touch-manipulation"
@@ -258,7 +258,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             onVideoError?.('Impossible de charger la vidéo');
           }}
         />
-      ) : step === 'video' ? (
+      ) : (step === 'video' || isAuthenticated) ? (
         // For direct video files
         <video
           ref={mainVideoRef}
@@ -276,7 +276,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       ) : null}
 
       {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      {step === 'video' && (
+      {(step === 'video' || isAuthenticated) && (
         <div className="absolute inset-0 z-20 pointer-events-none">
           {/* Top Controls - Season and Episode Selection - Mobile optimized */}
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex justify-between items-center pointer-events-auto">
