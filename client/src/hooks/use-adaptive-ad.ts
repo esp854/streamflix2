@@ -55,6 +55,26 @@ export function useAdaptiveAd() {
     return () => clearTimeout(timer);
   }, [isInPagePushReady]);
 
+  const showInPagePushAd = async () => {
+    try {
+      if (isInPagePushReady && window.jfj) {
+        // Déclencher l'affichage de l'In-Page Push
+        // Le script fancyresponse gère automatiquement l'affichage
+        console.log('In-Page Push ad should be displayed');
+        
+        // Dans une implémentation réelle, vous appelleriez les fonctions appropriées du SDK
+        // Par exemple: window.jfj.showNotification() ou une autre méthode du SDK
+        return { success: true, type: 'in-page-push' };
+      } else {
+        console.warn('In-Page Push script not ready');
+        return { success: false, type: 'in-page-push' };
+      }
+    } catch (error) {
+      console.error('Error showing In-Page Push ad:', error);
+      return { success: false, type: 'error' };
+    }
+  };
+
   const showVASTAd = async () => {
     try {
       // Créer un conteneur pour la publicité VAST
@@ -133,22 +153,11 @@ export function useAdaptiveAd() {
       
       if (isCurrentlyMobile) {
         // Pour mobile, utiliser In-Page Push
-        if (isInPagePushReady) {
-          // Le script gère automatiquement l'affichage
-          console.log('In-Page Push ad should be displayed');
-          // Déclencher l'affichage de l'In-Page Push
-          if (window.jfj) {
-            // Simuler l'affichage - dans une implémentation réelle, 
-            // vous appelleriez les fonctions appropriées du SDK
-            return { success: true, type: 'in-page-push' };
-          }
-          return { success: false, type: 'in-page-push' };
-        } else {
-          console.warn('In-Page Push script not ready');
-          return { success: false, type: 'in-page-push' };
-        }
+        console.log('Showing In-Page Push ad for mobile device');
+        return await showInPagePushAd();
       } else {
         // Pour desktop, utiliser VAST
+        console.log('Showing VAST ad for desktop device');
         if (isVASTReady) {
           // Afficher la publicité VAST
           const success = await showVASTAd();
