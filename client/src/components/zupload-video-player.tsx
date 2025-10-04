@@ -4,13 +4,6 @@ import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'luc
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-// Déclaration des types pour le SDK IMA
-declare global {
-  interface Window {
-    google: any;
-  }
-}
-
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
   title: string;
@@ -58,12 +51,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
   
-  // Références pour le SDK IMA
-  const adContainerRef = useRef<HTMLDivElement>(null);
-  const adsLoaderRef = useRef<any>(null);
-  const adsManagerRef = useRef<any>(null);
-  const adDisplayContainerRef = useRef<any>(null);
-  
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -101,205 +88,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setTimeout(() => {
       tempVideo.remove();
     }, 30000);
-  };
-
-  // Initialiser le SDK IMA
-  const initIMA = () => {
-    // Vérifier si le SDK IMA est disponible
-    if (typeof window.google === 'undefined' || !window.google.ima) {
-      console.warn('SDK IMA non disponible, utilisation du lecteur VAST natif');
-      loadVastAd();
-      return;
-    }
-
-    try {
-      // Créer le conteneur d'affichage des annonces
-      if (adContainerRef.current && mainVideoRef.current) {
-        adDisplayContainerRef.current = new window.google.ima.AdDisplayContainer(
-          adContainerRef.current,
-          mainVideoRef.current
-        );
-        
-        // Initialiser le conteneur d'affichage
-        adDisplayContainerRef.current.initialize();
-        
-        // Créer le chargeur d'annonces
-        adsLoaderRef.current = new window.google.ima.AdsLoader(adDisplayContainerRef.current);
-        
-        // Ajouter les écouteurs d'événements
-        adsLoaderRef.current.addEventListener(
-          window.google.ima.AdsManagerLoadedEvent.Type.ADS_MANAGER_LOADED,
-          onAdsManagerLoaded,
-          false
-        );
-        
-        adsLoaderRef.current.addEventListener(
-          window.google.ima.AdErrorEvent.Type.AD_ERROR,
-          onAdError,
-          false
-        );
-        
-        // Charger les annonces
-        requestAds();
-      }
-    } catch (err) {
-      console.error('Erreur d\'initialisation IMA:', err);
-      // Fallback vers le lecteur VAST natif
-      loadVastAd();
-    }
-  };
-
-  // Gérer le chargement du gestionnaire d'annonces
-  const onAdsManagerLoaded = (adsManagerLoadedEvent: any) => {
-    try {
-      // Obtenir le gestionnaire d'annonces
-      adsManagerRef.current = adsManagerLoadedEvent.getAdsManager(mainVideoRef.current);
-      
-      // Ajouter les écouteurs d'événements pour le gestionnaire d'annonces
-      adsManagerRef.current.addEventListener(
-        window.google.ima.AdEvent.Type.CONTENT_PAUSE_REQUESTED,
-        onContentPauseRequested
-      );
-      
-      adsManagerRef.current.addEventListener(
-        window.google.ima.AdEvent.Type.CONTENT_RESUME_REQUESTED,
-        onContentResumeRequested
-      );
-      
-      adsManagerRef.current.addEventListener(
-        window.google.ima.AdEvent.Type.ALL_ADS_COMPLETED,
-        onAllAdsCompleted
-      );
-      
-      // Initialiser et démarrer les annonces
-      if (mainVideoRef.current && adContainerRef.current) {
-        const { width, height } = adContainerRef.current.getBoundingClientRect();
-        adsManagerRef.current.init(width, height, window.google.ima.ViewMode.NORMAL);
-        adsManagerRef.current.start();
-        setIsAdPlaying(true);
-      }
-    } catch (err) {
-      console.error('Erreur lors du chargement du gestionnaire d\'annonces:', err);
-      // Fallback vers le lecteur VAST natif
-      loadVastAd();
-    }
-  };
-
-  // Gérer les erreurs d'annonces
-  const onAdError = (adErrorEvent: any) => {
-    console.error('Erreur d\'annonce:', adErrorEvent.getError());
-    
-    // Libérer les ressources
-    if (adsManagerRef.current) {
-      adsManagerRef.current.destroy();
-      adsManagerRef.current = null;
-    }
-    
-    if (adsLoaderRef.current) {
-      adsLoaderRef.current.destroy();
-      adsLoaderRef.current = null;
-    }
-    
-    // Masquer le conteneur d'annonces
-    if (adContainerRef.current) {
-      adContainerRef.current.style.display = 'none';
-    }
-    
-    // Fallback vers le lecteur VAST natif
-    loadVastAd();
-  };
-
-  // Gérer la pause du contenu
-  const onContentPauseRequested = () => {
-    console.log('Pause du contenu demandée pour les annonces');
-    setIsAdPlaying(true);
-    
-    // Masquer le bouton de skip pendant 5 secondes
-    setShowSkipButton(false);
-    if (skipButtonTimeoutRef.current) {
-      clearTimeout(skipButtonTimeoutRef.current);
-    }
-    
-    // Afficher le bouton de skip après 5 secondes
-    const skipDelay = isMobileDevice ? 5000 : 10000;
-    skipButtonTimeoutRef.current = setTimeout(() => {
-      setShowSkipButton(true);
-    }, skipDelay);
-  };
-
-  // Gérer la reprise du contenu
-  const onContentResumeRequested = () => {
-    console.log('Reprise du contenu demandée');
-    setIsAdPlaying(false);
-    setShowSkipButton(false);
-    
-    // Nettoyer le timeout du bouton skip
-    if (skipButtonTimeoutRef.current) {
-      clearTimeout(skipButtonTimeoutRef.current);
-    }
-  };
-
-  // Gérer la fin de toutes les annonces
-  const onAllAdsCompleted = () => {
-    console.log('Toutes les annonces ont été complétées');
-    setIsAdPlaying(false);
-    setShowAd(false);
-    setAdSkipped(true);
-    
-    // Nettoyer le timeout du bouton skip
-    if (skipButtonTimeoutRef.current) {
-      clearTimeout(skipButtonTimeoutRef.current);
-    }
-    
-    // Jouer la vidéo principale
-    playMainVideo();
-  };
-
-  // Demander les annonces
-  const requestAds = () => {
-    if (!adsLoaderRef.current) return;
-    
-    try {
-      const adsRequest = new window.google.ima.AdsRequest();
-      adsRequest.adTagUrl = vastTag;
-      adsRequest.linearAdSlotWidth = 640;
-      adsRequest.linearAdSlotHeight = 360;
-      adsRequest.nonLinearAdSlotWidth = 640;
-      adsRequest.nonLinearAdSlotHeight = 150;
-      
-      adsLoaderRef.current.requestAds(adsRequest);
-    } catch (err) {
-      console.error('Erreur lors de la requête d\'annonces:', err);
-      // Fallback vers le lecteur VAST natif
-      loadVastAd();
-    }
-  };
-
-  // Jouer la vidéo principale
-  const playMainVideo = () => {
-    if (mainVideoRef.current) {
-      mainVideoRef.current.src = videoUrl;
-      
-      // Ajout d'attributs pour améliorer la compatibilité mobile
-      if (isMobileDevice) {
-        mainVideoRef.current.setAttribute('playsinline', 'true');
-        mainVideoRef.current.setAttribute('muted', 'false');
-      }
-      
-      mainVideoRef.current.play().catch(error => {
-        console.error('Erreur de lecture de la vidéo principale:', error);
-        // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-          setIsLoading(false);
-        }
-        // Sur mobile, on continue malgré l'erreur
-        if (isMobileDevice) {
-          console.log('Erreur de lecture principale ignorée sur mobile');
-          setIsLoading(false);
-        }
-      });
-    }
-    setIsLoading(false);
   };
 
   // Fonction pour charger la pub VAST via IMA
@@ -681,8 +469,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   useEffect(() => {
     if (!isAuthenticated && !adSkipped) {
       setShowAd(true);
-      // Initialiser le SDK IMA au lieu du lecteur VAST natif
-      initIMA();
+      loadVastAd();
       
       // Précharger la vidéo principale pendant la lecture de la pub
       // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
@@ -713,17 +500,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         clearTimeout(timer);
         if (skipButtonTimeoutRef.current) {
           clearTimeout(skipButtonTimeoutRef.current);
-        }
-        
-        // Nettoyer les ressources IMA
-        if (adsManagerRef.current) {
-          adsManagerRef.current.destroy();
-          adsManagerRef.current = null;
-        }
-        
-        if (adsLoaderRef.current) {
-          adsLoaderRef.current.destroy();
-          adsLoaderRef.current = null;
         }
       };
     } else {
@@ -857,18 +633,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {showAd && (
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
           <div className="relative w-full h-full">
-            {/* Conteneur pour le SDK IMA */}
-            <div 
-              ref={adContainerRef}
-              className="w-full h-full flex items-center justify-center"
-              style={{ display: isAdPlaying ? 'block' : 'none' }}
-            />
-            
-            {/* HilltopAds VAST integration - fallback */}
-            <div 
-              className="w-full h-full flex items-center justify-center"
-              style={{ display: isAdPlaying ? 'none' : 'block' }}
-            >
+            {/* HilltopAds VAST integration */}
+            <div className="w-full h-full flex items-center justify-center">
               <video
                 ref={adVideoRef}
                 controls
@@ -904,7 +670,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 })}
               />
             </div>
-            
             {showSkipButton && (
               <button
                 onClick={skipAd}
@@ -1108,13 +873,3 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 };
 
 export default ZuploadVideoPlayer;
-
-// Charger le SDK IMA dynamiquement
-(function() {
-  if (typeof window !== 'undefined') {
-    const script = document.createElement('script');
-    script.src = 'https://imasdk.googleapis.com/js/sdkloader/ima3.js';
-    script.async = true;
-    document.head.appendChild(script);
-  }
-})();
