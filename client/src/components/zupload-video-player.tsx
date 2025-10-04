@@ -46,7 +46,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
 
   // VAST URL for advertisements
-  const VAST_URL = "https://selfishzone.com/d.mqFkzHdMGxNZvKZVGfUL/jeIm/9puTZTUSl/kuPZTQYc2hN/jvY_waNfTokUtRNzjnYO2qNvjWAU2-MkAf";
+  const VAST_URL = "https://selfishzone.com/dTm.FnzbdtG/NHv_ZxGFUb/FeJmV9MuHZVUAlWk/P-TTYj2pNCjtYOwzNuTokQtANejMYi2/NrjGAM2hMgAR";
 
   // Handle ad completion
   const handleAdComplete = () => {

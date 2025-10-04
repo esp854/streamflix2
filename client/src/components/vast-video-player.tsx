@@ -72,19 +72,25 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
 
         // Initialiser le lecteur
         if (videoRef.current && window.videojs) {
+          // Créer un lecteur Video.js vide pour les pubs
           const player = window.videojs(videoRef.current, {
             controls: true,
             preload: 'auto',
             fluid: true,
             responsive: true,
-            playbackRates: [0.5, 1, 1.5, 2],
           });
 
           playerRef.current = player;
 
+          // Initialiser contrib-ads
+          player.contribAds({
+            debug: true
+          });
+
           // Initialiser IMA avec l'URL VAST
           player.ima({
             adTagUrl: vastUrl,
+            debug: true,
             // Désactiver autoplay sur desktop pour éviter les problèmes
             disableCustomPlaybackForIOS10Plus: true,
           });
@@ -100,9 +106,7 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
           player.on('adend', () => {
             console.log('VAST Ad Ended');
             // Passer à la vidéo principale
-            setTimeout(() => {
-              onAdComplete();
-            }, 100);
+            onAdComplete();
           });
 
           player.on('ready', () => {
@@ -124,11 +128,6 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
           // Gérer le cas où l'utilisateur clique sur le bouton de lecture
           player.on('play', () => {
             console.log('VAST Player Play');
-          });
-
-          // Charger la vidéo principale après les pubs
-          player.on('contentloadeddata', () => {
-            console.log('Main content loaded');
           });
         }
       } catch (error) {
@@ -155,7 +154,6 @@ const VASTVideoPlayer: React.FC<VASTVideoPlayerProps> = ({
         className="video-js vjs-big-play-centered vjs-fluid w-full h-full"
         data-setup="{}"
       >
-        <source src={videoUrl} type="video/mp4" />
         <p className="vjs-no-js text-white">
           Pour visionner cette vidéo, activez JavaScript et envisagez une mise à niveau vers un navigateur web qui{' '}
           <a href="https://www.videojs.com/html5-video-support/" target="_blank" rel="noopener noreferrer">
