@@ -28,7 +28,12 @@ app.use(cors({
 app.use(express.json());
 
 // Servir les fichiers statiques
-app.use(express.static(path.join(__dirname, "../client/dist")));
+app.use(express.static(path.join(__dirname, "../dist/public")));
+
+// Route catch-all pour React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/public/index.html'));
+});
 
 // Gestion des salles de watch party
 const watchPartyRooms = new Map<string, {
@@ -298,11 +303,6 @@ app.post('/api/watch-party', (req, res) => {
     videoUrl,
     title
   });
-});
-
-// Route catch-all pour React Router
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 const PORT = process.env.PORT || 5000;
