@@ -55,7 +55,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   // URL VAST de HilltopAds
-  const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
+  const vastTag = 'https://silkyspite.com/dum.Flzod/GONlvhZdGIUd/Iebmf9UuFZqUllZktPNTWYx2jNhjiYNwbN/TqkethN/jbY/2pNWj-AN2aMaAc';
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {

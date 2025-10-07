@@ -4,7 +4,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -18,6 +18,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
 }
 
 .logo-container {
@@ -25,11 +28,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin-bottom: 40px;
 }
 
 .logo-animation {
   animation: pulseAndRotate 2s infinite ease-in-out;
   margin-bottom: 20px;
+  position: relative;
+}
+
+.logo-animation::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(229, 9, 20, 0.2) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  animation: ripple 3s infinite;
 }
 
 .streamflix-logo {
@@ -42,10 +61,44 @@
 
 .logo-text {
   color: white;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
   letter-spacing: 1px;
   animation: fadeInOut 3s infinite;
+  text-shadow: 0 0 10px rgba(229, 9, 20, 0.7);
+  background: linear-gradient(to right, #e50914, #f5f5f5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Progress bar styles */
+.progress-container {
+  width: 80%;
+  margin-top: 30px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e50914, #f5f5f5);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.loading-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin-top: 20px;
+  text-align: center;
+  animation: pulseText 2s infinite;
 }
 
 @keyframes pulseAndRotate {
@@ -75,5 +128,41 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseText {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .logo-text {
+    font-size: 2rem;
+  }
+  
+  .streamflix-logo {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .loading-text {
+    font-size: 0.8rem;
   }
 }

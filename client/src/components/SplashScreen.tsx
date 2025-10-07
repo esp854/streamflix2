@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './SplashScreen.css';
 
 interface SplashScreenProps {
@@ -6,13 +6,29 @@ interface SplashScreenProps {
 }
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
+  const [progress, setProgress] = useState(0);
+
   useEffect(() => {
     // Start the animation sequence
     const timer = setTimeout(() => {
       onAnimationComplete();
     }, 3000); // Show splash for 3 seconds
 
-    return () => clearTimeout(timer);
+    // Animate progress bar
+    const progressTimer = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressTimer);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(progressTimer);
+    };
   }, [onAnimationComplete]);
 
   return (
@@ -26,6 +42,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onAnimationComplete }) => {
           </div>
           <div className="logo-text">StreamFlix</div>
         </div>
+        
+        {/* Progress bar */}
+        <div className="progress-container">
+          <div className="progress-bar">
+            <div 
+              className="progress-fill" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+        
+        {/* Loading text */}
+        <div className="loading-text">Chargement de votre expérience StreamFlix...</div>
       </div>
     </div>
   );
