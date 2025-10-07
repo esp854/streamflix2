@@ -43,6 +43,7 @@ interface WatchPartyProps {
   videoUrl: string;
   title: string;
   onVideoControl?: (action: 'play' | 'pause' | 'seek', data?: any) => void;
+  onVideoUrlChange?: (url: string) => void;
 }
 
 interface Participant {
@@ -58,7 +59,12 @@ interface ChatMessage {
   timestamp: number;
 }
 
-const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl }) => {
+const WatchParty: React.FC<WatchPartyProps> = ({ 
+  videoUrl, 
+  title, 
+  onVideoControl,
+  onVideoUrlChange 
+}) => {
   const { user } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [roomId, setRoomId] = useState<string>('');
@@ -68,13 +74,20 @@ const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [showChat, setShowChat] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialiser Socket.IO
   useEffect(() => {
     if (!user) return;
 
-    const socketConnection = io('http://localhost:5000', {
+    // Utiliser l'URL du serveur selon l'environnement
+    const serverUrl = process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : 'http://localhost:5000';
+
+    const socketConnection = io(serverUrl, {
       transports: ['websocket', 'polling']
     });
 
@@ -109,6 +122,12 @@ const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl
         username: p === user.id ? user.username : `User ${p.slice(0, 8)}`
       })));
       setMessages(data.messages || []);
+      // Synchroniser l'état vidéo
+      if (data.currentVideo) {
+        onVideoUrlChange?.(data.currentVideo);
+      }
+      setCurrentTime(data.currentTime);
+      setIsPlaying(data.isPlaying);
     });
 
     // Nouveau participant
@@ -136,18 +155,23 @@ const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl
     socket.on('video-play-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('play', { currentTime: data.currentTime });
+        setIsPlaying(true);
+        setCurrentTime(data.currentTime);
       }
     });
 
     socket.on('video-pause-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('pause', { currentTime: data.currentTime });
+        setIsPlaying(false);
+        setCurrentTime(data.currentTime);
       }
     });
 
     socket.on('video-seek-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('seek', { currentTime: data.currentTime });
+        setCurrentTime(data.currentTime);
       }
     });
 
@@ -217,6 +241,25 @@ const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl
       userId: user.id,
       username: user.username
     });
+  };
+
+  // Fonctions de contrôle vidéo pour la synchronisation
+  const handlePlay = (time: number) => {
+    if (socket && isHost) {
+      socket.emit('video-play', { currentTime: time });
+    }
+  };
+
+  const handlePause = (time: number) => {
+    if (socket && isHost) {
+      socket.emit('video-pause', { currentTime: time });
+    }
+  };
+
+  const handleSeek = (time: number) => {
+    if (socket && isHost) {
+      socket.emit('video-seek', { currentTime: time });
+    }
   };
 
   const leaveWatchParty = () => {
@@ -350,7 +393,26 @@ const WatchParty: React.FC<WatchPartyProps> = ({ videoUrl, title, onVideoControl
             <div className="flex-1">
               {/* Ici serait intégré le lecteur vidéo */}
               <div className="p-4 text-center text-gray-500">
-                Lecteur vidéo intégré ici
+                {videoUrl ? (
+                  <div className="text-sm">
+                    Vidéo sélectionnée: {title}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="mb-2">Aucune vidéo sélectionnée</p>
+                    <button 
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      onClick={() => {
+                        // Exemple d'URL de test - à remplacer par la sélection réelle
+                        if (onVideoUrlChange) {
+                          onVideoUrlChange('https://example.com/video.mp4');
+                        }
+                      }}
+                    >
+                      Sélectionner une vidéo
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -12,6 +12,8 @@ const WatchPartyPage: React.FC = () => {
   const { user } = useAuth();
   const [videoUrl, setVideoUrl] = useState('');
   const [title, setTitle] = useState('Watch Party');
+  const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -27,7 +29,26 @@ const WatchPartyPage: React.FC = () => {
 
   const handleVideoControl = (action: 'play' | 'pause' | 'seek', data?: any) => {
     console.log('Video control:', action, data);
-    // Ici on pourrait implémenter la logique de contrôle vidéo
+    // Ici on implémente la logique de contrôle vidéo
+    switch (action) {
+      case 'play':
+        setIsVideoPlaying(true);
+        if (data?.currentTime) {
+          setCurrentVideoTime(data.currentTime);
+        }
+        break;
+      case 'pause':
+        setIsVideoPlaying(false);
+        if (data?.currentTime) {
+          setCurrentVideoTime(data.currentTime);
+        }
+        break;
+      case 'seek':
+        if (data?.currentTime) {
+          setCurrentVideoTime(data.currentTime);
+        }
+        break;
+    }
   };
 
   if (!user) {
@@ -62,6 +83,7 @@ const WatchPartyPage: React.FC = () => {
                 title={title}
                 onVideoEnd={() => console.log('Video ended')}
                 onVideoError={(error) => console.error('Video error:', error)}
+                onNextEpisode={() => console.log('Next episode')}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -88,6 +110,7 @@ const WatchPartyPage: React.FC = () => {
             videoUrl={videoUrl}
             title={title}
             onVideoControl={handleVideoControl}
+            onVideoUrlChange={setVideoUrl}
           />
         </div>
       </div>
