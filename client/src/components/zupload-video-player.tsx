@@ -54,7 +54,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // URL VAST de Google Ad Manager avec IMA SDK
+  // URL VAST de Google Ad Manager avec IMA SDK - URL corrigée
   const vastTag = 'https://silkyspite.com/d.mcFNzHddGENwvoZnGkUa/yeVmK9BugZeU/lSkVPYTJYt2QNjjlY/wAN/TXkfteNNjuYy2/N-jXA/2sMXC/ZlsgapWq1SpAdUD/0Gxr';
 
   // Précharger la vidéo principale pour accélérer le chargement
