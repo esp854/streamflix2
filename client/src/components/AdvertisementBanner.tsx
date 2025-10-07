@@ -23,44 +23,17 @@ const AdvertisementBanner: React.FC = () => {
         overflow: hidden;
       `;
       
-      // Ajout de styles spécifiques pour mobile
-      const mobileStyles = `
-        @media (max-width: 768px) {
-          #inpage-push-ad {
-            width: 90% !important;
-            height: 150px !important;
-            bottom: 10px !important;
-            right: 5% !important;
-            left: 5% !important;
-          }
-        }
-      `;
-      
-      // Créer une balise style pour les media queries
-      const styleElement = document.createElement('style');
-      styleElement.textContent = mobileStyles;
-      document.head.appendChild(styleElement);
-      
       // Ajouter le conteneur au body
       document.body.appendChild(adContainer);
       
-      // Charger le script de publicité In-Page Push - URL corrigée
+      // Charger le script de publicité In-Page Push
       const script = document.createElement('script');
-      script.src = 'https://silkyspite.com/d.mMFuz_dUGyNWvYZ/GBUq/seWmd9duLZqUwlDkIPGTfY/2xNBjYYlwgNbTWkItTNijuYP2sNXjBA/2EMGCLZGs/aVWa1cpLdUD_0QxN'; // URL corrigée pour les publicités In-Page Push
+      script.src = 'https://example.com/inpage-push-ad.js'; // Remplacer par l'URL réelle
       script.async = true;
-      script.onerror = () => {
-        console.warn('Impossible de charger le script publicitaire In-Page Push');
-        // En cas d'erreur, afficher un message dans la console
-        adContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Publicité</p><p style="font-size: 12px;">Contenu sponsorisé</p></div>';
-      };
       script.onload = () => {
         // Initialiser la publicité une fois le script chargé
-        if ((window as any).initInPagePushAd) {
-          (window as any).initInPagePushAd('#inpage-push-ad');
-        } else {
-          console.warn('Fonction d\'initialisation de la publicité In-Page Push non trouvée');
-          // Afficher un message par défaut si l'initialisation échoue
-          adContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Publicité</p><p style="font-size: 12px;">Contenu sponsorisé</p></div>';
+        if (window.initInPagePushAd) {
+          window.initInPagePushAd('#inpage-push-ad');
         }
       };
       
@@ -74,9 +47,6 @@ const AdvertisementBanner: React.FC = () => {
         if (script.parentNode) {
           script.parentNode.removeChild(script);
         }
-        if (styleElement.parentNode) {
-          styleElement.parentNode.removeChild(styleElement);
-        }
       };
     }
   }, [isAuthenticated]);
@@ -88,19 +58,16 @@ const AdvertisementBanner: React.FC = () => {
 
   // Pour les utilisateurs non authentifiés, afficher un conteneur vide
   return (
-    <div 
-      id="ad-container" 
-      style={{ 
-        width: '100%', 
-        height: '250px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '8px',
-        margin: '16px 0'
-      }}
-    >
+    <div id="ad-container" style={{ 
+      width: '100%', 
+      height: '250px', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: '8px',
+      margin: '16px 0'
+    }}>
       <div style={{ textAlign: 'center', color: '#666' }}>
         <p>Publicité</p>
         <p style={{ fontSize: '12px', marginTop: '4px' }}>Contenu sponsorisé</p>
