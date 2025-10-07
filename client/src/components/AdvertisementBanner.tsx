@@ -1,47 +1,110 @@
-import React from 'react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { useLocation } from 'wouter';
+import React, { useEffect } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 
 const AdvertisementBanner: React.FC = () => {
-  const [, setLocation] = useLocation();
+  const { isAuthenticated } = useAuth();
 
+  useEffect(() => {
+    // Ne charger les publicités que pour les utilisateurs non authentifiés
+    if (!isAuthenticated) {
+      // Créer un conteneur pour la publicité In-Page Push
+      const adContainer = document.createElement('div');
+      adContainer.id = 'inpage-push-ad';
+      adContainer.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        width: 300px;
+        height: 250px;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        overflow: hidden;
+      `;
+      
+      // Ajout de styles spécifiques pour mobile
+      const mobileStyles = `
+        @media (max-width: 768px) {
+          #inpage-push-ad {
+            width: 90% !important;
+            height: 150px !important;
+            bottom: 10px !important;
+            right: 5% !important;
+            left: 5% !important;
+          }
+        }
+      `;
+      
+      // Créer une balise style pour les media queries
+      const styleElement = document.createElement('style');
+      styleElement.textContent = mobileStyles;
+      document.head.appendChild(styleElement);
+      
+      // Ajouter le conteneur au body
+      document.body.appendChild(adContainer);
+      
+      // Charger le script de publicité In-Page Push
+      const script = document.createElement('script');
+      script.src = 'https://example.com/inpage-push-ad.js'; // Remplacer par l'URL réelle
+      script.async = true;
+      script.onload = () => {
+        // Initialiser la publicité une fois le script chargé
+        if (window.initInPagePushAd) {
+          window.initInPagePushAd('#inpage-push-ad');
+        }
+      };
+      
+      document.head.appendChild(script);
+      
+      // Nettoyer lors du démontage
+      return () => {
+        if (adContainer.parentNode) {
+          adContainer.parentNode.removeChild(adContainer);
+        }
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+        if (styleElement.parentNode) {
+          styleElement.parentNode.removeChild(styleElement);
+        }
+      };
+    }
+  }, [isAuthenticated]);
+
+  // Pour les utilisateurs authentifiés, ne rien afficher
+  if (isAuthenticated) {
+    return null;
+  }
+
+  // Pour les utilisateurs non authentifiés, afficher un conteneur vide
   return (
-    <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 mb-8">
-      <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-blue-900 mb-2">
-              Profitez d'une expérience sans publicité
-            </h3>
-            <p className="text-blue-700 mb-4">
-              Avec un abonnement, vous pouvez profiter de tout notre contenu sans interruptions publicitaires.
-            </p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                ✓ Sans publicités
-              </span>
-              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                ✓ Accès complet
-              </span>
-              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                ✓ Meilleure qualité
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex-shrink-0">
-            <Button 
-              onClick={() => setLocation('/subscription')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              S'abonner dès maintenant
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div 
+      id="ad-container" 
+      style={{ 
+        width: '100%', 
+        height: '250px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '8px',
+        margin: '16px 0'
+      }}
+    >
+      <div style={{ textAlign: 'center', color: '#666' }}>
+        <p>Publicité</p>
+        <p style={{ fontSize: '12px', marginTop: '4px' }}>Contenu sponsorisé</p>
+      </div>
+    </div>
   );
 };
+
+// Déclaration globale pour éviter les erreurs TypeScript
+declare global {
+  interface Window {
+    initInPagePushAd?: (selector: string) => void;
+  }
+}
 
 export default AdvertisementBanner;

@@ -17,6 +17,16 @@ export interface TMDBMovie {
   runtime?: number;
   status?: string;
   tagline?: string;
+  budget?: number;
+  revenue?: number;
+  production_companies?: ProductionCompany[];
+}
+
+export interface ProductionCompany {
+  id: number;
+  name: string;
+  logo_path: string | null;
+  origin_country: string;
 }
 
 export interface Genre {
@@ -99,6 +109,9 @@ export interface TMDBTVSeries {
   status?: string;
   tagline?: string;
   in_production?: boolean;
+  budget?: number;
+  revenue?: number;
+  production_companies?: ProductionCompany[];
 }
 
 export interface TVResponse {
@@ -132,6 +145,9 @@ export interface TVDetails {
   in_production?: boolean;
   credits: Credits;
   videos: Videos;
+  budget?: number;
+  revenue?: number;
+  production_companies?: ProductionCompany[];
 }
 
 export const GENRE_MAP: Record<number, string> = {

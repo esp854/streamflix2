@@ -863,7 +863,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 objectFit: 'cover'
               }}
               // Sur mobile, on tente de forcer le chargement
-              {...(isMobileDevice && { autoPlay: true, muted: true })}
+              {...(isMobileDevice && { autoPlay: true, muted: true, playsInline: true })}
             />
           )}
         </>

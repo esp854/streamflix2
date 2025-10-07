@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search as SearchIcon, Film, Tv } from "lucide-react";
+import { Search as SearchIcon, Film, Tv, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,17 +13,36 @@ import { useAuthCheck } from "@/hooks/useAuthCheck";
 
 export default function Search() {
   const { shouldShowAds } = useAuthCheck();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const urlParams = new URLSearchParams(location.split("?")[1] || "");
   const initialQuery = urlParams.get("q") || "";
   
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
+      if (searchQuery) {
+        setShowSuggestions(true);
+      }
     }, 300);
 
     return () => clearTimeout(timer);
@@ -41,9 +60,31 @@ export default function Search() {
     enabled: debouncedQuery.length > 0,
   });
 
+  // Get search suggestions
+  const { data: suggestions } = useQuery({
+    queryKey: [`/api/tmdb/multi-search`, debouncedQuery],
+    queryFn: () => tmdbService.multiSearch(debouncedQuery),
+    enabled: debouncedQuery.length > 2 && showSuggestions,
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Query is already being debounced, no need to do anything here
+    if (searchQuery) {
+      setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (item: any) => {
+    setSearchQuery(item.title || item.name);
+    setShowSuggestions(false);
+    setLocation(`/search?q=${encodeURIComponent(item.title || item.name)}`);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setDebouncedQuery("");
+    setShowSuggestions(false);
   };
 
   return (
@@ -52,7 +93,7 @@ export default function Search() {
         {shouldShowAds && <AdvertisementBanner />}
         
         {/* Search Header */}
-        <div className="mb-8">
+        <div className="mb-8" ref={searchRef}>
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6" data-testid="search-title">
             Rechercher des films et séries
           </h1>
@@ -64,9 +105,64 @@ export default function Search() {
               placeholder="Rechercher des films et séries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-3 text-lg"
+              onFocus={() => searchQuery && setShowSuggestions(true)}
+              className="pl-10 pr-10 py-3 text-lg"
               data-testid="search-input"
             />
+            {searchQuery && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-muted-foreground hover:text-foreground"
+                onClick={clearSearch}
+                data-testid="clear-search"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+            
+            {/* Search Suggestions */}
+            {showSuggestions && debouncedQuery.length > 2 && suggestions && suggestions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto" data-testid="search-suggestions">
+                <div className="py-1">
+                  {suggestions.slice(0, 8).map((item: any) => (
+                    <div
+                      key={item.id}
+                      className="px-4 py-2 hover:bg-muted cursor-pointer flex items-center space-x-3"
+                      onClick={() => handleSuggestionClick(item)}
+                      data-testid={`suggestion-${item.id}`}
+                    >
+                      <div className="flex-shrink-0">
+                        {item.poster_path ? (
+                          <img
+                            src={tmdbService.getPosterUrl(item.poster_path)}
+                            alt={item.title || item.name}
+                            className="w-8 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-8 h-12 bg-muted rounded flex items-center justify-center">
+                            {item.media_type === 'movie' ? (
+                              <Film className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <Tv className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {item.title || item.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.media_type === 'movie' ? 'Film' : 'Série'} • {new Date(item.release_date || item.first_air_date).getFullYear()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </form>
         </div>
 

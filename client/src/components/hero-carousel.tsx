@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Play, Info, Pause, PlayIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { tmdbService } from "@/lib/tmdb";
-import { TMDBMovie } from "@/types/movie";
+import { TMDBMovie, Video } from "@/types/movie";
 import { Link } from "wouter";
 
 export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [movieTrailers, setMovieTrailers] = useState<Record<number, Video | null>>({});
 
   const { data: trendingMovies, isLoading, isError } = useQuery({
     queryKey: ['/api/tmdb/trending'],
@@ -19,6 +20,27 @@ export default function HeroCarousel() {
 
   // Increased from 5 to 10 movies in the carousel
   const heroMovies = trendingMovies?.slice(0, 10) || [];
+
+  // Fetch trailers for each movie
+  useEffect(() => {
+    if (heroMovies && heroMovies.length > 0) {
+      heroMovies.forEach(async (movie) => {
+        if (!movieTrailers[movie.id]) {
+          try {
+            const movieDetails = await tmdbService.getMovieDetails(movie.id);
+            const trailers = movieDetails.videos?.results?.filter(
+              (video: Video) => video.type === "Trailer" && video.site === "YouTube"
+            );
+            const trailer = trailers && trailers.length > 0 ? trailers[0] : null;
+            setMovieTrailers(prev => ({ ...prev, [movie.id]: trailer }));
+          } catch (error) {
+            console.error(`Error fetching trailer for movie ${movie.id}:`, error);
+            setMovieTrailers(prev => ({ ...prev, [movie.id]: null }));
+          }
+        }
+      });
+    }
+  }, [heroMovies]);
 
   useEffect(() => {
     if (!isPlaying || heroMovies.length === 0) return;
@@ -71,10 +93,11 @@ export default function HeroCarousel() {
   }
 
   const currentMovie = heroMovies[currentSlide];
+  const currentTrailer = movieTrailers[currentMovie.id];
 
   return (
     <section className="relative h-screen overflow-hidden" data-testid="hero-carousel">
-      {/* Background Images */}
+      {/* Background Images and Videos */}
       <div className="absolute inset-0">
         {heroMovies.map((movie, index) => (
           <div
@@ -84,16 +107,28 @@ export default function HeroCarousel() {
             }`}
             data-testid={`hero-slide-${index}`}
           >
-            <img
-              src={tmdbService.getBackdropUrl(movie.backdrop_path)}
-              alt={movie.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = "/placeholder-backdrop.jpg";
-              }}
-            />
-            <div className="absolute inset-0 gradient-overlay"></div>
-            <div className="absolute inset-0 gradient-bottom"></div>
+            {movieTrailers[movie.id] ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${movieTrailers[movie.id]?.key}?autoplay=1&mute=1&loop=1&playlist=${movieTrailers[movie.id]?.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1`}
+                className="w-full h-full object-cover"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <>
+                <img
+                  src={tmdbService.getBackdropUrl(movie.backdrop_path)}
+                  alt={movie.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder-backdrop.jpg";
+                  }}
+                />
+                <div className="absolute inset-0 gradient-overlay"></div>
+                <div className="absolute inset-0 gradient-bottom"></div>
+              </>
+            )}
           </div>
         ))}
       </div>

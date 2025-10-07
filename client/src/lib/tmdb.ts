@@ -1,4 +1,4 @@
-import { TMDBMovie, TMDBResponse, MovieDetails, TMDBTVSeries, TVResponse, TVDetails, TMDB_IMAGE_BASE_URL, TMDB_POSTER_SIZE, TMDB_BACKDROP_SIZE, TMDB_PROFILE_SIZE } from "@/types/movie";
+import { TMDBMovie, TMDBResponse, MovieDetails, TMDBTVSeries, TVResponse, TVDetails, TMDB_IMAGE_BASE_URL, TMDB_POSTER_SIZE, TMDB_BACKDROP_SIZE, TMDB_PROFILE_SIZE, Videos } from "@/types/movie";
 
 // Simple in-memory cache
 class Cache {
@@ -191,6 +191,60 @@ class TMDBService {
     }
   }
 
+  // New method to get upcoming movies
+  async getUpcomingMovies(): Promise<TMDBMovie[]> {
+    const cacheKey = "upcoming";
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log("Returning cached upcoming movies");
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/movie/upcoming`);
+      if (!response.ok) {
+        console.error("TMDB API error:", response.status, response.statusText);
+        return [];
+      }
+      const data: TMDBResponse = await response.json();
+      const result = data.results || [];
+
+      // Cache the result
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("Error fetching upcoming movies:", error);
+      return [];
+    }
+  }
+
+  // New method to get now playing movies
+  async getNowPlayingMovies(): Promise<TMDBMovie[]> {
+    const cacheKey = "now_playing";
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log("Returning cached now playing movies");
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/movie/now_playing`);
+      if (!response.ok) {
+        console.error("TMDB API error:", response.status, response.statusText);
+        return [];
+      }
+      const data: TMDBResponse = await response.json();
+      const result = data.results || [];
+
+      // Cache the result
+      this.cache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error("Error fetching now playing movies:", error);
+      return [];
+    }
+  }
+
   async getMovieDetails(id: number): Promise<MovieDetails> {
     const cacheKey = `movie-${id}`;
     const cached = this.cache.get(cacheKey);
@@ -211,6 +265,31 @@ class TMDBService {
       return data;
     } catch (error) {
       console.error("Error fetching movie details:", error);
+      throw error;
+    }
+  }
+
+  // New method to get movie videos (trailers)
+  async getMovieVideos(id: number): Promise<Videos> {
+    const cacheKey = `movie-videos-${id}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      console.log(`Returning cached movie videos for ${id}`);
+      return cached;
+    }
+
+    try {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/movie/${id}/videos`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch movie videos");
+      }
+      const data: Videos = await response.json();
+      
+      // Cache the result
+      this.cache.set(cacheKey, data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching movie videos:", error);
       throw error;
     }
   }

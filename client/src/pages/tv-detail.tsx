@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 import React from "react";
@@ -167,6 +167,7 @@ export default function TVDetail() {
   const tv = (tvDetails as any).show || tvDetails;
   const { credits, videos } = tvDetails as any;
   const cast = credits?.cast?.slice(0, 8) || [];
+  const crew = credits?.crew?.slice(0, 8) || [];
   const trailer = videos?.results?.find((video: any) => video.type === "Trailer" && video.site === "YouTube");
 
   const formatEpisodeRuntime = (runtimes: number[] | undefined) => {
@@ -327,8 +328,68 @@ export default function TVDetail() {
       </div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        {/* Advertisement Banner for unauthenticated users */}
-        {/* Removed as per user request - ads should only appear in video players */}
+        {/* Additional TV Show Information */}
+        <section className="mb-8 sm:mb-12" data-testid="tv-info-section">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Informations</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <Globe className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-foreground">Langue originale</h3>
+                  <p className="text-muted-foreground">{tv.original_language?.toUpperCase()}</p>
+                </div>
+              </div>
+              
+              {tv.status && (
+                <div className="flex items-start">
+                  <Users className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Statut</h3>
+                    <p className="text-muted-foreground">{tv.status}</p>
+                  </div>
+                </div>
+              )}
+              
+              {tv.type && (
+                <div className="flex items-start">
+                  <Award className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Type</h3>
+                    <p className="text-muted-foreground">{tv.type}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              {tv.tagline && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Slogan</h3>
+                  <p className="text-muted-foreground italic">"{tv.tagline}"</p>
+                </div>
+              )}
+              
+              {tv.created_by && tv.created_by.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Créateurs</h3>
+                  <p className="text-muted-foreground">
+                    {tv.created_by.map((creator: any) => creator.name).join(", ")}
+                  </p>
+                </div>
+              )}
+              
+              {tv.networks && tv.networks.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Chaînes de diffusion</h3>
+                  <p className="text-muted-foreground">
+                    {tv.networks.map((network: any) => network.name).join(", ")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
 
         {/* Cast Section */}
         {cast.length > 0 && (
@@ -353,6 +414,31 @@ export default function TVDetail() {
                   <p className="text-muted-foreground text-xs line-clamp-1" data-testid={`cast-character-${person.id}`}>
                     {person.character}
                   </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Crew Section */}
+        {crew.length > 0 && (
+          <section className="mb-8 sm:mb-12" data-testid="tv-crew">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Équipe technique</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="crew-grid">
+              {crew.map((member: any) => (
+                <div key={member.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
+                  <img
+                    src={tmdbService.getProfileUrl(member.profile_path)}
+                    alt={member.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder-profile.jpg";
+                    }}
+                  />
+                  <div>
+                    <h3 className="font-medium text-foreground text-sm">{member.name}</h3>
+                    <p className="text-xs text-muted-foreground">{member.job}</p>
+                  </div>
                 </div>
               ))}
             </div>

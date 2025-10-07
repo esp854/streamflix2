@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { tmdbService } from "@/lib/tmdb";
 import { useFavorites } from "@/hooks/use-favorites";
@@ -98,12 +98,22 @@ export default function MovieDetail() {
 
   const { movie, credits, videos } = movieDetails;
   const cast = credits.cast.slice(0, 8);
+  const crew = credits.crew.slice(0, 8);
   const trailer = videos.results.find(video => video.type === "Trailer" && video.site === "YouTube");
 
   const formatRuntime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours}h ${mins}min`;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -203,6 +213,70 @@ export default function MovieDetail() {
       
       {/* Content sections */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 sm:space-y-12">
+        {/* Additional Movie Information */}
+        <section data-testid="movie-info-section">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Informations</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <Globe className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-foreground">Langue originale</h3>
+                  <p className="text-muted-foreground">{movie.original_language?.toUpperCase()}</p>
+                </div>
+              </div>
+              
+              {movie.budget && movie.budget > 0 && (
+                <div className="flex items-start">
+                  <DollarSign className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Budget</h3>
+                    <p className="text-muted-foreground">{formatCurrency(movie.budget)}</p>
+                  </div>
+                </div>
+              )}
+              
+              {movie.revenue && movie.revenue > 0 && (
+                <div className="flex items-start">
+                  <DollarSign className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Revenus</h3>
+                    <p className="text-muted-foreground">{formatCurrency(movie.revenue)}</p>
+                  </div>
+                </div>
+              )}
+              
+              {movie.status && (
+                <div className="flex items-start">
+                  <Users className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Statut</h3>
+                    <p className="text-muted-foreground">{movie.status}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              {movie.tagline && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Slogan</h3>
+                  <p className="text-muted-foreground italic">"{movie.tagline}"</p>
+                </div>
+              )}
+              
+              {movie.production_companies && movie.production_companies.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Sociétés de production</h3>
+                  <p className="text-muted-foreground">
+                    {movie.production_companies.map((company: any) => company.name).join(", ")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
         {/* Cast */}
         {cast.length > 0 && (
           <section data-testid="cast-section">
@@ -220,6 +294,31 @@ export default function MovieDetail() {
                   />
                   <h3 className="text-xs sm:text-sm font-medium text-foreground line-clamp-1">{actor.name}</h3>
                   <p className="text-xs text-muted-foreground line-clamp-1">{actor.character}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Crew */}
+        {crew.length > 0 && (
+          <section data-testid="crew-section">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Équipe technique</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="crew-grid">
+              {crew.map((member) => (
+                <div key={member.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
+                  <img
+                    src={tmdbService.getProfileUrl(member.profile_path)}
+                    alt={member.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder-profile.jpg";
+                    }}
+                  />
+                  <div>
+                    <h3 className="font-medium text-foreground text-sm">{member.name}</h3>
+                    <p className="text-xs text-muted-foreground">{member.job}</p>
+                  </div>
                 </div>
               ))}
             </div>

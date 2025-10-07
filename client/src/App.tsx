@@ -36,6 +36,8 @@ import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
+import UpcomingMovies from "@/pages/upcoming-movies";
+import NowPlayingMovies from "@/pages/now-playing-movies";
 
 // Login route component that opens the AuthModal
 function LoginRoute() {
@@ -109,6 +111,8 @@ function Router() {
       <Route path="/help" component={HelpCenter} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
+      <Route path="/movies/upcoming" component={UpcomingMovies} />
+      <Route path="/movies/now-playing" component={NowPlayingMovies} />
       <Route component={NotFound} />
     </Switch>
   );

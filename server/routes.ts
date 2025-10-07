@@ -4775,6 +4775,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New endpoint for upcoming movies
+  app.get("/api/tmdb/movie/upcoming", async (req: any, res: any) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+      
+      if (!response.ok) {
+        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please try again later.",
+            status: 429 
+          });
+        }
+        return res.status(response.status).json({ 
+          error: `TMDB API error: ${response.statusText}`,
+          status: response.status 
+        });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching upcoming movies:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming movies", details: error.message || 'Unknown error' });
+    }
+  });
+
+  // New endpoint for now playing movies
+  app.get("/api/tmdb/movie/now_playing", async (req: any, res: any) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+      
+      if (!response.ok) {
+        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please try again later.",
+            status: 429 
+          });
+        }
+        return res.status(response.status).json({ 
+          error: `TMDB API error: ${response.statusText}`,
+          status: response.status 
+        });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching now playing movies:", error);
+      res.status(500).json({ error: "Failed to fetch now playing movies", details: error.message || 'Unknown error' });
+    }
+  });
+
   app.get("/api/tmdb/popular", async (req: any, res: any) => {
     try {
       const apiKey = process.env.TMDB_API_KEY;
