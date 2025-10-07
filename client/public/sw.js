@@ -155,22 +155,73 @@ self.addEventListener('fetch', (event) => {
 
   // Handle API requests differently
   if (url.pathname.startsWith('/api/')) {
-    // For content-related API endpoints, bypass cache to ensure fresh data
-    if (url.pathname.includes('/api/tmdb/') || url.pathname.includes('/api/content')) {
+    // For TMDB API, use cache-first strategy with client-side cache validation
+    if (url.pathname.includes('/api/tmdb/')) {
+      event.respondWith(
+        caches.match(request)
+          .then((cachedResponse) => {
+            // If we have a cached response, check if it's still fresh
+            if (cachedResponse) {
+              const cacheTime = cachedResponse.headers.get('sw-cache-time');
+              const now = Date.now();
+              const cacheDuration = 5 * 60 * 1000; // 5 minutes
+
+              if (cacheTime && (now - parseInt(cacheTime)) < cacheDuration) {
+                console.log('[SW] TMDB cache hit:', url.href);
+                return cachedResponse;
+              } else {
+                console.log('[SW] TMDB cache stale, fetching fresh:', url.href);
+              }
+            }
+
+            // Fetch fresh data and cache it
+            return fetch(request)
+              .then((response) => {
+                if (response && response.status === 200) {
+                  console.log('[SW] TMDB fresh response:', response.status, url.href);
+
+                  // Clone response and add cache timestamp
+                  const responseClone = response.clone();
+                  const responseWithCacheTime = new Response(responseClone.body, {
+                    status: responseClone.status,
+                    statusText: responseClone.statusText,
+                    headers: {
+                      ...Object.fromEntries(responseClone.headers.entries()),
+                      'sw-cache-time': Date.now().toString()
+                    }
+                  });
+
+                  // Cache the response
+                  caches.open(DYNAMIC_CACHE)
+                    .then((cache) => {
+                      cache.put(request, responseWithCacheTime);
+                    })
+                    .catch((error) => {
+                      console.error('[SW] Failed to cache TMDB response:', error);
+                    });
+                }
+                return response;
+              })
+              .catch((error) => {
+                console.log('[SW] TMDB fetch error, trying cache:', error, url.href);
+                // Return cached response if available, even if stale
+                return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
+              });
+          })
+      );
+      return;
+    }
+
+    // For content API, bypass cache to ensure fresh data
+    if (url.pathname.includes('/api/content')) {
       event.respondWith(
         fetch(request)
           .then((response) => {
-            console.log('[SW] API response (bypass cache):', response.status, response.type, url.href);
+            console.log('[SW] Content API response (bypass cache):', response.status, response.type, url.href);
             return response;
           })
           .catch((error) => {
-            console.log('[SW] API fetch error:', error, url.href);
-            // Try to get from cache only for non-content APIs
-            if (!url.pathname.includes('/api/tmdb/') && !url.pathname.includes('/api/content')) {
-              return caches.match(request).then((cachedResponse) => {
-                return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
-              });
-            }
+            console.log('[SW] Content API fetch error:', error, url.href);
             throw error;
           })
       );
@@ -300,6 +351,8 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data.command === 'CLEAR_API_CACHE') {
     clearAPICache();
+  } else if (event.data.command === 'CLEAR_TMDB_CACHE') {
+    clearTMDBCache();
   }
 });
 
@@ -369,6 +422,20 @@ function clearAPICache() {
       keys.forEach(request => {
         if (request.url.includes('/api/')) {
           cache.delete(request);
+        }
+      });
+    });
+  });
+}
+
+// Function to clear TMDB cache specifically
+function clearTMDBCache() {
+  caches.open(DYNAMIC_CACHE).then(cache => {
+    cache.keys().then(keys => {
+      keys.forEach(request => {
+        if (request.url.includes('/api/tmdb/')) {
+          cache.delete(request);
+          console.log('[SW] Cleared TMDB cache for:', request.url);
         }
       });
     });

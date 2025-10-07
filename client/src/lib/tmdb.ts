@@ -539,6 +539,11 @@ class TMDBService {
   clearCache(): void {
     this.cache.clear();
     console.log("TMDB cache cleared");
+
+    // Also clear service worker cache
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ command: 'CLEAR_TMDB_CACHE' });
+    }
   }
   
   // Clear specific cache entries (useful when content is deleted)
