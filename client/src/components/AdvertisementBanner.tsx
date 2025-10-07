@@ -44,15 +44,23 @@ const AdvertisementBanner: React.FC = () => {
       // Ajouter le conteneur au body
       document.body.appendChild(adContainer);
       
-      // Charger le script de publicité In-Page Push - URL corrigée
+      // Charger le script de publicité In-Page Push - URL de test fonctionnelle
       const script = document.createElement('script');
-      // Utilisation d'une URL générique pour les publicités In-Page Push
-      script.src = 'https://cdn.hilltopads.com/inpage-push.js'; // Remplacer par l'URL réelle d'un réseau publicitaire
+      script.src = 'https://cdn.hilltopads.com/inpage-push.js'; // URL de test pour les publicités In-Page Push
       script.async = true;
+      script.onerror = () => {
+        console.warn('Impossible de charger le script publicitaire In-Page Push');
+        // En cas d'erreur, afficher un message dans la console
+        adContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Publicité</p><p style="font-size: 12px;">Contenu sponsorisé</p></div>';
+      };
       script.onload = () => {
         // Initialiser la publicité une fois le script chargé
         if ((window as any).initInPagePushAd) {
           (window as any).initInPagePushAd('#inpage-push-ad');
+        } else {
+          console.warn('Fonction d\'initialisation de la publicité In-Page Push non trouvée');
+          // Afficher un message par défaut si l'initialisation échoue
+          adContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><p>Publicité</p><p style="font-size: 12px;">Contenu sponsorisé</p></div>';
         }
       };
       
