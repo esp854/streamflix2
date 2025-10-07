@@ -54,8 +54,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // URL VAST de HilltopAds
-  const vastTag = 'https://selfishzone.com/demnFEzUd.GdNDvxZCGLUk/uexm/9buUZDU/lLkbPlTdYK2kNDj/YawqNwTJkltNNejoYh2-NGjtA/2/M/Ay';
+  // URL VAST de Google Ad Manager avec IMA SDK
+  const vastTag = 'https://silkyspite.com/d.mcFNzHddGENwvoZnGkUa/yeVmK9BugZeU/lSkVPYTJYt2QNjjlY/wAN/TXkfteNNjuYy2/N-jXA/2sMXC/ZlsgapWq1SpAdUD/0Gxr';
 
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
@@ -97,6 +97,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     const videoEl = adVideoRef.current;
 
     try {
+      // Initialiser le conteneur publicitaire
+      if (typeof window !== 'undefined' && (window as any).google && (window as any).google.ima) {
+        const adDisplayContainer = new (window as any).google.ima.AdDisplayContainer(
+          document.getElementById('adContainer'), 
+          videoEl
+        );
+        adDisplayContainer.initialize();
+      }
+
       console.log('Chargement du tag VAST:', vastTag);
       // Ajout d'options pour améliorer la compatibilité mobile
       const response = await fetch(vastTag, {
