@@ -38,6 +38,7 @@ import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 import UpcomingMovies from "@/pages/upcoming-movies";
 import NowPlayingMovies from "@/pages/now-playing-movies";
+import WatchPartyPage from "@/pages/watch-party";
 
 // Login route component that opens the AuthModal
 function LoginRoute() {
@@ -79,6 +80,7 @@ function Router() {
       {/* Watch routes - full screen without navbar/footer */}
       <Route path="/watch/movie/:id" component={WatchMovie} />
       <Route path="/watch/tv/:id/:season?/:episode?" component={WatchTV} />
+      <Route path="/watch-party/:roomId?" component={WatchPartyPage} />
       
       {/* Authentication route */}
       <Route path="/login" component={LoginRoute} />

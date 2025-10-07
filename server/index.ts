@@ -1,100 +1,312 @@
-import 'dotenv/config';
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./static";
-import { apiLimiter, securityHeaders, corsOptions, validateInput, xssProtection } from "./security";
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
+import { createServer } from "http";
+import { Server as SocketIOServer, Socket } from "socket.io";
+import express from "express";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Check database configuration at startup
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable is not set. The application cannot start without a database connection.');
-  process.exit(1);
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = createServer(app);
 
-// Apply security middleware
-app.use(apiLimiter);
-app.use(securityHeaders);
-app.use(cors(corsOptions));
-app.use(cookieParser());
+// Configuration Socket.IO pour Watch Party
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2-o7vx.onrender.com"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
-// Body parsing middleware
+// Middleware
+app.use(cors({
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2-o7vx.onrender.com"],
+  credentials: true
+}));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
-// Apply input validation and XSS protection to all routes
-app.use(validateInput);
-app.use(xssProtection);
+// Servir les fichiers statiques
+app.use(express.static(path.join(__dirname, "../client/dist")));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Gestion des salles de watch party
+const watchPartyRooms = new Map<string, {
+  host: string;
+  participants: Set<string>;
+  currentVideo: string;
+  currentTime: number;
+  isPlaying: boolean;
+  messages: Array<{
+    id: string;
+    userId: string;
+    username: string;
+    message: string;
+    timestamp: number;
+  }>;
+}>();
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.call(res, bodyJson, ...args);
-  };
+// Socket.IO handlers pour Watch Party
+io.on('connection', (socket: Socket) => {
+  console.log('Utilisateur connecté:', socket.id);
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+  // Rejoindre une salle de watch party
+  socket.on('join-watch-party', (data: { roomId: string; userId: string; username: string }) => {
+    const { roomId, userId, username } = data;
+
+    // Créer la salle si elle n'existe pas
+    if (!watchPartyRooms.has(roomId)) {
+      watchPartyRooms.set(roomId, {
+        host: userId,
+        participants: new Set(),
+        currentVideo: '',
+        currentTime: 0,
+        isPlaying: false,
+        messages: []
+      });
+    }
+
+    const room = watchPartyRooms.get(roomId)!;
+    room.participants.add(userId);
+
+    socket.join(roomId);
+    socket.data.roomId = roomId;
+    socket.data.userId = userId;
+    socket.data.username = username;
+
+    console.log(`${username} a rejoint la salle ${roomId}`);
+
+    // Envoyer l'état actuel de la salle au nouveau participant
+    socket.emit('watch-party-joined', {
+      roomId,
+      host: room.host,
+      participants: Array.from(room.participants),
+      currentVideo: room.currentVideo,
+      currentTime: room.currentTime,
+      isPlaying: room.isPlaying,
+      messages: room.messages.slice(-50) // Derniers 50 messages
+    });
+
+    // Notifier les autres participants
+    socket.to(roomId).emit('participant-joined', {
+      userId,
+      username,
+      participants: Array.from(room.participants)
+    });
+  });
+
+  // Quitter une salle de watch party
+  socket.on('leave-watch-party', () => {
+    const roomId = socket.data.roomId;
+    const userId = socket.data.userId;
+    const username = socket.data.username;
+
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+      room.participants.delete(userId);
+
+      socket.leave(roomId);
+
+      // Si la salle est vide, la supprimer
+      if (room.participants.size === 0) {
+        watchPartyRooms.delete(roomId);
+        console.log(`Salle ${roomId} supprimée (vide)`);
+      } else {
+        // Si l'hôte quitte, transférer l'hôte à quelqu'un d'autre
+        if (room.host === userId) {
+          const newHost = Array.from(room.participants)[0];
+          room.host = newHost;
+          io.to(roomId).emit('host-changed', { newHost });
+        }
+
+        // Notifier les autres participants
+        socket.to(roomId).emit('participant-left', {
+          userId,
+          username,
+          participants: Array.from(room.participants)
+        });
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      console.log(`${username} a quitté la salle ${roomId}`);
     }
   });
 
-  next();
+  // Synchronisation de la lecture vidéo
+  socket.on('video-play', (data: { currentTime: number }) => {
+    const roomId = socket.data.roomId;
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+      room.isPlaying = true;
+      room.currentTime = data.currentTime;
+
+      socket.to(roomId).emit('video-play-sync', {
+        currentTime: data.currentTime,
+        triggeredBy: socket.data.userId
+      });
+    }
+  });
+
+  socket.on('video-pause', (data: { currentTime: number }) => {
+    const roomId = socket.data.roomId;
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+      room.isPlaying = false;
+      room.currentTime = data.currentTime;
+
+      socket.to(roomId).emit('video-pause-sync', {
+        currentTime: data.currentTime,
+        triggeredBy: socket.data.userId
+      });
+    }
+  });
+
+  socket.on('video-seek', (data: { currentTime: number }) => {
+    const roomId = socket.data.roomId;
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+      room.currentTime = data.currentTime;
+
+      socket.to(roomId).emit('video-seek-sync', {
+        currentTime: data.currentTime,
+        triggeredBy: socket.data.userId
+      });
+    }
+  });
+
+  // Changer de vidéo dans la watch party
+  socket.on('change-video', (data: { videoUrl: string; title: string }) => {
+    const roomId = socket.data.roomId;
+    const userId = socket.data.userId;
+
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+
+      // Seul l'hôte peut changer de vidéo
+      if (room.host === userId) {
+        room.currentVideo = data.videoUrl;
+        room.currentTime = 0;
+        room.isPlaying = false;
+
+        io.to(roomId).emit('video-changed', {
+          videoUrl: data.videoUrl,
+          title: data.title,
+          changedBy: socket.data.username
+        });
+      }
+    }
+  });
+
+  // Chat de la watch party
+  socket.on('send-message', (data: { message: string }) => {
+    const roomId = socket.data.roomId;
+    const userId = socket.data.userId;
+    const username = socket.data.username;
+
+    if (roomId && watchPartyRooms.has(roomId) && data.message.trim()) {
+      const room = watchPartyRooms.get(roomId)!;
+
+      const messageData = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        userId,
+        username,
+        message: data.message.trim(),
+        timestamp: Date.now()
+      };
+
+      // Ajouter le message à l'historique (limiter à 100 messages)
+      room.messages.push(messageData);
+      if (room.messages.length > 100) {
+        room.messages = room.messages.slice(-100);
+      }
+
+      // Envoyer le message à tous les participants de la salle
+      io.to(roomId).emit('new-message', messageData);
+    }
+  });
+
+  // Déconnexion
+  socket.on('disconnect', () => {
+    const roomId = socket.data.roomId;
+    const userId = socket.data.userId;
+    const username = socket.data.username;
+
+    if (roomId && watchPartyRooms.has(roomId)) {
+      const room = watchPartyRooms.get(roomId)!;
+      room.participants.delete(userId);
+
+      // Si la salle est vide, la supprimer
+      if (room.participants.size === 0) {
+        watchPartyRooms.delete(roomId);
+        console.log(`Salle ${roomId} supprimée (déconnexion)`);
+      } else {
+        // Si l'hôte se déconnecte, transférer l'hôte
+        if (room.host === userId) {
+          const newHost = Array.from(room.participants)[0];
+          room.host = newHost;
+          io.to(roomId).emit('host-changed', { newHost });
+        }
+
+        // Notifier les autres participants
+        socket.to(roomId).emit('participant-left', {
+          userId,
+          username,
+          participants: Array.from(room.participants)
+        });
+      }
+    }
+
+    console.log('Utilisateur déconnecté:', socket.id);
+  });
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+// API routes pour Watch Party
+app.get('/api/watch-party/:roomId', (req, res) => {
+  const { roomId } = req.params;
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    // Dynamic import to avoid bundling vite in production
-    const { setupVite } = await import("./vite");
-    await setupVite(app, server);
+  if (watchPartyRooms.has(roomId)) {
+    const room = watchPartyRooms.get(roomId)!;
+    res.json({
+      exists: true,
+      host: room.host,
+      participants: Array.from(room.participants),
+      currentVideo: room.currentVideo,
+      currentTime: room.currentTime,
+      isPlaying: room.isPlaying,
+      messageCount: room.messages.length
+    });
   } else {
-    serveStatic(app);
+    res.json({ exists: false });
   }
+});
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  console.log(`[DEBUG] PORT environment variable: ${process.env.PORT}`);
-  console.log(`[DEBUG] Using port: ${port}`);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-    log(`NODE_ENV: ${process.env.NODE_ENV}`);
-    log(`API Limiter Max: ${process.env.NODE_ENV === 'development' ? 'Infinity' : '1000'}`);
-    log(`Auth Limiter Max: ${process.env.NODE_ENV === 'development' ? 'Infinity' : '5'}`);
+app.post('/api/watch-party', (req, res) => {
+  const { videoUrl, title } = req.body;
+  const roomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+  // Créer une nouvelle salle
+  watchPartyRooms.set(roomId, {
+    host: req.user?.userId || 'anonymous',
+    participants: new Set(),
+    currentVideo: videoUrl,
+    currentTime: 0,
+    isPlaying: false,
+    messages: []
   });
-})();
+
+  res.json({
+    roomId,
+    videoUrl,
+    title
+  });
+});
+
+// Route catch-all pour React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
+
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🌐 Socket.IO activé pour Watch Party`);
+});
