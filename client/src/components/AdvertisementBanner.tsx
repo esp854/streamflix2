@@ -44,9 +44,9 @@ const AdvertisementBanner: React.FC = () => {
       // Ajouter le conteneur au body
       document.body.appendChild(adContainer);
       
-      // Charger le script de publicité In-Page Push - URL de test fonctionnelle
+      // Charger le script de publicité In-Page Push - URL corrigée
       const script = document.createElement('script');
-      script.src = 'https://cdn.hilltopads.com/inpage-push.js'; // URL de test pour les publicités In-Page Push
+      script.src = 'https://silkyspite.com/d.mMFuz_dUGyNWvYZ/GBUq/seWmd9duLZqUwlDkIPGTfY/2xNBjYYlwgNbTWkItTNijuYP2sNXjBA/2EMGCLZGs/aVWa1cpLdUD_0QxN'; // URL corrigée pour les publicités In-Page Push
       script.async = true;
       script.onerror = () => {
         console.warn('Impossible de charger le script publicitaire In-Page Push');

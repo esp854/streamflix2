@@ -333,7 +333,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   }
 
   // Fonction pour jouer la pub suivante
-  const playNextAd = () => {
+  function playNextAd() {
     if (!adVideoRef.current) return;
 
     const videoEl = adVideoRef.current;
@@ -454,7 +454,47 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       setShowSkipButton(false);
     }
-  };
+  }
+
+  // Fonction pour passer les publicités
+  function skipAd() {
+    console.log('Passage des publicités demandé par l\'utilisateur');
+    
+    if (adVideoRef.current) {
+      // Arrêter la lecture de la pub
+      adVideoRef.current.pause();
+      adVideoRef.current.oncanplay = null;
+      adVideoRef.current.onerror = null;
+    }
+    
+    // Passer toutes les pubs restantes et lancer la vidéo principale
+    if (mainVideoRef.current) {
+      mainVideoRef.current.src = videoUrl;
+      
+      // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture après avoir passé la pub:', error);
+        });
+      }
+    }
+    
+    // Vider la file d'attente des pubs
+    adQueueRef.current = [];
+    currentAdIndexRef.current = 0;
+    
+    setIsAdPlaying(false);
+    setShowAd(false);
+    setAdSkipped(true);
+    // Réinitialiser l'état de chargement après avoir passé la pub
+    setIsLoading(false);
+    
+    // Nettoyer le timeout du bouton skip
+    if (skipButtonTimeoutRef.current) {
+      clearTimeout(skipButtonTimeoutRef.current);
+    }
+    setShowSkipButton(false);
+  }
 
   // Handle video load
   const handleVideoLoad = () => {
@@ -577,46 +617,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
     }
   }, [isAuthenticated, adSkipped, isMobileDevice, loadVastAd, preloadMainVideo, videoUrl]);
-
-  // Fonction pour passer les publicités
-  const skipAd = () => {
-    console.log('Passage des publicités demandé par l\'utilisateur');
-    
-    if (adVideoRef.current) {
-      // Arrêter la lecture de la pub
-      adVideoRef.current.pause();
-      adVideoRef.current.oncanplay = null;
-      adVideoRef.current.onerror = null;
-    }
-    
-    // Passer toutes les pubs restantes et lancer la vidéo principale
-    if (mainVideoRef.current) {
-      mainVideoRef.current.src = videoUrl;
-      
-      // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
-      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
-        mainVideoRef.current.play().catch(error => {
-          console.error('Erreur de lecture après avoir passé la pub:', error);
-        });
-      }
-    }
-    
-    // Vider la file d'attente des pubs
-    adQueueRef.current = [];
-    currentAdIndexRef.current = 0;
-    
-    setIsAdPlaying(false);
-    setShowAd(false);
-    setAdSkipped(true);
-    // Réinitialiser l'état de chargement après avoir passé la pub
-    setIsLoading(false);
-    
-    // Nettoyer le timeout du bouton skip
-    if (skipButtonTimeoutRef.current) {
-      clearTimeout(skipButtonTimeoutRef.current);
-    }
-    setShowSkipButton(false);
-  };
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
