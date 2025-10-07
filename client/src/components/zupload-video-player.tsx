@@ -45,14 +45,39 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
-  
+  const userPausedRef = useRef(false); // Pour détecter les interruptions
+
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // Détecter la connexion lente
+  const isSlowConnection = () => {
+    const connection = (navigator as any).connection;
+    return connection && (connection.effectiveType === 'slow-2g' ||
+           connection.effectiveType === '2g' ||
+           connection.downlink < 1);
+  };
+
+  // Stratégie autoplay selon le navigateur
+  const getAutoplayStrategy = () => {
+    const ua = navigator.userAgent;
+
+    if (ua.includes('Safari') && !ua.includes('Chrome')) {
+      return 'user-gesture-required'; // iOS Safari
+    }
+    if (ua.includes('Mobile') && ua.includes('Chrome')) {
+      return 'muted-autoplay-allowed'; // Android Chrome
+    }
+    return 'standard-autoplay'; // Desktop
+  };
+
+  const autoplayStrategy = getAutoplayStrategy();
 
   // URL VAST de HilltopAds
   const vastTag = 'https://silkyspite.com/dum.Flzod/GONlvhZdGIUd/Iebmf9UuFZqUllZktPNTWYx2jNhjiYNwbN/TqkethN/jbY/2pNWj-AN2aMaAc';
@@ -286,23 +311,74 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   }
 
+  // Fonction pour essayer le format suivant si le premier échoue
+  const tryNextFormat = (adIndex: number) => {
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+    const ad = adQueueRef.current[adIndex];
+
+    if (!ad) {
+      skipAd();
+      return;
+    }
+
+    // Sur mobile, essayer MP4 d'abord (plus compatible)
+    let formatUrl = ad;
+    if (isMobileDevice) {
+      // Préférer MP4 sur mobile
+      formatUrl = ad.replace('.webm', '.mp4').replace('.flv', '.mp4');
+    }
+
+    // Pour connexion lente, utiliser qualité inférieure
+    if (isMobileDevice && isSlowConnection()) {
+      formatUrl = formatUrl.replace('720', '480');
+    }
+
+    console.log('Tentative de lecture avec format:', formatUrl);
+    videoEl.src = formatUrl;
+    setIsAdPlaying(true);
+    videoEl.muted = true;
+
+    videoEl.onerror = () => {
+      console.log('Format actuel échoué, tentative avec format alternatif');
+
+      // Essayer le format alternatif
+      let altFormat = ad;
+      if (formatUrl.includes('.mp4')) {
+        altFormat = ad.replace('.mp4', '.webm');
+      } else if (formatUrl.includes('.webm')) {
+        altFormat = ad.replace('.webm', '.mp4');
+      }
+
+      if (altFormat !== formatUrl) {
+        videoEl.src = altFormat;
+        videoEl.onerror = () => {
+          console.log('Format alternatif échoué, passage à la pub suivante');
+          currentAdIndexRef.current++;
+          playNextAd();
+        };
+      } else {
+        // Pas de format alternatif, passer à la suivante
+        currentAdIndexRef.current++;
+        playNextAd();
+      }
+    };
+  };
+
   // Fonction pour jouer la pub suivante
   const playNextAd = () => {
     if (!adVideoRef.current) return;
 
     const videoEl = adVideoRef.current;
-    
+
     // Vérifier s'il y a une pub suivante
     if (currentAdIndexRef.current < adQueueRef.current.length) {
       const adUrl = adQueueRef.current[currentAdIndexRef.current];
       console.log('Lecture de la publicité:', currentAdIndexRef.current + 1, '/', adQueueRef.current.length, adUrl);
-      
-      // Lecture de la pub
-      videoEl.src = adUrl;
-      setIsAdPlaying(true);
-      
-      // Pour l'autoplay sur mobile, la vidéo doit être muette
-      videoEl.muted = true;
+
+      // Utiliser la fonction améliorée pour les formats
+      tryNextFormat(currentAdIndexRef.current);
       
       // Ajouter un gestionnaire d'erreurs pour la lecture
       videoEl.oncanplay = () => {
@@ -322,45 +398,49 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         playNextAd();
       };
       
-      // Sur mobile, l'utilisateur peut avoir besoin d'interagir avec l'écran avant la lecture
-      if (isMobileDevice) {
-        // Ajouter un écouteur pour la première interaction de l'utilisateur
-        const handleFirstInteraction = () => {
-          if (adVideoRef.current && isAdPlaying) {
-            adVideoRef.current.play().catch(err => {
-              console.log('Erreur de lecture après interaction utilisateur:', err);
-              // Même en cas d'erreur, on continue vers la vidéo principale sur mobile
-              skipAd();
-            });
-          }
-        };
-        
-        window.addEventListener('touchstart', handleFirstInteraction, { once: true });
-        window.addEventListener('click', handleFirstInteraction, { once: true });
-        
-        // Essayer de jouer automatiquement avec des attributs supplémentaires pour mobile
+      // Gestion améliorée de l'autoplay selon la stratégie
+      if (autoplayStrategy === 'user-gesture-required') {
+        // iOS Safari : nécessite une interaction explicite
+        console.log('Stratégie iOS Safari : interaction utilisateur requise');
+        // L'overlay sera affiché, pas d'autoplay automatique
+      } else if (autoplayStrategy === 'muted-autoplay-allowed') {
+        // Android Chrome : autoplay muet autorisé
+        console.log('Stratégie Android Chrome : autoplay muet');
         videoEl.setAttribute('autoplay', 'true');
         videoEl.setAttribute('muted', 'true');
         videoEl.setAttribute('playsinline', 'true');
-        
+
         videoEl.play().catch(err => {
-          console.log('Autoplay bloqué, en attente d\'interaction utilisateur:', err);
-          // Même si autoplay échoue, on continue vers la vidéo principale sur mobile
-          if (isMobileDevice) {
-            setTimeout(() => {
-              skipAd();
-            }, 2000);
-          }
+          console.log('Autoplay Android échoué:', err);
+          // Fallback vers interaction utilisateur
         });
       } else {
-        // Sur desktop, jouer directement
+        // Desktop : jouer directement
         videoEl.play().catch(error => {
           console.error('Erreur de lecture de la pub:', error);
-          // Passer à la pub suivante ou à la vidéo principale
           currentAdIndexRef.current++;
           playNextAd();
         });
       }
+
+      // Gestion des interruptions (appels, notifications)
+      videoEl.onpause = () => {
+        if (isAdPlaying && !userPausedRef.current) {
+          console.log('Interruption détectée, tentative de reprise');
+          setTimeout(() => {
+            if (adVideoRef.current && isAdPlaying) {
+              adVideoRef.current.play().catch(() => {
+                console.log('Reprise échouée, passage à la vidéo principale');
+                skipAd();
+              });
+            }
+          }, 2000);
+        }
+      };
+
+      videoEl.onplay = () => {
+        userPausedRef.current = false;
+      };
       
       // Incrémenter l'index pour la prochaine pub
       currentAdIndexRef.current++;
@@ -569,15 +649,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleTouch = (e: React.TouchEvent) => {
     e.preventDefault();
     setShowControls(true);
-    
+
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
     }
-    
+
     // Sur mobile, garder les contrôles visibles plus longtemps
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
     }, 5000); // 5 secondes sur mobile au lieu de 3
+
+    // Marquer l'interaction utilisateur pour les pubs
+    if (isMobileDevice && !hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
   };
 
   // Show controls on mouse move (desktop) or touch (mobile)
@@ -612,6 +697,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
     };
   }, []);
+
+  // Reset user interaction state when ad changes
+  useEffect(() => {
+    if (!showAd) {
+      setHasUserInteracted(false);
+      userPausedRef.current = false;
+    }
+  }, [showAd]);
 
   return (
     <div 
@@ -662,7 +755,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   backgroundColor: 'black'
                 }}
                 // Sur mobile, s'assurer que la vidéo est visible
-                {...(isMobileDevice && { 
+                {...(isMobileDevice && {
                   playsInline: true,
                   muted: true,
                   autoPlay: true,
@@ -670,12 +763,40 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 })}
               />
             </div>
+
+            {/* Overlay "Tap to Play" pour iOS Safari */}
+            {isMobileDevice && autoplayStrategy === 'user-gesture-required' && !hasUserInteracted && (
+              <div className="absolute inset-0 z-40 bg-black/90 flex items-center justify-center">
+                <div className="text-center p-8 max-w-sm">
+                  <div className="text-white text-4xl mb-6">📱</div>
+                  <h3 className="text-white text-xl font-bold mb-4">Touchez pour commencer</h3>
+                  <p className="text-gray-300 mb-6 text-sm">
+                    Les publicités vont démarrer après votre interaction
+                  </p>
+                  <button
+                    onClick={() => {
+                      setHasUserInteracted(true);
+                      playNextAd();
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors"
+                  >
+                    Commencer la lecture
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Bouton skip amélioré pour mobile */}
             {showSkipButton && (
               <button
                 onClick={skipAd}
-                className="absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
+                className={`${
+                  isMobileDevice
+                    ? "absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/90 text-white px-8 py-4 rounded-lg text-xl font-bold z-40 border-2 border-white/20"
+                    : "absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
+                }`}
               >
-                Passer la pub
+                {isMobileDevice ? "⏭️ Passer la pub" : "Passer la pub"}
               </button>
             )}
           </div>
