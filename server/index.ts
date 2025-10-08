@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { registerRoutes } from "./routes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,9 @@ app.use(express.json());
 
 // Servir les fichiers statiques
 app.use(express.static(path.join(__dirname, "../dist/public")));
+
+// Enregistrer les routes API
+registerRoutes(app);
 
 // Route catch-all pour React Router
 app.get('*', (req, res) => {
