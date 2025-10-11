@@ -8,6 +8,7 @@ import SubscriptionBanner from "@/components/subscription-banner";
 import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
+import PWAInstallButton from "@/components/pwa-install-button";
 
 export default function Home() {
   const { shouldShowAds } = useAuthCheck();
@@ -129,6 +130,9 @@ export default function Home() {
       
       {/* Categories */}
       <CategoryGrid />
+      
+      {/* PWA Install Button */}
+      <PWAInstallButton />
     </div>
   );
 }

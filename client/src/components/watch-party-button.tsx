@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/auth-context';
 import { Button } from "@/components/ui/button";
-import { Users } from 'lucide-react';
+import { Users, Play, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface WatchPartyButtonProps {
   videoUrl: string;
@@ -19,6 +20,7 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
   const { user, isAuthenticated, token } = useAuth();
   const [, setLocation] = useLocation();
   const [isCreating, setIsCreating] = useState(false);
+  const isMobile = useIsMobile();
 
   // Fonction pour obtenir le token CSRF
   const getCSRFToken = async (): Promise<string | null> => {
@@ -87,8 +89,8 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
 
       const data = await response.json();
       
-      // Naviguer vers la Watch Party dans le même onglet au lieu d'ouvrir une nouvelle fenêtre
-      const watchPartyUrl = `/watch-party/${data.roomId}`;
+      // Naviguer vers la Watch Party dans le même onglet avec les paramètres de la vidéo
+      const watchPartyUrl = `/watch-party/${data.roomId}?videoUrl=${encodeURIComponent(videoUrl)}&title=${encodeURIComponent(title)}`;
       setLocation(watchPartyUrl);
       
       // Callback optionnel
@@ -96,7 +98,7 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
       
       toast({
         title: "Succès",
-        description: "Watch Party créée avec succès !",
+        description: "Watch Party créée avec succès ! Partagez le lien avec vos amis.",
       });
     } catch (error: any) {
       console.error('Erreur lors de la création de la Watch Party:', error);
@@ -119,10 +121,19 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
     <Button
       onClick={createWatchParty}
       disabled={isCreating}
-      className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+      className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
     >
-      <Users className="w-5 h-5" />
-      {isCreating ? 'Création...' : 'Watch Party'}
+      {isCreating ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">{isMobile ? 'Création...' : 'Création en cours...'}</span>
+        </>
+      ) : (
+        <>
+          <Users className="w-4 h-4" />
+          <span className="text-sm">{isMobile ? 'Watch Party' : 'Créer une Watch Party'}</span>
+        </>
+      )}
     </Button>
   );
 };

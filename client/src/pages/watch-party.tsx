@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useAuth } from '../contexts/auth-context';
 import WatchParty from '../components/watch-party';
 import ZuploadVideoPlayer from '../components/zupload-video-player';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users as UsersIcon } from 'lucide-react';
+import { ArrowLeft, Users as UsersIcon, Info } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const WatchPartyPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -16,7 +18,12 @@ const WatchPartyPage: React.FC = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [syncVideoTime, setSyncVideoTime] = useState<number | undefined>(undefined);
   const [syncVideoAction, setSyncVideoAction] = useState<'play' | 'pause' | 'seek' | undefined>(undefined);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [initialVideoUrl, setInitialVideoUrl] = useState<string | null>(null);
+  const [initialTitle, setInitialTitle] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
+  // Extraire les paramètres de l'URL pour obtenir la vidéo initiale
   useEffect(() => {
     if (!user) {
       setLocation('/login');
@@ -26,6 +33,27 @@ const WatchPartyPage: React.FC = () => {
     // Si on arrive avec un roomId dans l'URL, on pourrait charger les détails de la salle
     if (roomId) {
       console.log('Room ID from URL:', roomId);
+    }
+    
+    // Afficher les instructions la première fois
+    const hasSeenInstructions = localStorage.getItem('watchPartyInstructionsSeen');
+    if (hasSeenInstructions) {
+      setShowInstructions(false);
+    }
+    
+    // Vérifier s'il y a des paramètres dans l'URL pour la vidéo initiale
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialUrl = urlParams.get('videoUrl');
+    const initialTitle = urlParams.get('title');
+    
+    if (initialUrl) {
+      setInitialVideoUrl(decodeURIComponent(initialUrl));
+      setVideoUrl(decodeURIComponent(initialUrl));
+    }
+    
+    if (initialTitle) {
+      setInitialTitle(decodeURIComponent(initialTitle));
+      setTitle(decodeURIComponent(initialTitle));
     }
   }, [user, roomId, setLocation]);
 
@@ -74,6 +102,18 @@ const WatchPartyPage: React.FC = () => {
     }, 100);
   };
 
+  const closeInstructions = () => {
+    setShowInstructions(false);
+    localStorage.setItem('watchPartyInstructionsSeen', 'true');
+  };
+
+  // Mémoriser les gestionnaires pour éviter les re-rendus inutiles
+  const videoControlHandlers = useMemo(() => ({
+    handleVideoControl,
+    handleVideoTimeUpdate,
+    handleSyncVideoControl
+  }), []);
+
   if (!user) {
     return null; // Redirection en cours
   }
@@ -91,7 +131,10 @@ const WatchPartyPage: React.FC = () => {
             <ArrowLeft className="w-5 h-5 mr-2" />
             Retour
           </Button>
-          <h1 className="text-xl font-bold">Watch Party</h1>
+          <div className="flex items-center gap-2">
+            <UsersIcon className="w-6 h-6 text-purple-500" />
+            <h1 className="text-xl font-bold">Watch Party</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden sm:block text-sm text-gray-400">
@@ -100,7 +143,35 @@ const WatchPartyPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      {/* Instructions pour les nouveaux utilisateurs */}
+      {showInstructions && (
+        <div className="m-4 p-4 bg-purple-900/30 border border-purple-700 rounded-lg">
+          <div className="flex justify-between items-start">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-purple-300 mb-1">Comment utiliser Watch Party</h3>
+                <ul className="text-sm text-gray-300 space-y-1">
+                  <li>• En tant qu'hôte, vous contrôlez la lecture de la vidéo</li>
+                  <li>• Les autres participants voient la vidéo synchronisée en temps réel</li>
+                  <li>• Utilisez le chat pour communiquer avec les autres participants</li>
+                  <li>• Partagez le code de la salle avec vos amis pour qu'ils puissent rejoindre</li>
+                </ul>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={closeInstructions}
+              className="text-gray-400 hover:text-white"
+            >
+              Fermer
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex flex-col ${isMobile ? 'h-[calc(100vh-160px)]' : 'h-[calc(100vh-120px)]'} lg:flex-row`}>
         {/* Zone principale avec la vidéo */}
         <div className="flex-1 flex flex-col">
           {/* Lecteur vidéo */}
@@ -110,9 +181,16 @@ const WatchPartyPage: React.FC = () => {
                 videoUrl={videoUrl}
                 title={title}
                 onVideoEnd={() => console.log('Video ended')}
-                onVideoError={(error) => console.error('Video error:', error)}
+                onVideoError={(error) => {
+                  console.error('Video error:', error);
+                  toast({
+                    title: "Erreur vidéo",
+                    description: "Impossible de charger la vidéo. Veuillez réessayer.",
+                    variant: "destructive",
+                  });
+                }}
                 onNextEpisode={() => console.log('Next episode')}
-                onVideoTimeUpdate={handleVideoTimeUpdate}
+                onVideoTimeUpdate={videoControlHandlers.handleVideoTimeUpdate}
                 syncVideoTime={syncVideoTime}
                 syncVideoAction={syncVideoAction}
               />
@@ -140,14 +218,14 @@ const WatchPartyPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Panneau Watch Party */}
-        <div className="w-96 border-l border-gray-800 bg-gray-900">
+        {/* Panneau Watch Party - en bas sur mobile, à droite sur desktop */}
+        <div className={`${isMobile ? 'h-1/3 border-t' : 'lg:w-96 lg:border-l'} border-gray-800 bg-gray-900`}>
           <WatchParty
             videoUrl={videoUrl}
             title={title}
-            onVideoControl={handleSyncVideoControl}
+            onVideoControl={videoControlHandlers.handleSyncVideoControl}
             onVideoUrlChange={setVideoUrl}
-            onVideoTimeUpdate={handleVideoTimeUpdate}
+            onVideoTimeUpdate={videoControlHandlers.handleVideoTimeUpdate}
             isVideoPlaying={isVideoPlaying}
             videoCurrentTime={currentVideoTime}
           />

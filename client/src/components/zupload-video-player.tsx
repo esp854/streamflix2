@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Users, Play, Pause } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import WatchPartyButton from './watch-party-button';
+import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -62,6 +64,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
   const userPausedRef = useRef(false); // Pour détecter les interruptions
   const lastTimeUpdateRef = useRef<number>(0); // Pour limiter les mises à jour de temps
+  const [isPlaying, setIsPlaying] = useState(false); // État de lecture local
+  const isMobile = useIsMobile();
 
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -512,6 +516,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (!isAdPlaying) {
       setIsLoading(false);
       setError(null);
+      setIsPlaying(true);
+    }
+  };
+
+  // Handle video pause
+  const handleVideoPause = () => {
+    if (!isAdPlaying) {
+      setIsPlaying(false);
     }
   };
 
@@ -519,6 +531,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error('Erreur de chargement de la vidéo:', e);
     setIsLoading(false);
+    setIsPlaying(false);
     // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
     if (isMobileDevice && videoUrl.includes('embed')) {
       setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
@@ -571,6 +584,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle ad for non-authenticated users
   useEffect(() => {
+    // Mettre à jour l'état showAd en fonction de l'authentification
+    setShowAd(!isAuthenticated && !adSkipped);
+    
     if (!isAuthenticated && !adSkipped) {
       setShowAd(true);
       loadVastAd();
@@ -608,27 +624,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       };
     } else {
       setShowAd(false);
-      // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
-      if (!isAuthenticated || adSkipped) {
-        setIsLoading(true);
-        // Précharger la vidéo immédiatement pour les utilisateurs authentifiés
-        setTimeout(() => {
-          preloadMainVideo();
-        }, 100);
-        
-        // Pour les URLs d'iframe, masquer rapidement le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-          setTimeout(() => {
-            setIsLoading(false);
-          }, 1000);
-        }
-        // Sur mobile, on masque le loader immédiatement pour les utilisateurs authentifiés
-        else if (isMobileDevice) {
-          setIsLoading(false);
-        }
-      }
     }
-  }, [isAuthenticated, adSkipped]);
+  }, [isAuthenticated, adSkipped, loadVastAd, preloadMainVideo, isMobileDevice, videoUrl]);
 
   const skipAd = () => {
     console.log('Passage des publicités demandé par l\'utilisateur');
@@ -741,16 +738,51 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       video.currentTime = syncVideoTime;
       video.play().catch(err => {
         console.log('Erreur de lecture synchronisée:', err);
+        toast({
+          title: "Erreur de synchronisation",
+          description: "Impossible de synchroniser la lecture vidéo",
+          variant: "destructive",
+        });
       });
+      setIsPlaying(true);
     } else if (syncVideoAction === 'pause' && syncVideoTime !== undefined) {
       // Définir le temps de la vidéo et la mettre en pause
       video.currentTime = syncVideoTime;
       video.pause();
+      setIsPlaying(false);
     } else if (syncVideoAction === 'seek' && syncVideoTime !== undefined) {
       // Définir le temps de la vidéo
       video.currentTime = syncVideoTime;
     }
   }, [syncVideoAction, syncVideoTime]);
+
+  // Fonctions de contrôle pour la Watch Party
+  const handlePlay = () => {
+    if (mainVideoRef.current) {
+      mainVideoRef.current.play().catch(err => {
+        console.error('Erreur de lecture:', err);
+        toast({
+          title: "Erreur de lecture",
+          description: "Impossible de lire la vidéo",
+          variant: "destructive",
+        });
+      });
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (mainVideoRef.current) {
+      mainVideoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleSeek = (time: number) => {
+    if (mainVideoRef.current) {
+      mainVideoRef.current.currentTime = time;
+    }
+  };
 
   return (
     <div 
@@ -783,6 +815,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 className="w-full h-full touch-manipulation"
                 onLoad={handleVideoLoad}
                 onPlaying={handleVideoPlaying}
+                onPause={handleVideoPause}
                 onError={handleVideoError}
                 onEnded={() => {
                   if (isAdPlaying) {
@@ -928,20 +961,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm font-medium"
               >
-                <RotateCw className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
+                <RotateCw className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline">Passer l'intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm font-medium"
               >
-                <SkipForward className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
+                <SkipForward className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline">Épisode suivant</span>
               </button>
             )}
           </div>
@@ -956,10 +989,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={onPreviousEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
                 disabled={currentEpisode <= 1}
               >
-                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
               </Button>
             )}
           </div>
@@ -970,52 +1003,78 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={onNextEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
                 disabled={currentEpisode >= totalEpisodes}
               >
-                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
               </Button>
             )}
           </div>
         </div>
+        
+        {/* Center Play/Pause Button - Visible on hover/touch */}
+        {(showControls || !isPlaying) && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+            <Button
+              onClick={isPlaying ? handlePause : handlePlay}
+              size="icon"
+              className="w-16 h-16 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm"
+            >
+              {isPlaying ? (
+                <Pause className="w-8 h-8" />
+              ) : (
+                <Play className="w-8 h-8" />
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Main video player - Handle both direct video URLs and iframe embeds */}
+      {/* Main video player - Handle both direct video files and iframe embeds */}
       {!showAd && (
         <>
           {/* For iframe embeds (Zupload) - Mobile optimized */}
           {videoUrl.includes('embed') ? (
-            <iframe
-              src={videoUrl}
-              className="w-full h-full touch-manipulation"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              title={title}
-              loading="lazy"
-              onLoad={() => {
-                console.log('Iframe Zupload chargée');
-                setIsLoading(false);
-                setError(null);
-              }}
-              onError={(e) => {
-                console.error('Erreur de chargement de l\'iframe Zupload:', e);
-                setIsLoading(false);
-                // Sur mobile, on affiche un message plus spécifique
-                if (isMobileDevice) {
-                  setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
-                } else {
-                  setError('Impossible de charger la vidéo');
-                }
-                onVideoError?.('Impossible de charger la vidéo');
-              }}
-              // Ajout de propriétés pour améliorer la compatibilité mobile
-              style={{ 
-                width: '100%', 
-                height: '100%',
-                minHeight: isMobileDevice ? '200px' : 'auto'
-              }}
-            />
+            <div className="relative w-full h-full">
+              <iframe
+                src={videoUrl}
+                className="w-full h-full touch-manipulation"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                title={title}
+                loading="lazy"
+                onLoad={() => {
+                  console.log('Iframe Zupload chargée');
+                  setIsLoading(false);
+                  setError(null);
+                }}
+                onError={(e) => {
+                  console.error('Erreur de chargement de l\'iframe Zupload:', e);
+                  setIsLoading(false);
+                  // Sur mobile, on affiche un message plus spécifique
+                  if (isMobileDevice) {
+                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
+                  } else {
+                    setError('Impossible de charger la vidéo');
+                  }
+                  onVideoError?.('Impossible de charger la vidéo');
+                }}
+                // Ajout de propriétés pour améliorer la compatibilité mobile
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  minHeight: isMobileDevice ? '200px' : 'auto'
+                }}
+              />
+              {/* Overlay transparent pour empêcher l'accès au bouton de téléchargement */}
+              <div className="absolute inset-0 z-10 pointer-events-none">
+                <div className="absolute top-0 right-0 w-24 h-16 pointer-events-auto" 
+                     style={{ backgroundColor: 'transparent' }}
+                     title="Téléchargement désactivé">
+                </div>
+              </div>
+            </div>
           ) : (
             // For direct video files
             <video
@@ -1027,6 +1086,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               className="w-full h-full touch-manipulation"
               onLoad={handleVideoLoad}
               onPlaying={handleVideoPlaying}
+              onPause={handleVideoPause}
               onError={handleVideoError}
               onEnded={onVideoEnd}
               onTimeUpdate={handleVideoTimeUpdate}
