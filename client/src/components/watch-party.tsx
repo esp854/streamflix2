@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, MessageCircle, Share2, Play, Pause, SkipForward } from 'lucide-react';
+import { Users, MessageCircle, Share2, Play, Pause, SkipForward, Heart, Laugh, ThumbsUp, Angry } from 'lucide-react';
 
 // Interfaces pour les événements Socket.IO
 interface WatchPartyJoinedData {
@@ -279,6 +279,12 @@ const WatchParty: React.FC<WatchPartyProps> = ({
     setNewMessage('');
   };
 
+  const sendReaction = (emoji: string) => {
+    if (!socket) return;
+
+    socket.emit('send-message', { message: emoji });
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       sendMessage();
@@ -435,6 +441,32 @@ const WatchParty: React.FC<WatchPartyProps> = ({
                       </div>
                     ))}
                   </div>
+                  {/* Sync controls for host */}
+                  {isHost && (
+                    <div className="mt-3 pt-3 border-t">
+                      <h4 className="text-xs font-medium mb-2 text-gray-700">Contrôles de synchronisation</h4>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePlay(0)}
+                          className="flex-1 text-xs"
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Play
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePause(0)}
+                          className="flex-1 text-xs"
+                        >
+                          <Pause className="w-3 h-3 mr-1" />
+                          Pause
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Messages */}
@@ -452,8 +484,42 @@ const WatchParty: React.FC<WatchPartyProps> = ({
                   </div>
                 </ScrollArea>
 
-                {/* Input message */}
+                {/* Emoji reactions */}
                 <div className="p-3 border-t">
+                  <div className="flex gap-1 mb-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => sendReaction('❤️')}
+                      className="p-1 h-8 w-8"
+                    >
+                      <Heart className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => sendReaction('😂')}
+                      className="p-1 h-8 w-8"
+                    >
+                      <Laugh className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => sendReaction('👍')}
+                      className="p-1 h-8 w-8"
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => sendReaction('😠')}
+                      className="p-1 h-8 w-8"
+                    >
+                      <Angry className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <div className="flex gap-2">
                     <Input
                       value={newMessage}

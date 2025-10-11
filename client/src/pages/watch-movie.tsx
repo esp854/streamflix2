@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link, useLocation } from "wouter";
-import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Share2, CreditCard } from "lucide-react";
+import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Share2, CreditCard, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import ZuploadVideoPlayer from "@/components/zupload-video-player";
+import WatchParty from "@/components/watch-party";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 declare global {
@@ -52,6 +53,12 @@ export default function WatchMovie() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+
+  // Watch Party state
+  const [isWatchPartyActive, setIsWatchPartyActive] = useState(false);
+  const [watchPartyRoomId, setWatchPartyRoomId] = useState<string>('');
+  const [isWatchPartyHost, setIsWatchPartyHost] = useState(false);
+  const [showWatchPartyPanel, setShowWatchPartyPanel] = useState(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -466,6 +473,37 @@ export default function WatchMovie() {
     setVideoError(error);
   }, []);
 
+  // Watch Party functions
+  const handleVideoControl = useCallback((action: 'play' | 'pause' | 'seek', data?: any) => {
+    console.log('Watch Party video control:', action, data);
+    // This will be handled by the WatchParty component
+  }, []);
+
+  const handleVideoUrlChange = useCallback((url: string) => {
+    console.log('Watch Party video URL change:', url);
+    // This will be handled by the WatchParty component
+  }, []);
+
+  const toggleWatchParty = useCallback(() => {
+    if (isWatchPartyActive) {
+      // Leave watch party
+      setIsWatchPartyActive(false);
+      setWatchPartyRoomId('');
+      setIsWatchPartyHost(false);
+      setShowWatchPartyPanel(false);
+    } else {
+      // Start watch party
+      setIsWatchPartyActive(true);
+      setShowWatchPartyPanel(true);
+      // The WatchParty component will handle room creation
+    }
+  }, [isWatchPartyActive]);
+
+  // Update showWatchPartyPanel when isWatchPartyActive changes
+  useEffect(() => {
+    setShowWatchPartyPanel(isWatchPartyActive);
+  }, [isWatchPartyActive]);
+
   // Format time for display
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -560,10 +598,26 @@ export default function WatchMovie() {
         {/* Zupload Video Player - Direct integration */}
         {isZuploadVideo && videoUrl ? (
           <div className="w-full h-full">
-            <ZuploadVideoPlayer 
+            <ZuploadVideoPlayer
               videoUrl={videoUrl}
               title={movieDetails.movie.title}
               onVideoError={handleVideoError}
+              isWatchParty={isWatchPartyActive}
+              isHost={isWatchPartyHost}
+              onVideoPlay={(time) => handleVideoControl('play', { currentTime: time })}
+              onVideoPause={(time) => handleVideoControl('pause', { currentTime: time })}
+              onVideoSeek={(time) => handleVideoControl('seek', { currentTime: time })}
+              showWatchPartyPanel={showWatchPartyPanel}
+              watchPartyComponent={
+                isWatchPartyActive ? (
+                  <WatchParty
+                    videoUrl={videoUrl}
+                    title={movieDetails.movie.title}
+                    onVideoControl={handleVideoControl}
+                    onVideoUrlChange={handleVideoUrlChange}
+                  />
+                ) : undefined
+              }
             />
           </div>
         ) : (
@@ -639,6 +693,18 @@ export default function WatchMovie() {
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>
+                {/* Watch Party Button */}
+                {isZuploadVideo && (
+                  <Button
+                    onClick={toggleWatchParty}
+                    variant="ghost"
+                    size="sm"
+                    className={`text-white hover:bg-white/20 ${isWatchPartyActive ? 'bg-blue-600' : ''}`}
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    {isWatchPartyActive ? 'Quitter' : 'Watch Party'}
+                  </Button>
+                )}
                 {/* Removed download button for Zupload videos */}
                 {!isZuploadVideo && (
                   <Button
