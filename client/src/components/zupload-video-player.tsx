@@ -976,8 +976,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 title="Téléchargement désactivé"
                 style={{
                   position: 'absolute',
-                  bottom: '1.25rem',
-                  right: '1.25rem',
+                  bottom: '1.5rem',
+                  right: '1.5rem',
                   width: '2rem',
                   height: '2rem',
                   backgroundColor: 'rgba(0, 0, 0, 0.7)',
