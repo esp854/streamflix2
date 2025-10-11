@@ -966,7 +966,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div
-                className="absolute bottom-4 right-4 w-12 h-12 bg-black/70 backdrop-blur-sm rounded-lg z-50 pointer-events-auto cursor-not-allowed flex items-center justify-center"
+                className="absolute bottom-5 right-5 w-8 h-8 bg-black/70 backdrop-blur-sm rounded-full z-50 pointer-events-auto cursor-not-allowed flex items-center justify-center"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -976,20 +976,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 title="Téléchargement désactivé"
                 style={{
                   position: 'absolute',
-                  bottom: '1rem',
-                  right: '1rem',
-                  width: '3rem',
-                  height: '3rem',
+                  bottom: '1.25rem',
+                  right: '1.25rem',
+                  width: '2rem',
+                  height: '2rem',
                   backgroundColor: 'rgba(0, 0, 0, 0.7)',
                   backdropFilter: 'blur(4px)',
-                  borderRadius: '0.5rem',
+                  borderRadius: '9999px',
                   zIndex: 50,
                   pointerEvents: 'auto',
                   cursor: 'not-allowed'
                 }}
               >
-                <div className="text-white text-lg font-bold" style={{ fontSize: '1.125rem' }}>🔒</div>
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                <div className="text-white text-sm font-bold" style={{ fontSize: '0.875rem' }}>🔒</div>
+                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-1 py-0.5 rounded whitespace-nowrap">
                   Téléchargement désactivé
                 </div>
               </div>
