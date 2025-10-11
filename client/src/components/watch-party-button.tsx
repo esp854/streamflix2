@@ -119,9 +119,9 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
     <Button
       onClick={createWatchParty}
       disabled={isCreating}
-      className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
+      className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
     >
-      <Users className="w-4 h-4" />
+      <Users className="w-5 h-5" />
       {isCreating ? 'Création...' : 'Watch Party'}
     </Button>
   );

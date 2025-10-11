@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/auth-context';
 import WatchParty from '../components/watch-party';
 import ZuploadVideoPlayer from '../components/zupload-video-player';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Users as UsersIcon } from 'lucide-react';
 
 const WatchPartyPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -79,19 +79,24 @@ const WatchPartyPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gray-900 text-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-800">
+      <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900 sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             onClick={() => window.history.back()}
-            className="text-white hover:bg-gray-800"
+            className="text-gray-300 hover:text-white hover:bg-gray-800"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Retour
           </Button>
           <h1 className="text-xl font-bold">Watch Party</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block text-sm text-gray-400">
+            Connecté en tant que <span className="text-purple-400">{user.username}</span>
+          </div>
         </div>
       </div>
 
@@ -99,7 +104,7 @@ const WatchPartyPage: React.FC = () => {
         {/* Zone principale avec la vidéo */}
         <div className="flex-1 flex flex-col">
           {/* Lecteur vidéo */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative bg-black">
             {videoUrl ? (
               <ZuploadVideoPlayer
                 videoUrl={videoUrl}
@@ -112,15 +117,20 @@ const WatchPartyPage: React.FC = () => {
                 syncVideoAction={syncVideoAction}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                <div className="text-center p-8">
-                  <h2 className="text-2xl font-bold mb-4">Choisissez une vidéo</h2>
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+                <div className="text-center p-8 max-w-md">
+                  <div className="bg-gray-800 p-4 rounded-full inline-block mb-6">
+                    <div className="bg-purple-600 p-3 rounded-full">
+                      <UsersIcon className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <h2 className="text-2xl font-bold mb-3 text-white">Bienvenue dans votre Watch Party</h2>
                   <p className="text-gray-400 mb-6">
-                    Sélectionnez un film ou une série pour commencer votre Watch Party
+                    Commencez par sélectionner une vidéo dans le panneau de droite ou demandez à l'hôte de partager une vidéo.
                   </p>
                   <Button
                     onClick={() => setLocation('/')}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium"
                   >
                     Explorer le catalogue
                   </Button>

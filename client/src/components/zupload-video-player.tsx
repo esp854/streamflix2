@@ -945,6 +945,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               </button>
             )}
           </div>
+
         </div>
         
         {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
