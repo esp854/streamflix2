@@ -8,7 +8,6 @@ import SubscriptionBanner from "@/components/subscription-banner";
 import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
-import { MovieCategory } from "@/components/movie-category";
 
 export default function Home() {
   const { shouldShowAds } = useAuthCheck();
@@ -35,14 +34,6 @@ export default function Home() {
     timers.push(setTimeout(() => {
       setActiveSections(prev => [...prev, 'horror']);
     }, 700));
-    
-    timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'upcoming']);
-    }, 900));
-    
-    timers.push(setTimeout(() => {
-      setActiveSections(prev => [...prev, 'now_playing']);
-    }, 1100));
     
     return () => {
       timers.forEach(timer => clearTimeout(timer));
@@ -81,23 +72,6 @@ export default function Home() {
     enabled: activeSections.includes('horror'), // Only fetch when section is active
   });
 
-  // New queries for upcoming and now playing movies
-  const { data: upcomingMovies, isLoading: upcomingLoading, isError: upcomingError } = useQuery({
-    queryKey: ["/api/tmdb/movie/upcoming"],
-    queryFn: () => tmdbService.getUpcomingMovies(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: activeSections.includes('upcoming'), // Only fetch when section is active
-  });
-
-  const { data: nowPlayingMovies, isLoading: nowPlayingLoading, isError: nowPlayingError } = useQuery({
-    queryKey: ["/api/tmdb/movie/now_playing"],
-    queryFn: () => tmdbService.getNowPlayingMovies(),
-    retry: 1,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: activeSections.includes('now_playing'), // Only fetch when section is active
-  });
-
   return (
     <div className="min-h-screen bg-background" data-testid="home-page">
       {/* Hero Section */}
@@ -126,22 +100,6 @@ export default function Home() {
           title="Films Populaires"
           movies={popularMovies || []}
           isLoading={popularLoading}
-        />
-        
-        <MovieCategory
-          title="À Venir"
-          movies={upcomingMovies || []}
-          isLoading={upcomingLoading}
-          isError={upcomingError}
-          viewAllHref="/movies/upcoming"
-        />
-        
-        <MovieCategory
-          title="En Salle"
-          movies={nowPlayingMovies || []}
-          isLoading={nowPlayingLoading}
-          isError={nowPlayingError}
-          viewAllHref="/movies/now-playing"
         />
         
         {activeSections.includes('action') && (

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import WatchPartyButton from './watch-party-button';
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -918,6 +919,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           </div>
           
           <div className="flex space-x-1">
+            {/* Bouton Watch Party */}
+            <WatchPartyButton 
+              videoUrl={videoUrl} 
+              title={title} 
+            />
+            
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
