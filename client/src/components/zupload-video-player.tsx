@@ -1302,11 +1302,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
               />
-              {/* Overlay to prevent download button action */}
+              {/* Overlay to prevent download button action - targeted at download button area */}
               <div
-                className="absolute bottom-0 left-0 right-0 h-16 bg-transparent z-30 pointer-events-auto"
+                className="absolute bottom-0 right-0 w-24 h-12 bg-transparent z-30 pointer-events-auto"
                 onClick={(e) => e.preventDefault()}
                 aria-hidden="true"
+                title="Téléchargement désactivé"
               />
             </>
           ) : (
