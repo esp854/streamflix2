@@ -932,37 +932,45 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         <>
           {/* For iframe embeds (Zupload) - Mobile optimized */}
           {videoUrl.includes('embed') ? (
-            <iframe
-              src={videoUrl}
-              className="w-full h-full touch-manipulation"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              title={title}
-              loading="lazy"
-              onLoad={() => {
-                console.log('Iframe Zupload chargée');
-                setIsLoading(false);
-                setError(null);
-              }}
-              onError={(e) => {
-                console.error('Erreur de chargement de l\'iframe Zupload:', e);
-                setIsLoading(false);
-                // Sur mobile, on affiche un message plus spécifique
-                if (isMobileDevice) {
-                  setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
-                } else {
-                  setError('Impossible de charger la vidéo');
-                }
-                onVideoError?.('Impossible de charger la vidéo');
-              }}
-              // Ajout de propriétés pour améliorer la compatibilité mobile
-              style={{ 
-                width: '100%', 
-                height: '100%',
-                minHeight: isMobileDevice ? '200px' : 'auto'
-              }}
-            />
+            <>
+              <iframe
+                src={videoUrl}
+                className="w-full h-full touch-manipulation"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+                title={title}
+                loading="lazy"
+                onLoad={() => {
+                  console.log('Iframe Zupload chargée');
+                  setIsLoading(false);
+                  setError(null);
+                }}
+                onError={(e) => {
+                  console.error('Erreur de chargement de l\'iframe Zupload:', e);
+                  setIsLoading(false);
+                  // Sur mobile, on affiche un message plus spécifique
+                  if (isMobileDevice) {
+                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
+                  } else {
+                    setError('Impossible de charger la vidéo');
+                  }
+                  onVideoError?.('Impossible de charger la vidéo');
+                }}
+                // Ajout de propriétés pour améliorer la compatibilité mobile
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  minHeight: isMobileDevice ? '200px' : 'auto'
+                }}
+              />
+              {/* Overlay to prevent download button action */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-16 bg-transparent z-30 pointer-events-auto"
+                onClick={(e) => e.preventDefault()}
+                aria-hidden="true"
+              />
+            </>
           ) : (
             // For direct video files
             <video
