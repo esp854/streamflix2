@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useAuth } from '../contexts/auth-context';
-import WatchParty from '../components/watch-party';
+import WatchParty from '../components/watch-party-improved';
 import ZuploadVideoPlayer from '../components/zupload-video-player';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
 
 const WatchPartyPage: React.FC = () => {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId: urlRoomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [videoUrl, setVideoUrl] = useState('');
   const [title, setTitle] = useState('Watch Party');
+  const [isHost, setIsHost] = useState(false);
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoPlayerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!user) {
@@ -22,10 +24,10 @@ const WatchPartyPage: React.FC = () => {
     }
 
     // Si on arrive avec un roomId dans l'URL, on pourrait charger les détails de la salle
-    if (roomId) {
-      console.log('Room ID from URL:', roomId);
+    if (urlRoomId) {
+      console.log('Room ID from URL:', urlRoomId);
     }
-  }, [user, roomId, setLocation]);
+  }, [user, urlRoomId, setLocation]);
 
   const handleVideoControl = (action: 'play' | 'pause' | 'seek', data?: any) => {
     console.log('Video control:', action, data);
@@ -33,21 +35,45 @@ const WatchPartyPage: React.FC = () => {
     switch (action) {
       case 'play':
         setIsVideoPlaying(true);
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
       case 'pause':
         setIsVideoPlaying(false);
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
       case 'seek':
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
+    }
+  };
+
+  const handleVideoPlay = (time: number) => {
+    // Cette fonction est appelée par le lecteur vidéo quand l'utilisateur appuie sur play
+    if (isHost) {
+      // Si l'utilisateur est l'hôte, envoyer la synchronisation
+      // handleVideoControl('play', { currentTime: time });
+    }
+  };
+
+  const handleVideoPause = (time: number) => {
+    // Cette fonction est appelée par le lecteur vidéo quand l'utilisateur appuie sur pause
+    if (isHost) {
+      // Si l'utilisateur est l'hôte, envoyer la synchronisation
+      // handleVideoControl('pause', { currentTime: time });
+    }
+  };
+
+  const handleVideoSeek = (time: number) => {
+    // Cette fonction est appelée par le lecteur vidéo quand l'utilisateur cherche dans la vidéo
+    if (isHost) {
+      // Si l'utilisateur est l'hôte, envoyer la synchronisation
+      // handleVideoControl('seek', { currentTime: time });
     }
   };
 
@@ -79,11 +105,19 @@ const WatchPartyPage: React.FC = () => {
           <div className="flex-1 relative">
             {videoUrl ? (
               <ZuploadVideoPlayer
+                ref={videoPlayerRef}
                 videoUrl={videoUrl}
                 title={title}
                 onVideoEnd={() => console.log('Video ended')}
                 onVideoError={(error) => console.error('Video error:', error)}
                 onNextEpisode={() => console.log('Next episode')}
+                isWatchParty={true}
+                isHost={isHost}
+                onVideoPlay={handleVideoPlay}
+                onVideoPause={handleVideoPause}
+                onVideoSeek={handleVideoSeek}
+                watchPartyCurrentTime={currentVideoTime}
+                watchPartyIsPlaying={isVideoPlaying}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -111,6 +145,8 @@ const WatchPartyPage: React.FC = () => {
             title={title}
             onVideoControl={handleVideoControl}
             onVideoUrlChange={setVideoUrl}
+            isHost={isHost}
+            setIsHost={setIsHost}
           />
         </div>
       </div>

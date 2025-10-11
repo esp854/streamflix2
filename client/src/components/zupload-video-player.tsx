@@ -523,6 +523,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setIsLoading(false);
       setError(null);
     }
+    handlePlay(); // Ajout pour la watch party
+  };
+
+  // Handle video pause
+  const handleVideoPause = () => {
+    handlePause(); // Ajout pour la watch party
+  };
+
+  // Handle video seeked
+  const handleVideoSeeked = () => {
+    handleSeek(); // Ajout pour la watch party
   };
 
   // Handle video error
@@ -725,6 +736,46 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       userPausedRef.current = false;
     }
   }, [showAd]);
+
+  // Effet pour synchroniser la vidéo avec la watch party
+  useEffect(() => {
+    if (!isWatchParty || !mainVideoRef.current) return;
+
+    const videoEl = mainVideoRef.current;
+
+    // Synchroniser le temps de la vidéo
+    if (watchPartyCurrentTime !== undefined && Math.abs(videoEl.currentTime - watchPartyCurrentTime) > 1) {
+      videoEl.currentTime = watchPartyCurrentTime;
+    }
+
+    // Synchroniser l'état de lecture/pause
+    if (watchPartyIsPlaying !== undefined) {
+      if (watchPartyIsPlaying && videoEl.paused) {
+        videoEl.play().catch(err => console.error('Erreur de lecture:', err));
+      } else if (!watchPartyIsPlaying && !videoEl.paused) {
+        videoEl.pause();
+      }
+    }
+  }, [isWatchParty, watchPartyCurrentTime, watchPartyIsPlaying]);
+
+  // Gestionnaires d'événements pour la watch party
+  const handlePlay = () => {
+    if (isWatchParty && isHost && onVideoPlay) {
+      onVideoPlay(mainVideoRef.current?.currentTime || 0);
+    }
+  };
+
+  const handlePause = () => {
+    if (isWatchParty && isHost && onVideoPause) {
+      onVideoPause(mainVideoRef.current?.currentTime || 0);
+    }
+  };
+
+  const handleSeek = () => {
+    if (isWatchParty && isHost && onVideoSeek) {
+      onVideoSeek(mainVideoRef.current?.currentTime || 0);
+    }
+  };
 
   // If watch party is active, use split layout
   if (isWatchParty) {
@@ -1297,7 +1348,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div
-                className="absolute bottom-0 right-0 w-24 h-12 bg-transparent z-50 pointer-events-auto cursor-not-allowed"
+                className="absolute bottom-4 right-4 w-12 h-12 bg-transparent z-50 pointer-events-auto cursor-not-allowed"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1320,6 +1371,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onPlaying={handleVideoPlaying}
               onError={handleVideoError}
               onEnded={onVideoEnd}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onSeeked={handleSeek}
               playsInline
               // Ajout de propriétés pour améliorer la compatibilité mobile
               style={{
