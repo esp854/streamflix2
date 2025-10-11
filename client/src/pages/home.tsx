@@ -128,25 +128,21 @@ export default function Home() {
           isLoading={popularLoading}
         />
         
-        {activeSections.includes('upcoming') && (
-          <MovieCategory
-            title="À Venir"
-            movies={upcomingMovies || []}
-            isLoading={upcomingLoading}
-            isError={upcomingError}
-            viewAllHref="/movies/upcoming"
-          />
-        )}
+        <MovieCategory
+          title="À Venir"
+          movies={upcomingMovies || []}
+          isLoading={upcomingLoading}
+          isError={upcomingError}
+          viewAllHref="/movies/upcoming"
+        />
         
-        {activeSections.includes('now_playing') && (
-          <MovieCategory
-            title="En Salle"
-            movies={nowPlayingMovies || []}
-            isLoading={nowPlayingLoading}
-            isError={nowPlayingError}
-            viewAllHref="/movies/now-playing"
-          />
-        )}
+        <MovieCategory
+          title="En Salle"
+          movies={nowPlayingMovies || []}
+          isLoading={nowPlayingLoading}
+          isError={nowPlayingError}
+          viewAllHref="/movies/now-playing"
+        />
         
         {activeSections.includes('action') && (
           <MovieRow
