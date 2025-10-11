@@ -36,27 +36,10 @@ export function MovieCategory({ title, movies, isLoading, isError, viewAllHref }
     );
   }
 
-  // Afficher un message d'erreur ou d'information si nécessaire
-  if (isError) {
-    return (
-      <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={viewAllHref}>
-              Tout voir
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-        <div className="text-center py-4 text-muted-foreground">
-          Erreur de chargement des films
-        </div>
-      </section>
-    );
+  if (isError || !movies || movies.length === 0) {
+    return null;
   }
 
-  // Toujours afficher la section même s'il n'y a pas de films
   return (
     <section className="mb-8">
       <div className="flex justify-between items-center mb-4">
@@ -68,17 +51,11 @@ export function MovieCategory({ title, movies, isLoading, isError, viewAllHref }
           </Link>
         </Button>
       </div>
-      {(!movies || movies.length === 0) ? (
-        <div className="text-center py-4 text-muted-foreground">
-          Aucun film disponible pour le moment
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {movies.slice(0, 6).map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        {movies.slice(0, 6).map((movie) => (
+          <MovieCard key={movie.id} movie={movie} />
+        ))}
+      </div>
     </section>
   );
 }
