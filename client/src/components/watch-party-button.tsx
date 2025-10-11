@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/auth-context';
 import { Button } from "@/components/ui/button";
 import { Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 interface WatchPartyButtonProps {
   videoUrl: string;
@@ -16,6 +17,7 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
   onWatchPartyCreated 
 }) => {
   const { user, isAuthenticated, token } = useAuth();
+  const [, setLocation] = useLocation();
   const [isCreating, setIsCreating] = useState(false);
 
   // Fonction pour obtenir le token CSRF
@@ -85,9 +87,9 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
 
       const data = await response.json();
       
-      // Ouvrir la Watch Party dans un nouvel onglet
+      // Naviguer vers la Watch Party dans le même onglet au lieu d'ouvrir une nouvelle fenêtre
       const watchPartyUrl = `/watch-party/${data.roomId}`;
-      window.open(watchPartyUrl, '_blank');
+      setLocation(watchPartyUrl);
       
       // Callback optionnel
       onWatchPartyCreated?.(data.roomId);
