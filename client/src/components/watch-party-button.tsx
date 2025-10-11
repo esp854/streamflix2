@@ -15,11 +15,12 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
   title,
   onWatchPartyCreated 
 }) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
 
   const createWatchParty = async () => {
-    if (!user) {
+    // Vérification côté client
+    if (!isAuthenticated || !user) {
       toast({
         title: "Erreur",
         description: "Vous devez être connecté pour créer une Watch Party",
@@ -44,6 +45,7 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           videoUrl,
@@ -52,7 +54,8 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la création de la Watch Party');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la création de la Watch Party');
       }
 
       const data = await response.json();
@@ -68,11 +71,11 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
         title: "Succès",
         description: "Watch Party créée avec succès !",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la création de la Watch Party:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors de la création de la Watch Party",
+        description: error.message || "Erreur lors de la création de la Watch Party",
         variant: "destructive",
       });
     } finally {
@@ -80,7 +83,8 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
     }
   };
 
-  if (!user) {
+  // Ne pas afficher le bouton si l'utilisateur n'est pas authentifié
+  if (!isAuthenticated || !user) {
     return null;
   }
 

@@ -290,16 +290,22 @@ app.get('/api/watch-party/:roomId', (req, res) => {
   }
 });
 
-app.post('/api/watch-party', (req, res) => {
+app.post('/api/watch-party', (req: any, res: any) => {
+  // Vérifier que l'utilisateur est authentifié
+  if (!req.user) {
+    return res.status(401).json({ 
+      error: "Vous devez être connecté pour créer une Watch Party" 
+    });
+  }
+
   const { videoUrl, title } = req.body;
   
   try {
-    // Pour l'instant, nous utilisons un utilisateur anonyme
-    // Dans une vraie application, vous récupéreriez l'ID utilisateur depuis la session
-    const userId = req.user?.userId || 'anonymous-' + Math.random().toString(36).substring(2, 15);
-    const username = req.user?.username || 'Anonymous';
+    // Utiliser l'ID utilisateur réel
+    const userId = req.user.userId;
+    const username = req.user.username;
     
-    // Créer une nouvelle salle avec un utilisateur temporaire
+    // Créer une nouvelle salle
     const room = watchPartyService.createRoom(userId, username, 'temp-socket-id', videoUrl);
 
     res.json({
