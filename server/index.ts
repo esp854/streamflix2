@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import watchPartyService, { WatchPartyRoom } from "./services/watch-party-service";
+import { authenticateToken, csrfProtection } from "./security";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,10 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// Appliquer l'authentification et la protection CSRF à toutes les routes
+app.use(authenticateToken);
+app.use(csrfProtection);
 
 // Servir les fichiers statiques
 app.use(express.static(path.join(__dirname, "../dist/public")));

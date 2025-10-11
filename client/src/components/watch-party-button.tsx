@@ -18,6 +18,27 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
   const { user, isAuthenticated, token } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
 
+  // Fonction pour obtenir le token CSRF
+  const getCSRFToken = async (): Promise<string | null> => {
+    try {
+      const response = await fetch("/api/csrf-token", {
+        credentials: "include",
+        headers: {
+          ...(token ? { "Authorization": "Bearer " + token } : {}),
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.csrfToken;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching CSRF token:", error);
+      return null;
+    }
+  };
+
   const createWatchParty = async () => {
     // Vérification côté client
     if (!isAuthenticated || !user) {
@@ -41,11 +62,15 @@ const WatchPartyButton: React.FC<WatchPartyButtonProps> = ({
     setIsCreating(true);
     
     try {
+      // Obtenir le token CSRF
+      const csrfToken = await getCSRFToken();
+      
       const response = await fetch('/api/watch-party', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
         },
         body: JSON.stringify({
           videoUrl,
