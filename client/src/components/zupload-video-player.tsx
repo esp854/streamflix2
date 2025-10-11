@@ -878,7 +878,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={onSkipIntro}
                 className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
               >
-                <RotateCw className="w-5 h-5 mr-2" />
+                <RotateCcw className="w-5 h-5 mr-2" />
                 <span className="hidden xs:inline sm:inline">Passer l'intro</span>
               </button>
             )}
@@ -966,7 +966,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div
-                className="absolute bottom-5 right-5 w-8 h-8 bg-black/70 backdrop-blur-sm rounded-full z-50 pointer-events-auto cursor-not-allowed flex items-center justify-center"
+                className="absolute bottom-5 right-5 w-10 h-10 bg-transparent z-50 pointer-events-auto cursor-not-allowed"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -976,23 +976,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 title="Téléchargement désactivé"
                 style={{
                   position: 'absolute',
-                  bottom: '1.5rem',
-                  right: '1.5rem',
-                  width: '2rem',
-                  height: '2rem',
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  backdropFilter: 'blur(4px)',
-                  borderRadius: '9999px',
+                  bottom: '2.5rem',
+                  right: '2.5rem',
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  backgroundColor: 'transparent',
                   zIndex: 50,
                   pointerEvents: 'auto',
                   cursor: 'not-allowed'
                 }}
-              >
-                <div className="text-white text-sm font-bold" style={{ fontSize: '0.875rem' }}>🔒</div>
-                <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-1 py-0.5 rounded whitespace-nowrap">
-                  Téléchargement désactivé
-                </div>
-              </div>
+              />
             </>
           ) : (
             // For direct video files
