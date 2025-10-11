@@ -14,6 +14,8 @@ const WatchPartyPage: React.FC = () => {
   const [title, setTitle] = useState('Watch Party');
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [syncVideoTime, setSyncVideoTime] = useState<number | undefined>(undefined);
+  const [syncVideoAction, setSyncVideoAction] = useState<'play' | 'pause' | 'seek' | undefined>(undefined);
 
   useEffect(() => {
     if (!user) {
@@ -33,22 +35,43 @@ const WatchPartyPage: React.FC = () => {
     switch (action) {
       case 'play':
         setIsVideoPlaying(true);
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
       case 'pause':
         setIsVideoPlaying(false);
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
       case 'seek':
-        if (data?.currentTime) {
+        if (data?.currentTime !== undefined) {
           setCurrentVideoTime(data.currentTime);
         }
         break;
     }
+  };
+
+  const handleVideoTimeUpdate = (time: number) => {
+    // Mettre à jour le temps de la vidéo localement
+    setCurrentVideoTime(time);
+  };
+
+  // Fonction pour gérer les commandes de synchronisation reçues de WatchParty
+  const handleSyncVideoControl = (action: 'play' | 'pause' | 'seek', data?: any) => {
+    console.log('Sync video control:', action, data);
+    setSyncVideoAction(action);
+    
+    if (data?.currentTime !== undefined) {
+      setSyncVideoTime(data.currentTime);
+      setCurrentVideoTime(data.currentTime);
+    }
+    
+    // Réinitialiser l'action de synchronisation après un court délai
+    setTimeout(() => {
+      setSyncVideoAction(undefined);
+    }, 100);
   };
 
   if (!user) {
@@ -84,6 +107,9 @@ const WatchPartyPage: React.FC = () => {
                 onVideoEnd={() => console.log('Video ended')}
                 onVideoError={(error) => console.error('Video error:', error)}
                 onNextEpisode={() => console.log('Next episode')}
+                onVideoTimeUpdate={handleVideoTimeUpdate}
+                syncVideoTime={syncVideoTime}
+                syncVideoAction={syncVideoAction}
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -109,8 +135,11 @@ const WatchPartyPage: React.FC = () => {
           <WatchParty
             videoUrl={videoUrl}
             title={title}
-            onVideoControl={handleVideoControl}
+            onVideoControl={handleSyncVideoControl}
             onVideoUrlChange={setVideoUrl}
+            onVideoTimeUpdate={handleVideoTimeUpdate}
+            isVideoPlaying={isVideoPlaying}
+            videoCurrentTime={currentVideoTime}
           />
         </div>
       </div>

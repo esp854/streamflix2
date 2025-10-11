@@ -44,6 +44,9 @@ interface WatchPartyProps {
   title: string;
   onVideoControl?: (action: 'play' | 'pause' | 'seek', data?: any) => void;
   onVideoUrlChange?: (url: string) => void;
+  onVideoTimeUpdate?: (time: number) => void;
+  isVideoPlaying?: boolean;
+  videoCurrentTime?: number;
 }
 
 interface Participant {
@@ -63,7 +66,10 @@ const WatchParty: React.FC<WatchPartyProps> = ({
   videoUrl, 
   title, 
   onVideoControl,
-  onVideoUrlChange 
+  onVideoUrlChange,
+  onVideoTimeUpdate,
+  isVideoPlaying,
+  videoCurrentTime
 }) => {
   const { user } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -74,9 +80,10 @@ const WatchParty: React.FC<WatchPartyProps> = ({
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [showChat, setShowChat] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [syncedIsPlaying, setSyncedIsPlaying] = useState(false);
+  const [syncedCurrentTime, setSyncedCurrentTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSyncTimeRef = useRef<number>(0);
 
   // Initialiser Socket.IO
   useEffect(() => {
@@ -126,8 +133,14 @@ const WatchParty: React.FC<WatchPartyProps> = ({
       if (data.currentVideo) {
         onVideoUrlChange?.(data.currentVideo);
       }
-      setCurrentTime(data.currentTime);
-      setIsPlaying(data.isPlaying);
+      setSyncedCurrentTime(data.currentTime);
+      setSyncedIsPlaying(data.isPlaying);
+      onVideoTimeUpdate?.(data.currentTime);
+      if (data.isPlaying) {
+        onVideoControl?.('play', { currentTime: data.currentTime });
+      } else {
+        onVideoControl?.('pause', { currentTime: data.currentTime });
+      }
     });
 
     // Nouveau participant
@@ -155,30 +168,33 @@ const WatchParty: React.FC<WatchPartyProps> = ({
     socket.on('video-play-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('play', { currentTime: data.currentTime });
-        setIsPlaying(true);
-        setCurrentTime(data.currentTime);
+        setSyncedIsPlaying(true);
+        setSyncedCurrentTime(data.currentTime);
+        onVideoTimeUpdate?.(data.currentTime);
       }
     });
 
     socket.on('video-pause-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('pause', { currentTime: data.currentTime });
-        setIsPlaying(false);
-        setCurrentTime(data.currentTime);
+        setSyncedIsPlaying(false);
+        setSyncedCurrentTime(data.currentTime);
+        onVideoTimeUpdate?.(data.currentTime);
       }
     });
 
     socket.on('video-seek-sync', (data: VideoSyncData) => {
       if (data.triggeredBy !== user.id) {
         onVideoControl?.('seek', { currentTime: data.currentTime });
-        setCurrentTime(data.currentTime);
+        setSyncedCurrentTime(data.currentTime);
+        onVideoTimeUpdate?.(data.currentTime);
       }
     });
 
     // Changement de vidéo
     socket.on('video-changed', (data: VideoChangedData) => {
       console.log('Vidéo changée:', data);
-      // Ici on pourrait gérer le changement de vidéo
+      onVideoUrlChange?.(data.videoUrl);
     });
 
     // Nouveaux messages
@@ -197,7 +213,20 @@ const WatchParty: React.FC<WatchPartyProps> = ({
       socket.off('video-changed');
       socket.off('new-message');
     };
-  }, [socket, user, onVideoControl]);
+  }, [socket, user, onVideoControl, onVideoUrlChange, onVideoTimeUpdate]);
+
+  // Synchroniser l'état local avec l'état vidéo
+  useEffect(() => {
+    if (isVideoPlaying !== undefined) {
+      setSyncedIsPlaying(isVideoPlaying);
+    }
+  }, [isVideoPlaying]);
+
+  useEffect(() => {
+    if (videoCurrentTime !== undefined) {
+      setSyncedCurrentTime(videoCurrentTime);
+    }
+  }, [videoCurrentTime]);
 
   // Auto-scroll des messages
   useEffect(() => {
@@ -246,13 +275,23 @@ const WatchParty: React.FC<WatchPartyProps> = ({
   // Fonctions de contrôle vidéo pour la synchronisation
   const handlePlay = (time: number) => {
     if (socket && isHost) {
-      socket.emit('video-play', { currentTime: time });
+      // Limiter la fréquence des synchronisations
+      const now = Date.now();
+      if (now - lastSyncTimeRef.current > 100) { // 100ms minimum entre sync
+        socket.emit('video-play', { currentTime: time });
+        lastSyncTimeRef.current = now;
+      }
     }
   };
 
   const handlePause = (time: number) => {
     if (socket && isHost) {
-      socket.emit('video-pause', { currentTime: time });
+      // Limiter la fréquence des synchronisations
+      const now = Date.now();
+      if (now - lastSyncTimeRef.current > 100) {
+        socket.emit('video-pause', { currentTime: time });
+        lastSyncTimeRef.current = now;
+      }
     }
   };
 

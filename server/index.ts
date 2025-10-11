@@ -5,6 +5,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
+import watchPartyService, { WatchPartyRoom } from "./services/watch-party-service";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,22 +40,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/public/index.html'));
 });
 
-// Gestion des salles de watch party
-const watchPartyRooms = new Map<string, {
-  host: string;
-  participants: Set<string>;
-  currentVideo: string;
-  currentTime: number;
-  isPlaying: boolean;
-  messages: Array<{
-    id: string;
-    userId: string;
-    username: string;
-    message: string;
-    timestamp: number;
-  }>;
-}>();
-
 // Socket.IO handlers pour Watch Party
 io.on('connection', (socket: Socket) => {
   console.log('Utilisateur connecté:', socket.id);
@@ -63,122 +48,142 @@ io.on('connection', (socket: Socket) => {
   socket.on('join-watch-party', (data: { roomId: string; userId: string; username: string }) => {
     const { roomId, userId, username } = data;
 
-    // Créer la salle si elle n'existe pas
-    if (!watchPartyRooms.has(roomId)) {
-      watchPartyRooms.set(roomId, {
-        host: userId,
-        participants: new Set(),
-        currentVideo: '',
-        currentTime: 0,
-        isPlaying: false,
-        messages: []
+    try {
+      // Rejoindre la salle
+      const room = watchPartyService.joinRoom(roomId, userId, username, socket.id);
+
+      socket.join(roomId);
+      socket.data.roomId = roomId;
+      socket.data.userId = userId;
+      socket.data.username = username;
+
+      console.log(`${username} a rejoint la salle ${roomId}`);
+
+      // Envoyer l'état actuel de la salle au nouveau participant
+      socket.emit('watch-party-joined', {
+        roomId,
+        host: room.host,
+        participants: Array.from(room.participants.keys()),
+        currentVideo: room.currentVideo,
+        currentTime: room.currentTime,
+        isPlaying: room.isPlaying,
+        messages: room.messages.slice(-50) // Derniers 50 messages
+      });
+
+      // Notifier les autres participants
+      socket.to(roomId).emit('participant-joined', {
+        userId,
+        username,
+        participants: Array.from(room.participants.keys())
+      });
+    } catch (error: any) {
+      socket.emit('watch-party-error', {
+        code: error.message,
+        message: error.message === 'ROOM_NOT_FOUND' 
+          ? 'La salle spécifiée n\'existe pas' 
+          : 'La salle est pleine'
       });
     }
-
-    const room = watchPartyRooms.get(roomId)!;
-    room.participants.add(userId);
-
-    socket.join(roomId);
-    socket.data.roomId = roomId;
-    socket.data.userId = userId;
-    socket.data.username = username;
-
-    console.log(`${username} a rejoint la salle ${roomId}`);
-
-    // Envoyer l'état actuel de la salle au nouveau participant
-    socket.emit('watch-party-joined', {
-      roomId,
-      host: room.host,
-      participants: Array.from(room.participants),
-      currentVideo: room.currentVideo,
-      currentTime: room.currentTime,
-      isPlaying: room.isPlaying,
-      messages: room.messages.slice(-50) // Derniers 50 messages
-    });
-
-    // Notifier les autres participants
-    socket.to(roomId).emit('participant-joined', {
-      userId,
-      username,
-      participants: Array.from(room.participants)
-    });
   });
 
   // Quitter une salle de watch party
   socket.on('leave-watch-party', () => {
-    const roomId = socket.data.roomId;
     const userId = socket.data.userId;
     const username = socket.data.username;
 
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.participants.delete(userId);
-
-      socket.leave(roomId);
-
-      // Si la salle est vide, la supprimer
-      if (room.participants.size === 0) {
-        watchPartyRooms.delete(roomId);
-        console.log(`Salle ${roomId} supprimée (vide)`);
-      } else {
-        // Si l'hôte quitte, transférer l'hôte à quelqu'un d'autre
-        if (room.host === userId) {
-          const newHost = Array.from(room.participants)[0];
-          room.host = newHost;
-          io.to(roomId).emit('host-changed', { newHost });
-        }
+    if (userId) {
+      const result = watchPartyService.leaveRoom(userId);
+      
+      if (result) {
+        const { room, shouldDeleteRoom } = result;
+        const roomId = room.id;
+        
+        socket.leave(roomId);
 
         // Notifier les autres participants
         socket.to(roomId).emit('participant-left', {
           userId,
           username,
-          participants: Array.from(room.participants)
+          participants: Array.from(room.participants.keys())
         });
-      }
 
-      console.log(`${username} a quitté la salle ${roomId}`);
+        // Si la salle est vide, la supprimer
+        if (shouldDeleteRoom) {
+          console.log(`Salle ${roomId} supprimée (vide)`);
+        } else {
+          // Si l'hôte quitte, transférer l'hôte à quelqu'un d'autre
+          if (room.host === userId && room.participants.size > 0) {
+            const participantsArray = Array.from(room.participants.values());
+            if (participantsArray.length > 0) {
+              const newHost = participantsArray[0].userId;
+              io.to(roomId).emit('host-changed', { newHost });
+            }
+          }
+        }
+
+        console.log(`${username} a quitté la salle ${roomId}`);
+      }
     }
   });
 
   // Synchronisation de la lecture vidéo
   socket.on('video-play', (data: { currentTime: number }) => {
     const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.isPlaying = true;
-      room.currentTime = data.currentTime;
-
-      socket.to(roomId).emit('video-play-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
+    const userId = socket.data.userId;
+    
+    if (roomId && userId) {
+      const result = watchPartyService.syncVideoPlay(roomId, userId, data.currentTime);
+      
+      if (result && result.shouldSync) {
+        socket.to(roomId).emit('video-play-sync', {
+          currentTime: data.currentTime,
+          triggeredBy: userId
+        });
+      }
     }
   });
 
   socket.on('video-pause', (data: { currentTime: number }) => {
     const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.isPlaying = false;
-      room.currentTime = data.currentTime;
-
-      socket.to(roomId).emit('video-pause-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
+    const userId = socket.data.userId;
+    
+    if (roomId && userId) {
+      const result = watchPartyService.syncVideoPause(roomId, userId, data.currentTime);
+      
+      if (result && result.shouldSync) {
+        socket.to(roomId).emit('video-pause-sync', {
+          currentTime: data.currentTime,
+          triggeredBy: userId
+        });
+      }
     }
   });
 
   socket.on('video-seek', (data: { currentTime: number }) => {
     const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.currentTime = data.currentTime;
+    const userId = socket.data.userId;
+    
+    if (roomId && userId) {
+      const result = watchPartyService.syncVideoSeek(roomId, userId, data.currentTime);
+      
+      if (result) {
+        socket.to(roomId).emit('video-seek-sync', {
+          currentTime: data.currentTime,
+          triggeredBy: userId
+        });
+      }
+    }
+  });
 
-      socket.to(roomId).emit('video-seek-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
+  // Synchronisation périodique de la position
+  socket.on('video-time-sync', (data: { currentTime: number }) => {
+    const roomId = socket.data.roomId;
+    const userId = socket.data.userId;
+    
+    if (roomId && userId) {
+      const result = watchPartyService.syncVideoTime(roomId, userId, data.currentTime);
+      
+      // Pas besoin d'émettre un événement pour cette synchronisation périodique
     }
   });
 
@@ -187,20 +192,25 @@ io.on('connection', (socket: Socket) => {
     const roomId = socket.data.roomId;
     const userId = socket.data.userId;
 
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-
-      // Seul l'hôte peut changer de vidéo
-      if (room.host === userId) {
-        room.currentVideo = data.videoUrl;
-        room.currentTime = 0;
-        room.isPlaying = false;
-
-        io.to(roomId).emit('video-changed', {
-          videoUrl: data.videoUrl,
-          title: data.title,
-          changedBy: socket.data.username
-        });
+    if (roomId && userId) {
+      const result = watchPartyService.changeVideo(roomId, userId, data.videoUrl, data.title);
+      
+      if (result) {
+        const { room, isAuthorized } = result;
+        
+        if (isAuthorized) {
+          io.to(roomId).emit('video-changed', {
+            videoUrl: data.videoUrl,
+            title: data.title,
+            changedBy: socket.data.username
+          });
+        } else {
+          // Envoyer un message d'erreur à l'utilisateur non autorisé
+          socket.emit('watch-party-error', {
+            code: 'NOT_AUTHORIZED',
+            message: 'Seul l\'hôte peut changer la vidéo'
+          });
+        }
       }
     }
   });
@@ -211,56 +221,48 @@ io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId;
     const username = socket.data.username;
 
-    if (roomId && watchPartyRooms.has(roomId) && data.message.trim()) {
-      const room = watchPartyRooms.get(roomId)!;
-
-      const messageData = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        userId,
-        username,
-        message: data.message.trim(),
-        timestamp: Date.now()
-      };
-
-      // Ajouter le message à l'historique (limiter à 100 messages)
-      room.messages.push(messageData);
-      if (room.messages.length > 100) {
-        room.messages = room.messages.slice(-100);
+    if (roomId && userId && data.message.trim()) {
+      const messageData = watchPartyService.sendMessage(roomId, userId, username, data.message);
+      
+      if (messageData) {
+        // Envoyer le message à tous les participants de la salle
+        io.to(roomId).emit('new-message', messageData);
       }
-
-      // Envoyer le message à tous les participants de la salle
-      io.to(roomId).emit('new-message', messageData);
     }
   });
 
   // Déconnexion
   socket.on('disconnect', () => {
-    const roomId = socket.data.roomId;
     const userId = socket.data.userId;
     const username = socket.data.username;
 
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.participants.delete(userId);
+    if (userId) {
+      const result = watchPartyService.leaveRoom(userId);
+      
+      if (result) {
+        const { room, shouldDeleteRoom } = result;
+        const roomId = room.id;
+        
+        // Si la salle est vide, la supprimer
+        if (shouldDeleteRoom) {
+          console.log(`Salle ${roomId} supprimée (déconnexion)`);
+        } else {
+          // Si l'hôte se déconnecte, transférer l'hôte
+          if (room.host === userId && room.participants.size > 0) {
+            const participantsArray = Array.from(room.participants.values());
+            if (participantsArray.length > 0) {
+              const newHost = participantsArray[0].userId;
+              io.to(roomId).emit('host-changed', { newHost });
+            }
+          }
 
-      // Si la salle est vide, la supprimer
-      if (room.participants.size === 0) {
-        watchPartyRooms.delete(roomId);
-        console.log(`Salle ${roomId} supprimée (déconnexion)`);
-      } else {
-        // Si l'hôte se déconnecte, transférer l'hôte
-        if (room.host === userId) {
-          const newHost = Array.from(room.participants)[0];
-          room.host = newHost;
-          io.to(roomId).emit('host-changed', { newHost });
+          // Notifier les autres participants
+          socket.to(roomId).emit('participant-left', {
+            userId,
+            username,
+            participants: Array.from(room.participants.keys())
+          });
         }
-
-        // Notifier les autres participants
-        socket.to(roomId).emit('participant-left', {
-          userId,
-          username,
-          participants: Array.from(room.participants)
-        });
       }
     }
 
@@ -271,13 +273,13 @@ io.on('connection', (socket: Socket) => {
 // API routes pour Watch Party
 app.get('/api/watch-party/:roomId', (req, res) => {
   const { roomId } = req.params;
+  const room = watchPartyService.getRoomInfo(roomId);
 
-  if (watchPartyRooms.has(roomId)) {
-    const room = watchPartyRooms.get(roomId)!;
+  if (room) {
     res.json({
       exists: true,
       host: room.host,
-      participants: Array.from(room.participants),
+      participants: Array.from(room.participants.keys()),
       currentVideo: room.currentVideo,
       currentTime: room.currentTime,
       isPlaying: room.isPlaying,
@@ -290,23 +292,26 @@ app.get('/api/watch-party/:roomId', (req, res) => {
 
 app.post('/api/watch-party', (req, res) => {
   const { videoUrl, title } = req.body;
-  const roomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  
+  try {
+    // Pour l'instant, nous utilisons un utilisateur anonyme
+    // Dans une vraie application, vous récupéreriez l'ID utilisateur depuis la session
+    const userId = req.user?.userId || 'anonymous-' + Math.random().toString(36).substring(2, 15);
+    const username = req.user?.username || 'Anonymous';
+    
+    // Créer une nouvelle salle avec un utilisateur temporaire
+    const room = watchPartyService.createRoom(userId, username, 'temp-socket-id', videoUrl);
 
-  // Créer une nouvelle salle
-  watchPartyRooms.set(roomId, {
-    host: req.user?.userId || 'anonymous',
-    participants: new Set(),
-    currentVideo: videoUrl,
-    currentTime: 0,
-    isPlaying: false,
-    messages: []
-  });
-
-  res.json({
-    roomId,
-    videoUrl,
-    title
-  });
+    res.json({
+      roomId: room.id,
+      videoUrl,
+      title
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      error: error.message
+    });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

@@ -18,6 +18,10 @@ interface ZuploadVideoPlayerProps {
   onSeasonChange?: (season: number) => void;
   onEpisodeChange?: (episode: number) => void;
   onPreviousEpisode?: () => void;
+  // Propriétés pour la synchronisation Watch Party
+  onVideoTimeUpdate?: (time: number) => void;
+  syncVideoTime?: number;
+  syncVideoAction?: 'play' | 'pause' | 'seek';
 }
 
 const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
@@ -33,7 +37,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   totalEpisodes = 10,
   onSeasonChange,
   onEpisodeChange,
-  onPreviousEpisode
+  onPreviousEpisode,
+  // Propriétés pour la synchronisation Watch Party
+  onVideoTimeUpdate,
+  syncVideoTime,
+  syncVideoAction
 }) => {
   const { isAuthenticated } = useAuth();
   const adVideoRef = useRef<HTMLVideoElement>(null);
@@ -52,6 +60,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
   const userPausedRef = useRef(false); // Pour détecter les interruptions
+  const lastTimeUpdateRef = useRef<number>(0); // Pour limiter les mises à jour de temps
 
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -518,6 +527,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     onVideoError?.('Failed to load video content');
   };
 
+  // Handle video time update for synchronization
+  const handleVideoTimeUpdate = () => {
+    if (mainVideoRef.current) {
+      const currentTime = mainVideoRef.current.currentTime;
+      
+      // Limiter la fréquence des mises à jour (au maximum toutes les 500ms)
+      const now = Date.now();
+      if (now - lastTimeUpdateRef.current > 500) {
+        onVideoTimeUpdate?.(currentTime);
+        lastTimeUpdateRef.current = now;
+      }
+    }
+  };
+
   // Reset loading state when videoUrl changes
   useEffect(() => {
     setIsLoading(true);
@@ -705,6 +728,28 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       userPausedRef.current = false;
     }
   }, [showAd]);
+
+  // Synchronisation avec Watch Party
+  useEffect(() => {
+    if (!mainVideoRef.current) return;
+
+    const video = mainVideoRef.current;
+
+    if (syncVideoAction === 'play' && syncVideoTime !== undefined) {
+      // Définir le temps de la vidéo et la jouer
+      video.currentTime = syncVideoTime;
+      video.play().catch(err => {
+        console.log('Erreur de lecture synchronisée:', err);
+      });
+    } else if (syncVideoAction === 'pause' && syncVideoTime !== undefined) {
+      // Définir le temps de la vidéo et la mettre en pause
+      video.currentTime = syncVideoTime;
+      video.pause();
+    } else if (syncVideoAction === 'seek' && syncVideoTime !== undefined) {
+      // Définir le temps de la vidéo
+      video.currentTime = syncVideoTime;
+    }
+  }, [syncVideoAction, syncVideoTime]);
 
   return (
     <div 
@@ -976,6 +1021,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onPlaying={handleVideoPlaying}
               onError={handleVideoError}
               onEnded={onVideoEnd}
+              onTimeUpdate={handleVideoTimeUpdate}
               playsInline
               // Ajout de propriétés pour améliorer la compatibilité mobile
               style={{ 
