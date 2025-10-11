@@ -18,16 +18,6 @@ interface ZuploadVideoPlayerProps {
   onSeasonChange?: (season: number) => void;
   onEpisodeChange?: (episode: number) => void;
   onPreviousEpisode?: () => void;
-  // Watch Party props
-  isWatchParty?: boolean;
-  isHost?: boolean;
-  onVideoPlay?: (time: number) => void;
-  onVideoPause?: (time: number) => void;
-  onVideoSeek?: (time: number) => void;
-  watchPartyCurrentTime?: number;
-  watchPartyIsPlaying?: boolean;
-  watchPartyComponent?: React.ReactNode;
-  showWatchPartyPanel?: boolean;
 }
 
 const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
@@ -44,16 +34,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onSeasonChange,
   onEpisodeChange,
   onPreviousEpisode,
-  // Watch Party props
-  isWatchParty = false,
-  isHost = false,
-  onVideoPlay,
-  onVideoPause,
-  onVideoSeek,
-  watchPartyCurrentTime,
-  watchPartyIsPlaying,
-  watchPartyComponent,
-  showWatchPartyPanel = false
 }) => {
   const { isAuthenticated } = useAuth();
   const adVideoRef = useRef<HTMLVideoElement>(null);
@@ -329,7 +309,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }, 2000);
       }
     }
-  }
+  };
 
   // Fonction pour essayer le format suivant si le premier échoue
   const tryNextFormat = (adIndex: number) => {
@@ -523,17 +503,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setIsLoading(false);
       setError(null);
     }
-    handlePlay(); // Ajout pour la watch party
-  };
-
-  // Handle video pause
-  const handleVideoPause = () => {
-    handlePause(); // Ajout pour la watch party
-  };
-
-  // Handle video seeked
-  const handleVideoSeeked = () => {
-    handleSeek(); // Ajout pour la watch party
   };
 
   // Handle video error
@@ -737,74 +706,22 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }
   }, [showAd]);
 
-  // Effet pour synchroniser la vidéo avec la watch party
-  useEffect(() => {
-    if (!isWatchParty || !mainVideoRef.current) return;
-
-    const videoEl = mainVideoRef.current;
-
-    // Synchroniser le temps de la vidéo
-    if (watchPartyCurrentTime !== undefined && Math.abs(videoEl.currentTime - watchPartyCurrentTime) > 1) {
-      videoEl.currentTime = watchPartyCurrentTime;
-    }
-
-    // Synchroniser l'état de lecture/pause
-    if (watchPartyIsPlaying !== undefined) {
-      if (watchPartyIsPlaying && videoEl.paused) {
-        videoEl.play().catch(err => console.error('Erreur de lecture:', err));
-      } else if (!watchPartyIsPlaying && !videoEl.paused) {
-        videoEl.pause();
-      }
-    }
-  }, [isWatchParty, watchPartyCurrentTime, watchPartyIsPlaying]);
-
-  // Gestionnaires d'événements pour la watch party
-  const handlePlay = () => {
-    if (isWatchParty && isHost && onVideoPlay) {
-      onVideoPlay(mainVideoRef.current?.currentTime || 0);
-    }
-  };
-
-  const handlePause = () => {
-    if (isWatchParty && isHost && onVideoPause) {
-      onVideoPause(mainVideoRef.current?.currentTime || 0);
-    }
-  };
-
-  const handleSeek = () => {
-    if (isWatchParty && isHost && onVideoSeek) {
-      onVideoSeek(mainVideoRef.current?.currentTime || 0);
-    }
-  };
-
-  // If watch party is active, use split layout
-  if (isWatchParty) {
-    return (
-      <div className="flex h-screen bg-black">
-        {/* Video Section */}
-        <div className="flex-1 relative">
-          <div
-            className="relative w-full h-full bg-black"
-            onMouseMove={handleMouseMove}
-            onTouchStart={handleTouch}
-            onTouchMove={handleTouch}
-            onTouchEnd={handleTouchEnd}
-            onMouseLeave={() => {
-              if (controlsTimeoutRef.current) {
-                clearTimeout(controlsTimeoutRef.current);
-                controlsTimeoutRef.current = setTimeout(() => {
-                  setShowControls(false);
-                }, 500);
-              }
-            }}
-          >
-            {/* Watch Party Indicator */}
-            <div className="absolute top-4 right-4 z-50 bg-black/80 text-white px-3 py-2 rounded-lg text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Watch Party {isHost && <span className="text-yellow-400">(Host)</span>}
-              </div>
-            </div>
+  return (
+    <div
+      className="relative w-full h-screen bg-black"
+      onMouseMove={handleMouseMove}
+      onTouchStart={handleTouch}
+      onTouchMove={handleTouch}
+      onTouchEnd={handleTouchEnd}
+      onMouseLeave={() => {
+        if (controlsTimeoutRef.current) {
+          clearTimeout(controlsTimeoutRef.current);
+          controlsTimeoutRef.current = setTimeout(() => {
+            setShowControls(false);
+          }, 500);
+        }
+      }}
+    >
       {/* Ad for non-authenticated users - HilltopAds VAST integration */}
       {showAd && (
         <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
@@ -1047,6 +964,35 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
               />
+              {/* Overlay to prevent download button action - targeted at download button area */}
+              <div
+                className="absolute bottom-4 right-4 w-12 h-12 bg-black/70 backdrop-blur-sm rounded-lg z-50 pointer-events-auto cursor-not-allowed flex items-center justify-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return false;
+                }}
+                aria-label="Téléchargement désactivé"
+                title="Téléchargement désactivé"
+                style={{
+                  position: 'absolute',
+                  bottom: '1rem',
+                  right: '1rem',
+                  width: '3rem',
+                  height: '3rem',
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  backdropFilter: 'blur(4px)',
+                  borderRadius: '0.5rem',
+                  zIndex: 50,
+                  pointerEvents: 'auto',
+                  cursor: 'not-allowed'
+                }}
+              >
+                <div className="text-white text-lg font-bold" style={{ fontSize: '1.125rem' }}>🔒</div>
+                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Téléchargement désactivé
+                </div>
+              </div>
             </>
           ) : (
             // For direct video files
@@ -1065,330 +1011,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               // Ajout de propriétés pour améliorer la compatibilité mobile
               style={{ 
                 width: '100%', 
-                height: '100%',
-                objectFit: 'cover'
-              }}
-              // Sur mobile, on tente de forcer le chargement
-              {...(isMobileDevice && { autoPlay: true, muted: true })}
-            />
-          )}
-        </>
-      )}
-          </div>
-        </div>
-
-        {/* Watch Party Panel */}
-        {showWatchPartyPanel && watchPartyComponent && (
-          <div className="w-80 border-l border-gray-800 bg-gray-900 flex flex-col">
-            {watchPartyComponent}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Default layout for non-watch party
-  return (
-    <div
-      className="relative w-full h-screen bg-black"
-      onMouseMove={handleMouseMove}
-      onTouchStart={handleTouch}
-      onTouchMove={handleTouch}
-      onTouchEnd={handleTouchEnd}
-      onMouseLeave={() => {
-        if (controlsTimeoutRef.current) {
-          clearTimeout(controlsTimeoutRef.current);
-          controlsTimeoutRef.current = setTimeout(() => {
-            setShowControls(false);
-          }, 500);
-        }
-      }}
-    >
-      {/* Ad for non-authenticated users - HilltopAds VAST integration */}
-      {showAd && (
-        <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
-          <div className="relative w-full h-full">
-            {/* HilltopAds VAST integration */}
-            <div className="w-full h-full flex items-center justify-center">
-              <video
-                ref={adVideoRef}
-                controls
-                width="100%"
-                height="100%"
-                preload="auto"
-                className="w-full h-full touch-manipulation"
-                onLoad={handleVideoLoad}
-                onPlaying={handleVideoPlaying}
-                onError={handleVideoError}
-                onEnded={() => {
-                  if (isAdPlaying) {
-                    // Pub terminée, jouer la pub suivante ou la vidéo principale
-                    playNextAd();
-                  }
-                }}
-                playsInline
-                muted
-                // Ajout d'attributs supplémentaires pour améliorer la compatibilité mobile
-                autoPlay
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  backgroundColor: 'black'
-                }}
-                // Sur mobile, s'assurer que la vidéo est visible
-                {...(isMobileDevice && {
-                  playsInline: true,
-                  muted: true,
-                  autoPlay: true,
-                  controls: true
-                })}
-              />
-            </div>
-
-            {/* Overlay "Tap to Play" pour iOS Safari */}
-            {isMobileDevice && autoplayStrategy === 'user-gesture-required' && !hasUserInteracted && (
-              <div className="absolute inset-0 z-40 bg-black/90 flex items-center justify-center">
-                <div className="text-center p-8 max-w-sm">
-                  <div className="text-white text-4xl mb-6">📱</div>
-                  <h3 className="text-white text-xl font-bold mb-4">Touchez pour commencer</h3>
-                  <p className="text-gray-300 mb-6 text-sm">
-                    Les publicités vont démarrer après votre interaction
-                  </p>
-                  <button
-                    onClick={() => {
-                      setHasUserInteracted(true);
-                      playNextAd();
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors"
-                  >
-                    Commencer la lecture
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Bouton skip amélioré pour mobile */}
-            {showSkipButton && (
-              <button
-                onClick={skipAd}
-                className={`${
-                  isMobileDevice
-                    ? "absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/90 text-white px-8 py-4 rounded-lg text-xl font-bold z-40 border-2 border-white/20"
-                    : "absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
-                }`}
-              >
-                {isMobileDevice ? "⏭️ Passer la pub" : "Passer la pub"}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Loading indicator - Optimized for mobile */}
-      {isLoading && !showAd && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-6 max-w-xs">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
-            <p className="text-white text-lg sm:text-xl px-4 font-medium">Chargement de la vidéo...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error display - Optimized for mobile */}
-      {error && !showAd && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
-          <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
-            <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
-            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
-            >
-              Réessayer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onSeasonChange && (
-              <Select
-                value={currentSeason.toString()}
-                onValueChange={(value) => onSeasonChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="S" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                      S{seasonNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {onEpisodeChange && (
-              <Select
-                value={currentEpisode.toString()}
-                onValueChange={(value) => onEpisodeChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="E" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                      E{episodeNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          <div className="flex space-x-1">
-            {onSkipIntro && (
-              <button
-                onClick={onSkipIntro}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
-              >
-                <RotateCw className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
-              </button>
-            )}
-
-            {onNextEpisode && (
-              <button
-                onClick={onNextEpisode}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
-              >
-                <SkipForward className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onPreviousEpisode && (
-              <Button
-                onClick={onPreviousEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
-                disabled={currentEpisode <= 1}
-              >
-                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
-              </Button>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onNextEpisode && (
-              <Button
-                onClick={onNextEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
-                disabled={currentEpisode >= totalEpisodes}
-              >
-                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main video player - Handle both direct video URLs and iframe embeds */}
-      {!showAd && (
-        <>
-          {/* For iframe embeds (Zupload) - Mobile optimized */}
-          {videoUrl.includes('embed') ? (
-            <>
-              <iframe
-                src={videoUrl}
-                className="w-full h-full touch-manipulation"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-                title={title}
-                loading="lazy"
-                onLoad={() => {
-                  console.log('Iframe Zupload chargée');
-                  setIsLoading(false);
-                  setError(null);
-                }}
-                onError={(e) => {
-                  console.error('Erreur de chargement de l\'iframe Zupload:', e);
-                  setIsLoading(false);
-                  // Sur mobile, on affiche un message plus spécifique
-                  if (isMobileDevice) {
-                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
-                  } else {
-                    setError('Impossible de charger la vidéo');
-                  }
-                  onVideoError?.('Impossible de charger la vidéo');
-                }}
-                // Ajout de propriétés pour améliorer la compatibilité mobile
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  minHeight: isMobileDevice ? '200px' : 'auto'
-                }}
-              />
-              {/* Overlay to prevent download button action - targeted at download button area */}
-              <div
-                className="absolute bottom-4 right-4 w-10 h-10 bg-transparent z-50 pointer-events-auto cursor-not-allowed"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return false;
-                }}
-                aria-label="Téléchargement désactivé"
-                title="Téléchargement désactivé"
-                style={{
-                  position: 'absolute',
-                  bottom: '1rem',
-                  right: '1rem',
-                  width: '2.5rem',
-                  height: '2.5rem',
-                  backgroundColor: 'transparent',
-                  zIndex: 50,
-                  pointerEvents: 'auto',
-                  cursor: 'not-allowed'
-                }}
-              />
-            </>
-          ) : (
-            // For direct video files
-            <video
-              ref={mainVideoRef}
-              controls
-              width="100%"
-              height="100%"
-              preload="auto"
-              className="w-full h-full touch-manipulation"
-              onLoad={handleVideoLoad}
-              onPlaying={handleVideoPlaying}
-              onError={handleVideoError}
-              onEnded={onVideoEnd}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onSeeked={handleSeek}
-              playsInline
-              // Ajout de propriétés pour améliorer la compatibilité mobile
-              style={{
-                width: '100%',
                 height: '100%',
                 objectFit: 'cover'
               }}
