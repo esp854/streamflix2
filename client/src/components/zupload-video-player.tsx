@@ -1348,7 +1348,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               />
               {/* Overlay to prevent download button action - covers Zupload download control */}
               <div
-                className="absolute top-2 right-2 w-28 h-20 rounded-md bg-black/30 backdrop-blur-sm z-50 pointer-events-auto cursor-not-allowed flex items-center justify-center"
+                className="absolute bottom-4 right-4 w-28 h-16 rounded-md bg-black/35 backdrop-blur-sm z-50 pointer-events-auto cursor-not-allowed flex flex-col items-center justify-center gap-1"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -1357,7 +1357,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 aria-label="Téléchargement désactivé"
                 title="Téléchargement désactivé"
               >
-                <span className="text-xs text-white font-medium select-none">Téléchargement désactivé</span>
+                <span className="text-xs text-white font-semibold select-none leading-none">Téléchargement</span>
+                <span className="text-[10px] text-red-300 uppercase tracking-wide select-none leading-none">désactivé</span>
               </div>
             </>
           ) : (
