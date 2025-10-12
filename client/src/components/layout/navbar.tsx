@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play } from "lucide-react";
+import { Search, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
