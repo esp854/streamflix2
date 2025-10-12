@@ -7,8 +7,21 @@ import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { storage } from "./storage.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Alternative approach for getting __dirname in both ESM and CommonJS
+const getCurrentDir = (): string => {
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    return path.dirname(__filename);
+  } catch {
+    // Fallback for environments where import.meta.url is not available
+    return process.cwd();
+  }
+};
+
+const __dirname: string = getCurrentDir();
 
 const app = express();
 const server = createServer(app);

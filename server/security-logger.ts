@@ -2,9 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Alternative approach for getting __dirname in both ESM and CommonJS
+const getCurrentDir = (): string => {
+  if (typeof __dirname !== 'undefined') {
+    return __dirname;
+  }
+  try {
+    const __filename = fileURLToPath(import.meta.url);
+    return path.dirname(__filename);
+  } catch {
+    // Fallback for environments where import.meta.url is not available
+    return process.cwd();
+  }
+};
+
+const __dirname: string = getCurrentDir();
 
 // Ensure logs directory exists
 const logsDir = path.join(__dirname, '..', 'logs');
@@ -203,40 +215,32 @@ class SecurityLogger {
   }
 
   /**
-   * Get recent security events
+   * Log password change
    */
-  getRecentEvents(limit: number = 50): SecurityEvent[] {
-    try {
-      if (!fs.existsSync(this.logFilePath)) {
-        return [];
-      }
+  logPasswordChange(userId: string, ipAddress: string): void {
+    this.logEvent({
+      timestamp: new Date(),
+      eventType: 'PASSWORD_CHANGE',
+      userId,
+      ipAddress,
+      details: 'User password changed',
+      severity: 'MEDIUM'
+    });
+  }
 
-      const content = fs.readFileSync(this.logFilePath, 'utf-8');
-      const lines = content.split('\n').filter(line => line.trim() !== '');
-      
-      const events: SecurityEvent[] = [];
-      for (let i = Math.max(0, lines.length - limit); i < lines.length; i++) {
-        try {
-          const event = JSON.parse(lines[i]);
-          // Ensure timestamp is properly parsed as Date object
-          events.push({
-            ...event,
-            timestamp: new Date(event.timestamp)
-          });
-        } catch (parseError) {
-          console.error('Error parsing log line:', lines[i], parseError);
-          // Continue processing other lines even if one fails
-        }
-      }
-      
-      return events.reverse(); // Most recent first
-    } catch (error) {
-      console.error('Error reading security logs:', error);
-      // Return empty array instead of throwing error
-      return [];
-    }
+  /**
+   * Log account lockout
+   */
+  logAccountLockout(userId: string, ipAddress: string): void {
+    this.logEvent({
+      timestamp: new Date(),
+      eventType: 'ACCOUNT_LOCKOUT',
+      userId,
+      ipAddress,
+      details: 'User account locked due to security policy',
+      severity: 'HIGH'
+    });
   }
 }
 
 export const securityLogger = new SecurityLogger();
-export type { SecurityEvent, SecurityEventType };

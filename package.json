@@ -2,10 +2,9 @@
   "name": "streamflix",
   "version": "1.0.0",
   "description": "A streaming platform",
-  "type": "module",
   "scripts": {
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && npx tsx watch index.ts\"",
-    "build": "cd client && npm install && npm run build && cd .. && npm install && npx esbuild server/index.ts --platform=node --packages=external --external:./server/vite.ts --external:./client/vite.config.ts --bundle --format=esm --outdir=dist",
+    "build": "cd client && npm install && npm run build && cd .. && npm install && npx esbuild server/index.ts --platform=node --packages=external --external:./server/vite.ts --external:./client/vite.config.ts --bundle --format=cjs --outdir=dist",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,7 +22,9 @@
     "drizzle-zod": "^0.5.1",
     "express": "^4.21.1",
     "express-rate-limit": "^8.1.0",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.15",
     "pg": "^8.13.0",
     "postgres": "^3.4.4",
     "socket.io": "^4.8.0",
