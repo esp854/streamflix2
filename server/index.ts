@@ -43,7 +43,7 @@ app.get('*', (req, res) => {
 // Gestion des salles de watch party
 const watchPartyRooms = new Map<string, {
   host: string;
-  participants: Map<string, { username: string }>;
+  participants: Map<string, { username: string; lastSeen: number }>;
   currentVideo: string;
   currentTime: number;
   isPlaying: boolean;
@@ -53,9 +53,11 @@ const watchPartyRooms = new Map<string, {
     username: string;
     message: string;
     timestamp: number;
+    isSystemMessage?: boolean;
   }>;
   createdAt: number;
   lastActivity: number;
+  maxParticipants?: number;
 }>();
 
 // Fonction pour nettoyer les salles inactives
@@ -63,7 +65,9 @@ function cleanupInactiveRooms() {
   const now = Date.now();
   const INACTIVE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 heures
   
-  for (const [roomId, room] of watchPartyRooms.entries()) {
+  // Convertir l'itérateur en tableau pour éviter les problèmes de compatibilité
+  const roomsArray = Array.from(watchPartyRooms.entries());
+  for (const [roomId, room] of roomsArray) {
     if (now - room.lastActivity > INACTIVE_THRESHOLD) {
       watchPartyRooms.delete(roomId);
       console.log(`Salle ${roomId} supprimée (inactivité)`);
@@ -145,7 +149,7 @@ io.on('connection', (socket: Socket) => {
         messages: [],
         createdAt: Date.now(),
         lastActivity: Date.now(),
-        maxParticipants: 20 // Limite de participants
+        maxParticipants: 20
       });
       console.log(`Nouvelle salle créée: ${roomId} par ${username}`);
     }
@@ -153,7 +157,7 @@ io.on('connection', (socket: Socket) => {
     const room = watchPartyRooms.get(roomId)!;
     
     // Vérifier la limite de participants
-    if (room.participants.size >= room.maxParticipants) {
+    if (room.participants.size >= (room.maxParticipants || 20)) {
       socket.emit('error', { message: 'La salle est pleine' });
       return;
     }
@@ -161,7 +165,6 @@ io.on('connection', (socket: Socket) => {
     // Ajouter le participant
     room.participants.set(userId, { 
       username, 
-      joinedAt: Date.now(),
       lastSeen: Date.now()
     });
     room.lastActivity = Date.now();
@@ -171,7 +174,7 @@ io.on('connection', (socket: Socket) => {
     socket.data.userId = userId;
     socket.data.username = username;
 
-    console.log(`${username} a rejoint la salle ${roomId} (${room.participants.size}/${room.maxParticipants})`);
+    console.log(`${username} a rejoint la salle ${roomId} (${room.participants.size}/${room.maxParticipants || 20})`);
 
     // Envoyer l'état actuel de la salle au nouveau participant
     socket.emit('watch-party-joined', {
@@ -184,7 +187,7 @@ io.on('connection', (socket: Socket) => {
       messages: room.messages.slice(-50), // Derniers 50 messages
       isHost: room.host === userId,
       participantCount: room.participants.size,
-      maxParticipants: room.maxParticipants
+      maxParticipants: room.maxParticipants || 20
     });
 
     // Notifier les autres participants
@@ -576,7 +579,8 @@ app.post('/api/watch-party', (req, res) => {
     isPlaying: false,
     messages: [],
     createdAt: Date.now(),
-    lastActivity: Date.now()
+    lastActivity: Date.now(),
+    maxParticipants: 20
   });
 
   res.json({

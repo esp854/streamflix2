@@ -771,9 +771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all user sessions (admin only)
   app.get("/api/admin/user-sessions", requireAdmin, async (req, res) => {
     try {
-      // Since there's no getAllUserSessions method, we'll need to implement this differently
-      // For now, return empty array
-      res.json([]);
+      const userSessions = await storage.getActiveSessions();
+      res.json(userSessions);
     } catch (error) {
       console.error("Error fetching all user sessions:", error);
       res.status(500).json({ error: "Failed to fetch all user sessions" });
@@ -783,9 +782,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all view tracking (admin only)
   app.get("/api/admin/view-tracking", requireAdmin, async (req, res) => {
     try {
-      // Since there's no getAllViewTracking method, we'll need to implement this differently
-      // For now, return empty array
-      res.json([]);
+      // Since there's no getAllViewTracking method, we'll implement this using existing methods
+      const allUsers = await storage.getAllUsers();
+      const allViewTracking = [];
+      
+      // Collect view tracking for all users
+      for (const user of allUsers) {
+        const userTracking = await storage.getViewTrackingByUserId(user.id);
+        allViewTracking.push(...userTracking);
+      }
+      
+      res.json(allViewTracking);
     } catch (error) {
       console.error("Error fetching all view tracking:", error);
       res.status(500).json({ error: "Failed to fetch all view tracking" });
@@ -795,35 +802,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get analytics data (admin only)
   app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
     try {
-      // Mock analytics data
+      // Get real analytics data from database
+      const users = await storage.getAllUsers();
+      const content = await storage.getAllContent();
+      const subscriptions = await storage.getSubscriptions();
+      const payments = await storage.getPayments();
+      const viewStats = await storage.getViewStats();
+      
       const analytics = {
-        totalUsers: await storage.getAllUsers().then(users => users.length),
-        activeUsers: await storage.getAllUsers().then(users => users.filter(u => !u.banned).length),
-        newUsersThisWeek: 2,
-        totalMovies: await storage.getAllContent().then(content => content.filter(c => c.mediaType === 'movie').length),
-        totalSeries: await storage.getAllContent().then(content => content.filter(c => c.mediaType === 'tv').length),
-        dailyViews: 124,
-        weeklyViews: 842,
-        activeSubscriptionsCount: await storage.getSubscriptions().then(subs => subs.filter(s => s.status === 'active').length),
-        activeSessions: 12,
+        totalUsers: users.length,
+        activeUsers: users.filter(u => !u.banned).length,
+        newUsersThisWeek: users.filter(u => {
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          return new Date(u.createdAt) >= oneWeekAgo;
+        }).length,
+        totalMovies: content.filter(c => c.mediaType === 'movie').length,
+        totalSeries: content.filter(c => c.mediaType === 'tv').length,
+        dailyViews: viewStats.dailyViews,
+        weeklyViews: viewStats.weeklyViews,
+        activeSubscriptionsCount: subscriptions.filter(s => s.status === 'active').length,
+        activeSessions: (await storage.getActiveSessions()).length,
         revenue: {
-          monthly: await storage.getPayments().then(payments =>
-            payments.filter(p => p.status === 'success')
-              .reduce((sum, p) => sum + (p.amount || 0), 0)
-          ),
-          growth: 12.5,
-          totalPayments: await storage.getPayments().then(payments => payments.filter(p => p.status === 'success').length)
+          monthly: payments
+            .filter(p => p.status === 'success')
+            .reduce((sum, p) => sum + (p.amount || 0), 0),
+          growth: 12.5, // This would need to be calculated properly
+          totalPayments: payments.filter(p => p.status === 'success').length
         },
         subscriptions: {
-          basic: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'basic').length),
-          standard: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'standard').length),
-          premium: await storage.getSubscriptions().then(subs => subs.filter(s => s.planId === 'premium').length)
+          basic: subscriptions.filter(s => s.planId === 'basic').length,
+          standard: subscriptions.filter(s => s.planId === 'standard').length,
+          premium: subscriptions.filter(s => s.planId === 'premium').length
         },
         recentActivity: {
-          newMoviesAdded: 3,
-          newUsersToday: 1
+          newMoviesAdded: content.filter(c => {
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return new Date(c.createdAt) >= oneWeekAgo;
+          }).length,
+          newUsersToday: users.filter(u => {
+            const today = new Date();
+            return new Date(u.createdAt).toDateString() === today.toDateString();
+          }).length
         }
       };
+      
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -1578,13 +1602,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Handle PayPal webhook
   app.post("/api/webhook/paypal", async (req: any, res: any) => {
     try {
-      // Just send a success response for now
-      res.json({ message: "Webhook received successfully" });
+      console.log("PayPal webhook received:", req.body);
+      
+      // Verify webhook signature for security
+      const isValid = await paymentService.verifyPayPalWebhook(req);
+      if (!isValid) {
+        console.error("Invalid PayPal webhook signature");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+      
+      // Process the webhook event
+      const event = req.body;
+      const eventType = event.event_type;
+      
+      console.log(`Processing PayPal event: ${eventType}`);
+      
+      switch (eventType) {
+        case 'PAYMENT.CAPTURE.COMPLETED':
+          // Payment completed successfully
+          await handlePayPalPaymentCompleted(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.DENIED':
+          // Payment was denied
+          await handlePayPalPaymentDenied(event);
+          break;
+          
+        case 'PAYMENT.CAPTURE.REFUNDED':
+          // Payment was refunded
+          await handlePayPalPaymentRefunded(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CREATED':
+          // Subscription created
+          await handlePayPalSubscriptionCreated(event);
+          break;
+          
+        case 'BILLING.SUBSCRIPTION.CANCELLED':
+          // Subscription cancelled
+          await handlePayPalSubscriptionCancelled(event);
+          break;
+          
+        default:
+          console.log(`Unhandled PayPal event type: ${eventType}`);
+      }
+      
+      res.status(200).json({ success: true });
     } catch (error) {
-      console.error("Error handling PayPal webhook:", error);
-      res.status(500).json({ error: "Failed to handle PayPal webhook" });
+      console.error("Error processing PayPal webhook:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
     }
   });
+
+  // Handle PayPal payment completed
+  async function handlePayPalPaymentCompleted(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
+        return;
+      }
+      
+      const { userId, planId } = customData;
+      
+      if (!userId || !planId) {
+        console.error("Missing userId or planId in custom data:", customData);
+        return;
+      }
+      
+      // Get plan information
+      const selectedPlan = plans[planId as keyof typeof plans];
+      if (!selectedPlan) {
+        console.error("Invalid plan ID:", planId);
+        return;
+      }
+      
+      // Calculate end date
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + selectedPlan.duration);
+      
+      // Create subscription
+      const newSubscription = await storage.createSubscription({
+        userId: userId,
+        planId: planId,
+        amount: selectedPlan.amount,
+        paymentMethod: 'paypal',
+        status: 'active',
+        startDate,
+        endDate
+      });
+      
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'success');
+      }
+      
+      console.log("Subscription activated for user:", userId);
+      
+      // Send confirmation email to user
+      try {
+        const user = await storage.getUserById(userId);
+        if (user && user.email) {
+          const subject = "Confirmation d'abonnement StreamFlix";
+          const html = `
+            <h2>Votre abonnement StreamFlix est maintenant actif !</h2>
+            <p>Bonjour ${user.username},</p>
+            <p>Nous vous confirmons que votre abonnement au plan ${selectedPlan.name} a été activé avec succès.</p>
+            <p>Vous pouvez maintenant profiter de tous les contenus disponibles sur StreamFlix.</p>
+            <p>Merci pour votre confiance !</p>
+            <p>Cordialement,<br>L'équipe StreamFlix</p>
+          `;
+          
+          // Note: We would need to implement the sendEmail function here
+          // await sendEmail(user.email, subject, html);
+          console.log(`Confirmation email would be sent to ${user.email}`);
+        }
+      } catch (emailError) {
+        console.error("Error sending confirmation email:", emailError);
+      }
+    } catch (error) {
+      console.error("Error handling PayPal payment completed:", error);
+    }
+  }
+
+  // Handle PayPal payment denied
+  async function handlePayPalPaymentDenied(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
+        return;
+      }
+      
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom data:", customData);
+        return;
+      }
+      
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'failed');
+      }
+      
+      console.log("PayPal payment denied for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal payment denied:", error);
+    }
+  }
+
+  // Handle PayPal payment refunded
+  async function handlePayPalPaymentRefunded(event: any) {
+    try {
+      const resource = event.resource;
+      const customId = resource.custom_id;
+      
+      if (!customId) {
+        console.error("No custom_id found in PayPal event");
+        return;
+      }
+      
+      // Parse custom_id to get user info
+      let customData;
+      try {
+        customData = JSON.parse(customId);
+      } catch (e) {
+        console.error("Failed to parse custom_id:", customId);
+        return;
+      }
+      
+      const { userId } = customData;
+      
+      if (!userId) {
+        console.error("Missing userId in custom data:", customData);
+        return;
+      }
+      
+      // Update payment status
+      const payments = await storage.getPayments();
+      const payment = payments.find(p => p.userId === userId && p.status === 'success');
+      if (payment) {
+        await storage.updatePaymentStatus(payment.id, 'refunded');
+      }
+      
+      console.log("PayPal payment refunded for user:", userId);
+    } catch (error) {
+      console.error("Error handling PayPal payment refunded:", error);
+    }
+  }
+
+  // Handle PayPal subscription created
+  async function handlePayPalSubscriptionCreated(event: any) {
+    try {
+      console.log("PayPal subscription created:", event);
+      // Handle subscription creation logic here if needed
+    } catch (error) {
+      console.error("Error handling PayPal subscription created:", error);
+    }
+  }
+
+  // Handle PayPal subscription cancelled
+  async function handlePayPalSubscriptionCancelled(event: any) {
+    try {
+      console.log("PayPal subscription cancelled:", event);
+      // Handle subscription cancellation logic here if needed
+    } catch (error) {
+      console.error("Error handling PayPal subscription cancelled:", error);
+    }
+  }
 
   // Get PayPal client ID for frontend
   app.get("/api/paypal/client-id", async (req: any, res: any) => {
@@ -2247,20 +2500,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get analytics (admin only)
+  // Get all user sessions (admin only)
+  app.get("/api/admin/user-sessions", requireAdmin, async (req, res) => {
+    try {
+      const userSessions = await storage.getActiveSessions();
+      res.json(userSessions);
+    } catch (error) {
+      console.error("Error fetching all user sessions:", error);
+      res.status(500).json({ error: "Failed to fetch all user sessions" });
+    }
+  });
+
+  // Get all view tracking (admin only)
+  app.get("/api/admin/view-tracking", requireAdmin, async (req, res) => {
+    try {
+      // Since there's no getAllViewTracking method, we'll implement this using existing methods
+      const viewTrackingData = await storage.getViewTrackingByUserId('all');
+      res.json(viewTrackingData);
+    } catch (error) {
+      console.error("Error fetching all view tracking:", error);
+      res.status(500).json({ error: "Failed to fetch all view tracking" });
+    }
+  });
+
+  // Get analytics data (admin only)
   app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
     try {
-      // We'll implement this by getting data from various sources
+      // Get real analytics data from database
       const users = await storage.getAllUsers();
+      const content = await storage.getAllContent();
       const subscriptions = await storage.getSubscriptions();
       const payments = await storage.getPayments();
       const viewStats = await storage.getViewStats();
       
       const analytics = {
-        users: users.length,
-        subscriptions: subscriptions.length,
-        payments: payments.length,
-        viewStats
+        totalUsers: users.length,
+        activeUsers: users.filter(u => !u.banned).length,
+        newUsersThisWeek: users.filter(u => {
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+          return new Date(u.createdAt) >= oneWeekAgo;
+        }).length,
+        totalMovies: content.filter(c => c.mediaType === 'movie').length,
+        totalSeries: content.filter(c => c.mediaType === 'tv').length,
+        dailyViews: viewStats.dailyViews,
+        weeklyViews: viewStats.weeklyViews,
+        activeSubscriptionsCount: subscriptions.filter(s => s.status === 'active').length,
+        activeSessions: (await storage.getActiveSessions()).length,
+        revenue: {
+          monthly: payments
+            .filter(p => p.status === 'success')
+            .reduce((sum, p) => sum + (p.amount || 0), 0),
+          growth: 12.5, // This would need to be calculated properly
+          totalPayments: payments.filter(p => p.status === 'success').length
+        },
+        subscriptions: {
+          basic: subscriptions.filter(s => s.planId === 'basic').length,
+          standard: subscriptions.filter(s => s.planId === 'standard').length,
+          premium: subscriptions.filter(s => s.planId === 'premium').length
+        },
+        recentActivity: {
+          newMoviesAdded: content.filter(c => {
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return new Date(c.createdAt) >= oneWeekAgo;
+          }).length,
+          newUsersToday: users.filter(u => {
+            const today = new Date();
+            return new Date(u.createdAt).toDateString() === today.toDateString();
+          }).length
+        }
       };
       
       res.json(analytics);
@@ -2321,7 +2630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get content (admin only)
-  app.get("/api/admin/content", requireAdmin, async (req, res) => {
+  app.get("/api/admin/content", requireAdmin, async (req: any, res: any) => {
     try {
       const content = await storage.getContent();
       res.json(content);
@@ -4556,17 +4865,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/test/payment-service", async (req: any, res: any) => {
     try {
       // Check if payment service is configured
-      const isLygosConfigured = paymentService.isConfigured();
+      const isPayPalConfigured = paymentService.isPayPalConfigured();
       
       res.json({
         status: 'Payment Service Configuration',
         serviceInfo: {
-          currentService: paymentService.isPayPalConfigured() ? 'paypal' : 'lygos',
-          lygosAvailable: isLygosConfigured,
-          paypalAvailable: paymentService.isPayPalConfigured(),
-          usingPaymentLink: isLygosConfigured || paymentService.isPayPalConfigured()
+          currentService: isPayPalConfigured ? 'paypal' : 'none',
+          paypalAvailable: isPayPalConfigured,
+          usingPaymentLink: isPayPalConfigured
         },
-        ready: isLygosConfigured
+        ready: isPayPalConfigured
       });
     } catch (error) {
       console.error('Payment service test error:', error);
@@ -5355,16 +5663,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/test/payment-service", async (req: any, res: any) => {
     try {
       // Check if payment service is configured
-      const isLygosConfigured = paymentService.isConfigured();
+      const isPayPalConfigured = paymentService.isPayPalConfigured();
       
       res.json({
         status: 'Payment Service Configuration',
         serviceInfo: {
-          currentService: 'lygos',
-          lygosAvailable: isLygosConfigured,
-          usingPaymentLink: isLygosConfigured
+          currentService: 'paypal',
+          paypalAvailable: isPayPalConfigured,
+          usingPaymentLink: isPayPalConfigured
         },
-        ready: isLygosConfigured
+        ready: isPayPalConfigured
       });
     } catch (error) {
       console.error('Payment service test error:', error);
@@ -5675,7 +5983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // For paid plans, create payment with available provider
+      // For paid plans, create payment with PayPal
       const paymentResult = await paymentService.createPayment(
         planId,
         customerInfo,
@@ -5687,7 +5995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paymentRecord = await storage.createPayment({
           userId: req.user.userId,
           amount: selectedPlan.amount,
-          method: "lygos",
+          method: "paypal",
           status: "pending",
           paymentData: paymentResult
         });
@@ -5958,4 +6266,3 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return server;
 }
-

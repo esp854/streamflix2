@@ -9,6 +9,7 @@ import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
 import { MovieCategory } from "@/components/movie-category";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 export default function Home() {
   const { shouldShowAds } = useAuthCheck();
@@ -102,6 +103,9 @@ export default function Home() {
     <div className="min-h-screen bg-background" data-testid="home-page">
       {/* Hero Section */}
       <HeroCarousel />
+      
+      {/* PWA Install Banner */}
+      <PWAInstallBanner />
       
       {/* Advertisement Banner for unauthenticated users */}
       {shouldShowAds && (
