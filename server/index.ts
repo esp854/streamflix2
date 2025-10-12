@@ -23,6 +23,16 @@ const getCurrentDir = (): string => {
 
 const __dirname: string = getCurrentDir();
 
+// Déterminer le chemin vers les fichiers statiques
+// Utiliser process.cwd() pour s'assurer que le chemin est correct dans tous les environnements
+const getPublicPath = (): string => {
+  // En production (Render), les fichiers sont dans dist/public
+  // En développement, ils peuvent être dans des chemins différents
+  const publicPath = path.join(process.cwd(), "dist", "public");
+  console.log(`Public path: ${publicPath}`);
+  return publicPath;
+};
+
 const app = express();
 const server = createServer(app);
 
@@ -43,14 +53,14 @@ app.use(cors({
 app.use(express.json());
 
 // Servir les fichiers statiques
-app.use(express.static(path.join(__dirname, "../dist/public")));
+app.use(express.static(getPublicPath()));
 
 // Enregistrer les routes API
 registerRoutes(app);
 
 // Route catch-all pour React Router
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/public/index.html'));
+  res.sendFile(path.join(getPublicPath(), 'index.html'));
 });
 
 // Gestion des salles de watch party
@@ -220,270 +230,248 @@ io.on('connection', (socket: Socket) => {
       timestamp: Date.now(),
       isSystemMessage: true
     };
+
     room.messages.push(systemMessage);
+    room.lastActivity = Date.now();
+
+    // Envoyer le message système à tous les participants
+    io.to(roomId).emit('chat-message', systemMessage);
+
+    // Limiter l'historique des messages à 100
     if (room.messages.length > 100) {
       room.messages = room.messages.slice(-100);
     }
-    io.to(roomId).emit('new-message', systemMessage);
   });
 
-  // Quitter une salle de watch party
-  socket.on('leave-watch-party', () => {
-    const roomId = socket.data.roomId;
+  socket.on('leave-watch-party', (data: { roomId: string }) => {
+    const { roomId } = data;
+    const room = watchPartyRooms.get(roomId);
+
+    if (!room) {
+      socket.emit('error', { message: 'Salle non trouvée' });
+      return;
+    }
+
     const userId = socket.data.userId;
     const username = socket.data.username;
 
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      const wasHost = room.host === userId;
-      
-      room.participants.delete(userId);
-      room.lastActivity = Date.now();
+    if (!userId || !username) {
+      socket.emit('error', { message: 'Données utilisateur invalides' });
+      return;
+    }
 
-      socket.leave(roomId);
+    // Retirer le participant
+    room.participants.delete(userId);
+    room.lastActivity = Date.now();
 
-      console.log(`${username} a quitté la salle ${roomId}`);
+    socket.leave(roomId);
+    delete socket.data.roomId;
+    delete socket.data.userId;
+    delete socket.data.username;
 
-      // Notifier les autres participants
-      socket.to(roomId).emit('participant-left', {
-        userId,
-        username,
-        participants: Array.from(room.participants.keys()),
-        participantCount: room.participants.size
-      });
+    console.log(`${username} a quitté la salle ${roomId} (${room.participants.size}/${room.maxParticipants || 20})`);
 
-      // Si l'hôte part, transférer l'hôte au premier participant restant
-      if (wasHost && room.participants.size > 0) {
-        const newHost = Array.from(room.participants.keys())[0];
-        room.host = newHost;
-        console.log(`Hôte transféré de ${username} à ${room.participants.get(newHost)?.username}`);
-        socket.to(roomId).emit('host-changed', { newHost });
-        
-        // Ajouter un message système pour le changement d'hôte
-        const hostChangeMessage = {
-          id: `system-${Date.now()}`,
-          userId: 'system',
-          username: 'Système',
-          message: `${room.participants.get(newHost)?.username} est maintenant l'hôte`,
-          timestamp: Date.now(),
-          isSystemMessage: true
-        };
-        room.messages.push(hostChangeMessage);
-        if (room.messages.length > 100) {
-          room.messages = room.messages.slice(-100);
-        }
-        io.to(roomId).emit('new-message', hostChangeMessage);
-      }
+    // Si la salle est vide, la supprimer
+    if (room.participants.size === 0) {
+      watchPartyRooms.delete(roomId);
+      console.log(`Salle ${roomId} supprimée (vide)`);
+      return;
+    }
 
-      // Ajouter un message système pour le départ
-      const leaveMessage = {
-        id: `system-${Date.now()}`,
-        userId: 'system',
-        username: 'Système',
-        message: `${username} a quitté la salle`,
-        timestamp: Date.now(),
-        isSystemMessage: true
-      };
-      room.messages.push(leaveMessage);
-      if (room.messages.length > 100) {
-        room.messages = room.messages.slice(-100);
-      }
-      io.to(roomId).emit('new-message', leaveMessage);
+    // Si l'hôte quitte, promouvoir un nouveau participant
+    if (room.host === userId) {
+      const newHostId = Array.from(room.participants.keys())[0];
+      room.host = newHostId;
+      console.log(`Nouvel hôte pour la salle ${roomId}: ${newHostId}`);
+    }
 
-      // Supprimer la salle si elle est vide
-      if (room.participants.size === 0) {
-        watchPartyRooms.delete(roomId);
-        console.log(`Salle ${roomId} supprimée (vide)`);
-      }
+    // Notifier les autres participants
+    socket.to(roomId).emit('participant-left', {
+      userId,
+      username,
+      participants: Array.from(room.participants.keys()),
+      participantCount: room.participants.size,
+      newHost: room.host
+    });
+
+    // Ajouter un message système
+    const systemMessage = {
+      id: `system-${Date.now()}`,
+      userId: 'system',
+      username: 'Système',
+      message: `${username} a quitté la salle`,
+      timestamp: Date.now(),
+      isSystemMessage: true
+    };
+
+    room.messages.push(systemMessage);
+    room.lastActivity = Date.now();
+
+    // Envoyer le message système à tous les participants
+    io.to(roomId).emit('chat-message', systemMessage);
+
+    // Limiter l'historique des messages à 100
+    if (room.messages.length > 100) {
+      room.messages = room.messages.slice(-100);
     }
   });
 
-  // Synchronisation de la lecture vidéo
-  socket.on('video-play', (data: { currentTime: number }) => {
-    const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      
-      // Vérifier que l'utilisateur est l'hôte
-      if (room.host !== socket.data.userId) {
-        return;
-      }
-      
-      room.isPlaying = true;
-      room.currentTime = data.currentTime;
-      room.lastActivity = Date.now();
+  socket.on('watch-party-control', (data: { 
+    roomId: string; 
+    action: 'play' | 'pause' | 'seek'; 
+    time?: number;
+    video?: string;
+  }) => {
+    const { roomId, action, time, video } = data;
+    const room = watchPartyRooms.get(roomId);
 
-      socket.to(roomId).emit('video-play-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
+    if (!room) {
+      socket.emit('error', { message: 'Salle non trouvée' });
+      return;
     }
-  });
 
-  socket.on('video-pause', (data: { currentTime: number }) => {
-    const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      
-      // Vérifier que l'utilisateur est l'hôte
-      if (room.host !== socket.data.userId) {
-        return;
-      }
-      
-      room.isPlaying = false;
-      room.currentTime = data.currentTime;
-      room.lastActivity = Date.now();
-
-      socket.to(roomId).emit('video-pause-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
-    }
-  });
-
-  socket.on('video-seek', (data: { currentTime: number }) => {
-    const roomId = socket.data.roomId;
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      
-      // Vérifier que l'utilisateur est l'hôte
-      if (room.host !== socket.data.userId) {
-        return;
-      }
-      
-      room.currentTime = data.currentTime;
-      room.lastActivity = Date.now();
-
-      socket.to(roomId).emit('video-seek-sync', {
-        currentTime: data.currentTime,
-        triggeredBy: socket.data.userId
-      });
-    }
-  });
-
-  // Changer de vidéo dans la watch party
-  socket.on('change-video', (data: { videoUrl: string; title: string }) => {
-    const roomId = socket.data.roomId;
     const userId = socket.data.userId;
+    if (!userId) {
+      socket.emit('error', { message: 'Utilisateur non authentifié' });
+      return;
+    }
 
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
+    // Seul l'hôte peut contrôler la lecture
+    if (room.host !== userId) {
+      socket.emit('error', { message: 'Seul l\'hôte peut contrôler la lecture' });
+      return;
+    }
 
-      // Seul l'hôte peut changer de vidéo
-      if (room.host === userId) {
-        room.currentVideo = data.videoUrl;
-        room.currentTime = 0;
+    // Mettre à jour l'état de la salle
+    switch (action) {
+      case 'play':
+        room.isPlaying = true;
+        if (time !== undefined) {
+          room.currentTime = time;
+        }
+        break;
+      case 'pause':
         room.isPlaying = false;
+        if (time !== undefined) {
+          room.currentTime = time;
+        }
+        break;
+      case 'seek':
+        if (time !== undefined) {
+          room.currentTime = time;
+        }
+        break;
+    }
+
+    // Si une nouvelle vidéo est spécifiée, la changer
+    if (video && video !== room.currentVideo) {
+      room.currentVideo = video;
+      room.currentTime = 0;
+      room.isPlaying = false;
+    }
+
+    room.lastActivity = Date.now();
+
+    // Envoyer la mise à jour à tous les participants
+    io.to(roomId).emit('watch-party-update', {
+      isPlaying: room.isPlaying,
+      currentTime: room.currentTime,
+      currentVideo: room.currentVideo
+    });
+  });
+
+  socket.on('chat-message', (data: { roomId: string; message: string }) => {
+    const { roomId, message } = data;
+    const room = watchPartyRooms.get(roomId);
+
+    if (!room) {
+      socket.emit('error', { message: 'Salle non trouvée' });
+      return;
+    }
+
+    const userId = socket.data.userId;
+    const username = socket.data.username;
+
+    if (!userId || !username) {
+      socket.emit('error', { message: 'Données utilisateur invalides' });
+      return;
+    }
+
+    // Valider le message
+    if (!message || message.trim().length === 0) {
+      socket.emit('error', { message: 'Message vide' });
+      return;
+    }
+
+    if (message.length > 500) {
+      socket.emit('error', { message: 'Message trop long (max 500 caractères)' });
+      return;
+    }
+
+    // Créer le message
+    const chatMessage = {
+      id: `msg-${Date.now()}-${userId}`,
+      userId,
+      username,
+      message: message.trim(),
+      timestamp: Date.now()
+    };
+
+    // Ajouter le message à l'historique
+    room.messages.push(chatMessage);
+    room.lastActivity = Date.now();
+
+    // Envoyer le message à tous les participants
+    io.to(roomId).emit('chat-message', chatMessage);
+
+    // Limiter l'historique des messages à 100
+    if (room.messages.length > 100) {
+      room.messages = room.messages.slice(-100);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Utilisateur déconnecté:', socket.id);
+
+    // Gérer la déconnexion de l'utilisateur des salles de watch party
+    const roomId = socket.data.roomId;
+    if (roomId) {
+      const room = watchPartyRooms.get(roomId);
+      const userId = socket.data.userId;
+      const username = socket.data.username;
+
+      if (room && userId && username) {
+        // Retirer le participant
+        room.participants.delete(userId);
         room.lastActivity = Date.now();
 
-        io.to(roomId).emit('video-changed', {
-          videoUrl: data.videoUrl,
-          title: data.title,
-          changedBy: socket.data.username
-        });
-        
-        // Ajouter un message système
-        const messageData = {
-          id: `system-${Date.now()}`,
-          userId: 'system',
-          username: 'Système',
-          message: `${socket.data.username} a changé la vidéo pour: ${data.title}`,
-          timestamp: Date.now()
-        };
-        
-        room.messages.push(messageData);
-        if (room.messages.length > 100) {
-          room.messages = room.messages.slice(-100);
+        console.log(`${username} a été déconnecté de la salle ${roomId} (${room.participants.size}/${room.maxParticipants || 20})`);
+
+        // Si la salle est vide, la supprimer
+        if (room.participants.size === 0) {
+          watchPartyRooms.delete(roomId);
+          console.log(`Salle ${roomId} supprimée (vide)`);
+          return;
         }
-        
-        io.to(roomId).emit('new-message', messageData);
-      }
-    }
-  });
 
-  // Chat de la watch party
-  socket.on('send-message', (data: { message: string }) => {
-    const roomId = socket.data.roomId;
-    const userId = socket.data.userId;
-    const username = socket.data.username;
-
-    if (roomId && watchPartyRooms.has(roomId) && data.message.trim()) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.lastActivity = Date.now();
-
-      const messageData = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        userId,
-        username,
-        message: data.message.trim(),
-        timestamp: Date.now()
-      };
-
-      // Ajouter le message à l'historique (limiter à 100 messages)
-      room.messages.push(messageData);
-      if (room.messages.length > 100) {
-        room.messages = room.messages.slice(-100);
-      }
-
-      // Envoyer le message à tous les participants de la salle
-      io.to(roomId).emit('new-message', messageData);
-    }
-  });
-
-  // Déconnexion
-  socket.on('disconnect', () => {
-    const roomId = socket.data.roomId;
-    const userId = socket.data.userId;
-    const username = socket.data.username;
-
-    // Quitter la room des notifications
-    if (userId) {
-      socket.leave(`notifications-${userId}`);
-    }
-
-    if (roomId && watchPartyRooms.has(roomId)) {
-      const room = watchPartyRooms.get(roomId)!;
-      room.participants.delete(userId);
-      room.lastActivity = Date.now();
-
-      // Si la salle est vide, la supprimer
-      if (room.participants.size === 0) {
-        watchPartyRooms.delete(roomId);
-        console.log(`Salle ${roomId} supprimée (déconnexion)`);
-      } else {
-        // Si l'hôte se déconnecte, transférer l'hôte
+        // Si l'hôte se déconnecte, promouvoir un nouveau participant
         if (room.host === userId) {
-          const newHost = Array.from(room.participants.keys())[0];
-          room.host = newHost;
-          console.log(`Hôte transféré de ${username} à ${room.participants.get(newHost)?.username} (déconnexion)`);
-          io.to(roomId).emit('host-changed', { newHost });
-          
-          // Ajouter un message système pour le changement d'hôte
-          const hostChangeMessage = {
-            id: `system-${Date.now()}`,
-            userId: 'system',
-            username: 'Système',
-            message: `${room.participants.get(newHost)?.username} est maintenant l'hôte`,
-            timestamp: Date.now(),
-            isSystemMessage: true
-          };
-          room.messages.push(hostChangeMessage);
-          if (room.messages.length > 100) {
-            room.messages = room.messages.slice(-100);
-          }
-          io.to(roomId).emit('new-message', hostChangeMessage);
+          const newHostId = Array.from(room.participants.keys())[0];
+          room.host = newHostId;
+          console.log(`Nouvel hôte pour la salle ${roomId}: ${newHostId}`);
         }
 
-        // Notifier les autres participants de la déconnexion
-        socket.to(roomId).emit('participant-disconnected', {
+        // Notifier les autres participants
+        socket.to(roomId).emit('participant-left', {
           userId,
           username,
           participants: Array.from(room.participants.keys()),
-          participantCount: room.participants.size
+          participantCount: room.participants.size,
+          newHost: room.host
         });
 
-        // Ajouter un message système pour la déconnexion
-        const disconnectMessage = {
+        // Ajouter un message système
+        const systemMessage = {
           id: `system-${Date.now()}`,
           userId: 'system',
           username: 'Système',
@@ -491,120 +479,26 @@ io.on('connection', (socket: Socket) => {
           timestamp: Date.now(),
           isSystemMessage: true
         };
-        room.messages.push(disconnectMessage);
+
+        room.messages.push(systemMessage);
+        room.lastActivity = Date.now();
+
+        // Envoyer le message système à tous les participants
+        io.to(roomId).emit('chat-message', systemMessage);
+
+        // Limiter l'historique des messages à 100
         if (room.messages.length > 100) {
           room.messages = room.messages.slice(-100);
         }
-        io.to(roomId).emit('new-message', disconnectMessage);
       }
     }
-
-    console.log('Utilisateur déconnecté:', socket.id);
   });
 });
 
-// Fonctions utilitaires pour les notifications temps réel
-export const notificationService = {
-  // Envoyer une notification à un utilisateur spécifique
-  async sendNotificationToUser(userId: string, title: string, message: string, type: string = "info") {
-    try {
-      const notification = await storage.sendNotificationToUser(userId, title, message, type);
-      
-      // Envoyer la notification en temps réel
-      io.to(`notifications-${userId}`).emit('new-notification', notification);
-      
-      return notification;
-    } catch (error) {
-      console.error('Error sending notification to user:', error);
-      throw error;
-    }
-  },
-
-  // Envoyer une annonce à tous les utilisateurs
-  async sendAnnouncementToAllUsers(title: string, message: string) {
-    try {
-      const notifications = await storage.sendAnnouncementToAllUsers(title, message);
-      
-      // Envoyer l'annonce en temps réel à tous les utilisateurs connectés
-      io.emit('new-announcement', {
-        title,
-        message,
-        type: 'announcement',
-        createdAt: new Date().toISOString()
-      });
-      
-      return notifications;
-    } catch (error) {
-      console.error('Error sending announcement to all users:', error);
-      throw error;
-    }
-  },
-
-  // Marquer une notification comme lue
-  async markNotificationAsRead(notificationId: string, userId: string) {
-    try {
-      const notification = await storage.markNotificationAsRead(notificationId);
-      
-      // Notifier l'utilisateur que la notification a été marquée comme lue
-      io.to(`notifications-${userId}`).emit('notification-marked-read', { notificationId });
-      
-      return notification;
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      throw error;
-    }
-  }
-};
-
-// API routes pour Watch Party
-app.get('/api/watch-party/:roomId', (req, res) => {
-  const { roomId } = req.params;
-
-  if (watchPartyRooms.has(roomId)) {
-    const room = watchPartyRooms.get(roomId)!;
-    res.json({
-      exists: true,
-      host: room.host,
-      participants: Array.from(room.participants.keys()),
-      currentVideo: room.currentVideo,
-      currentTime: room.currentTime,
-      isPlaying: room.isPlaying,
-      messageCount: room.messages.length,
-      createdAt: room.createdAt,
-      lastActivity: room.lastActivity
-    });
-  } else {
-    res.json({ exists: false });
-  }
-});
-
-app.post('/api/watch-party', (req, res) => {
-  const { videoUrl, title } = req.body;
-  // Générer un code de salle plus court et plus lisible
-  const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-  // Créer une nouvelle salle
-  watchPartyRooms.set(roomId, {
-    host: req.user?.userId || 'anonymous',
-    participants: new Map(),
-    currentVideo: videoUrl,
-    currentTime: 0,
-    isPlaying: false,
-    messages: [],
-    createdAt: Date.now(),
-    lastActivity: Date.now(),
-    maxParticipants: 20
-  });
-
-  res.json({
-    roomId,
-    videoUrl,
-    title
-  });
-});
-
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+// Démarrer le serveur
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Subscription plans route registered`);
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
   console.log(`🌐 Socket.IO activé pour Watch Party`);
 });
