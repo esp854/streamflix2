@@ -5,6 +5,7 @@ import { plans } from "./plans";
 console.log('Plans imported:', plans); // Debug log
 
 import { paymentService, type CustomerInfo } from "./payment-service";
+import { notificationService } from "./index.js";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
@@ -2054,19 +2055,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Send notification (admin only)
+  // ===== NOTIFICATIONS SYSTEM =====
+  
+  // Get user notifications
+  app.get("/api/notifications", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+      
+      const notifications = await storage.getUserNotifications(req.user.userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching user notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Get notification count for user
+  app.get("/api/notifications/count", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+      
+      const notifications = await storage.getUserNotifications(req.user.userId);
+      const unreadCount = notifications.filter(n => !n.read).length;
+      
+      res.json({ 
+        total: notifications.length,
+        unread: unreadCount,
+        read: notifications.length - unreadCount
+      });
+    } catch (error) {
+      console.error("Error getting notification count:", error);
+      res.status(500).json({ error: "Failed to get notification count" });
+    }
+  });
+
+  // Mark notification as read
+  app.put("/api/notifications/:id/read", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+      
+      const { id } = req.params;
+      
+      // Use the notification service for real-time updates
+      const notification = await notificationService.markNotificationAsRead(id, req.user.userId);
+      res.json({ success: true, notification });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read for user
+  app.put("/api/notifications/read-all", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+      
+      const notifications = await storage.getUserNotifications(req.user.userId);
+      const unreadNotifications = notifications.filter(n => !n.read);
+      
+      // Mark all as read
+      const updatePromises = unreadNotifications.map(notification => 
+        storage.markNotificationAsRead(notification.id)
+      );
+      
+      await Promise.all(updatePromises);
+      
+      res.json({ 
+        success: true, 
+        message: `Marked ${unreadNotifications.length} notifications as read` 
+      });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Delete notification
+  app.delete("/api/notifications/:id", authenticateToken, async (req: any, res: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Non authentifié" });
+      }
+      
+      const { id } = req.params;
+      
+      // First verify that the notification belongs to the user
+      const notifications = await storage.getUserNotifications(req.user.userId);
+      const notification = notifications.find(n => n.id === id);
+      
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      
+      await storage.deleteNotification(id);
+      res.json({ success: true, message: "Notification deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
+  // ===== ADMIN NOTIFICATIONS =====
+  
+  // Get all notifications (admin only)
+  app.get("/api/admin/notifications", requireAdmin, async (req, res) => {
+    try {
+      const notifications = await storage.getAllNotifications();
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching all notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Send notification to specific user (admin only)
   app.post("/api/admin/notifications/send", requireAdmin, async (req, res) => {
     try {
-      const notificationData = insertNotificationSchema.parse(req.body);
-      const notification = await storage.createNotification(notificationData);
-      res.json(notification);
+      const { userId, title, message, type } = req.body;
+      
+      if (!userId || !title || !message) {
+        return res.status(400).json({ error: "Missing required fields: userId, title, message" });
+      }
+      
+      const notification = await notificationService.sendNotificationToUser(userId, title, message, type);
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Notification sent successfully",
+        notification 
+      });
     } catch (error) {
       console.error("Error sending notification:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid notification data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to send notification" });
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  // Send announcement to all users (admin only)
+  app.post("/api/admin/notifications/announcement", requireAdmin, async (req, res) => {
+    try {
+      const { subject, message } = req.body;
+      
+      if (!subject || !message) {
+        return res.status(400).json({ error: "Missing required fields: subject, message" });
       }
+      
+      const notifications = await notificationService.sendAnnouncementToAllUsers(subject, message);
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Announcement sent to all users successfully",
+        notificationsCount: notifications.length
+      });
+    } catch (error) {
+      console.error("Error sending announcement:", error);
+      res.status(500).json({ error: "Failed to send announcement" });
     }
   });
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link, useLocation } from "wouter";
-import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Download, Share2, CreditCard, Heart } from "lucide-react";
+import { Home, Maximize, Minimize, Volume2, VolumeX, Play, Pause, Settings, SkipBack, SkipForward, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Download, Share2, CreditCard, Heart, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useFavorites } from "@/hooks/use-favorites";
 import ZuploadVideoPlayer from "@/components/zupload-video-player"; // Import ZuploadVideoPlayer
+import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function WatchTV() {
@@ -47,6 +48,12 @@ export default function WatchTV() {
   const [isZuploadVideo, setIsZuploadVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // Add videoUrl state
   const [videoError, setVideoError] = useState<string | null>(null); // Add videoError state
+
+  // Watch Party state
+  const [isWatchPartyActive, setIsWatchPartyActive] = useState(false);
+  const [watchPartyRoomId, setWatchPartyRoomId] = useState<string>('');
+  const [isWatchPartyHost, setIsWatchPartyHost] = useState(false);
+  const [showWatchPartyPanel, setShowWatchPartyPanel] = useState(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -398,6 +405,76 @@ export default function WatchTV() {
     setIsMuted(newMutedState);
   }, [isMuted, isYouTubeVideo]);
 
+  const toggleWatchParty = useCallback(() => {
+    if (!isAuthenticated) {
+      // Rediriger vers la page de connexion si l'utilisateur n'est pas connecté
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    if (isWatchPartyActive) {
+      // Leave watch party
+      setIsWatchPartyActive(false);
+      setWatchPartyRoomId('');
+      setIsWatchPartyHost(false);
+      setShowWatchPartyPanel(false);
+    } else {
+      // Start watch party
+      console.log('📺 Starting Watch Party for:', {
+        title: `${tvDetails.name} - S${currentSeason} E${currentEpisode}`,
+        videoUrl: videoUrl,
+        tvId: tvId,
+        season: currentSeason,
+        episode: currentEpisode
+      });
+      
+      setIsWatchPartyActive(true);
+      setShowWatchPartyPanel(true);
+      // Generate a unique room ID
+      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+      setWatchPartyRoomId(roomId);
+      setIsWatchPartyHost(true);
+    }
+  }, [isWatchPartyActive, isAuthenticated, tvDetails?.name, videoUrl, tvId, currentSeason, currentEpisode]);
+
+  const handleVideoControl = useCallback((action: 'play' | 'pause' | 'seek', data?: any) => {
+    if (!videoRef.current || !isMountedRef.current) return;
+    
+    switch (action) {
+      case 'play':
+        if (isYouTubeVideo && youtubePlayerRef.current) {
+          youtubePlayerRef.current.playVideo();
+        } else if (videoRef.current) {
+          videoRef.current.play();
+        }
+        setIsPlaying(true);
+        break;
+      case 'pause':
+        if (isYouTubeVideo && youtubePlayerRef.current) {
+          youtubePlayerRef.current.pauseVideo();
+        } else if (videoRef.current) {
+          videoRef.current.pause();
+        }
+        setIsPlaying(false);
+        break;
+      case 'seek':
+        if (data?.currentTime !== undefined) {
+          if (isYouTubeVideo && youtubePlayerRef.current) {
+            youtubePlayerRef.current.seekTo(data.currentTime, true);
+          } else if (videoRef.current) {
+            videoRef.current.currentTime = data.currentTime;
+          }
+          setCurrentTime(data.currentTime);
+        }
+        break;
+    }
+  }, [isYouTubeVideo]);
+
+  const handleVideoUrlChange = useCallback((url: string) => {
+    console.log('Watch Party video URL change:', url);
+    setVideoUrl(url);
+  }, []);
+
   const handleTimeUpdate = useCallback(() => {
     if (!videoRef.current || !isMountedRef.current) return;
     
@@ -724,7 +801,43 @@ export default function WatchTV() {
               window.location.href = newUrl;
             }}
             onPreviousEpisode={goToPreviousEpisode}
+            isWatchParty={isWatchPartyActive}
+            isHost={isWatchPartyHost}
+            onVideoPlay={(time) => handleVideoControl('play', { currentTime: time })}
+            onVideoPause={(time) => handleVideoControl('pause', { currentTime: time })}
+            onVideoSeek={(time) => handleVideoControl('seek', { currentTime: time })}
+            showWatchPartyPanel={showWatchPartyPanel}
+            watchPartyComponent={
+              isWatchPartyActive ? (
+                <WatchPartyEnhanced
+                  videoUrl={videoUrl || ''}
+                  title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
+                  onVideoControl={handleVideoControl}
+                  onVideoUrlChange={handleVideoUrlChange}
+                  isHost={isWatchPartyHost}
+                  setIsHost={setIsWatchPartyHost}
+                  currentVideoTime={currentTime}
+                  isVideoPlaying={isPlaying}
+                />
+              ) : undefined
+            }
           />
+        )}
+
+        {/* Watch Party Overlay - Available for all video types when Watch Party is active */}
+        {isWatchPartyActive && (
+          <div className="absolute inset-0 z-50 bg-black">
+            <WatchPartyEnhanced
+              videoUrl={videoUrl || ''}
+              title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
+              onVideoControl={handleVideoControl}
+              onVideoUrlChange={handleVideoUrlChange}
+              isHost={isWatchPartyHost}
+              setIsHost={setIsWatchPartyHost}
+              currentVideoTime={currentTime}
+              isVideoPlaying={isPlaying}
+            />
+          </div>
         )}
         
         {/* Buffering Indicator */}
@@ -785,6 +898,19 @@ export default function WatchTV() {
                   className="text-white hover:bg-white/20"
                 >
                   <Share2 className="w-4 h-4" />
+                </Button>
+                {/* Watch Party Button - Available for all video types */}
+                <Button
+                  onClick={toggleWatchParty}
+                  variant="ghost"
+                  size="sm"
+                  className={`text-white hover:bg-white/20 transition-all duration-200 ${isWatchPartyActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-white/20'}`}
+                  title={isWatchPartyActive ? 'Quitter la Watch Party' : 'Créer une Watch Party'}
+                >
+                  <Users className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">
+                    {isWatchPartyActive ? 'Quitter' : 'Watch Party'}
+                  </span>
                 </Button>
                 <Button
                   onClick={downloadEpisode}

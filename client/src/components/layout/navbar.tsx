@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, Bell, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play } from "lucide-react";
+import { Search, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,114 +21,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import PWAInstallButton from "@/components/PWAInstallButton";
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  read: boolean;
-  createdAt: string;
-}
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"login" | "register">("login");
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [location, navigate] = useLocation();
   
   const { user, logout, isAuthenticated } = useAuth();
-
-  // Fetch notifications when user is authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchNotifications();
-    }
-  }, [isAuthenticated]);
-
-  const fetchNotifications = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch("/api/notifications", {
-        credentials: "include",
-        headers: {
-          ...(token ? { "Authorization": "Bearer " + token } : {}),
-        },
-      });
-      
-      if (response.ok) {
-        const userNotifications = await response.json();
-        setNotifications(userNotifications);
-        setUnreadCount(userNotifications.filter((n: Notification) => !n.read).length);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
-  const getCSRFToken = async (): Promise<string | null> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch("/api/csrf-token", {
-        credentials: "include",
-        headers: {
-          ...(token ? { "Authorization": "Bearer " + token } : {}),
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return data.csrfToken;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error fetching CSRF token:", error);
-      return null;
-    }
-  };
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const csrfToken = await getCSRFToken();
-      
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": "Bearer " + token } : {}),
-          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
-        },
-      });
-      
-      if (response.ok) {
-        setNotifications(notifications.map(n => 
-          n.id === notificationId ? { ...n, read: true } : n
-        ));
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      // Mark all unread notifications as read
-      const unreadNotifications = notifications.filter(n => !n.read);
-      await Promise.all(unreadNotifications.map(n => markAsRead(n.id)));
-      
-      // Update local state
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-    }
-  };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -222,82 +123,7 @@ export default function Navbar() {
               
               {/* Notifications */}
               {isAuthenticated && (
-                <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-foreground relative"
-                      data-testid="notifications-button"
-                      onClick={() => setNotificationsOpen(!notificationsOpen)}
-                    >
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
-                    <div className="border-b p-4 flex justify-between items-center">
-                      <div>
-                        <h3 className="font-medium">Notifications</h3>
-                        {unreadCount > 0 && (
-                          <p className="text-sm text-muted-foreground">{unreadCount} non lues</p>
-                        )}
-                      </div>
-                      {unreadCount > 0 && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={markAllAsRead}
-                          className="text-xs h-8"
-                        >
-                          <CheckCheck className="h-3 w-3 mr-1" />
-                          Tout marquer comme lu
-                        </Button>
-                      )}
-                    </div>
-                    <ScrollArea className="h-80">
-                      {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                          Aucune notification
-                        </div>
-                      ) : (
-                        <div className="divide-y">
-                          {notifications.map((notification) => (
-                            <div 
-                              key={notification.id} 
-                              className={`p-4 hover:bg-muted/50 ${!notification.read ? 'bg-muted/30' : ''}`}
-                            >
-                              <div className="flex justify-between items-start">
-                                <h4 className="font-medium text-sm">{notification.title}</h4>
-                                {!notification.read && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      markAsRead(notification.id);
-                                    }}
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {format(new Date(notification.createdAt), 'dd MMM yyyy', { locale: fr })}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
+                <NotificationBell />
               )}
               
               {/* PWA Install Button */}

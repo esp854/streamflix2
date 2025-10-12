@@ -5,6 +5,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
+import { storage } from "./storage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,13 +74,65 @@ function cleanupInactiveRooms() {
 // Nettoyer les salles inactives toutes les heures
 setInterval(cleanupInactiveRooms, 60 * 60 * 1000);
 
-// Socket.IO handlers pour Watch Party
+// Socket.IO handlers pour Watch Party et Notifications
 io.on('connection', (socket: Socket) => {
   console.log('Utilisateur connecté:', socket.id);
+
+  // Gestion des notifications temps réel
+  socket.on('join-notifications', (data: { userId: string }) => {
+    const { userId } = data;
+    
+    if (!userId) {
+      socket.emit('error', { message: 'User ID is required for notifications' });
+      return;
+    }
+    
+    // Rejoindre la room des notifications pour cet utilisateur
+    socket.join(`notifications-${userId}`);
+    socket.data.userId = userId;
+    
+    console.log(`User ${userId} joined notifications room`);
+    
+    // Envoyer les notifications non lues
+    storage.getUserNotifications(userId).then(notifications => {
+      const unreadNotifications = notifications.filter(n => !n.read);
+      if (unreadNotifications.length > 0) {
+        socket.emit('unread-notifications', unreadNotifications);
+      }
+    }).catch(error => {
+      console.error('Error fetching unread notifications:', error);
+    });
+  });
+
+  socket.on('mark-notification-read', async (data: { notificationId: string }) => {
+    try {
+      const { notificationId } = data;
+      await storage.markNotificationAsRead(notificationId);
+      
+      // Notifier l'utilisateur que la notification a été marquée comme lue
+      socket.emit('notification-marked-read', { notificationId });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      socket.emit('error', { message: 'Failed to mark notification as read' });
+    }
+  });
+
+  socket.on('leave-notifications', () => {
+    if (socket.data.userId) {
+      socket.leave(`notifications-${socket.data.userId}`);
+      console.log(`User ${socket.data.userId} left notifications room`);
+    }
+  });
 
   // Rejoindre une salle de watch party
   socket.on('join-watch-party', (data: { roomId: string; userId: string; username: string }) => {
     const { roomId, userId, username } = data;
+
+    // Valider les données d'entrée
+    if (!roomId || !userId || !username) {
+      socket.emit('error', { message: 'Données de connexion invalides' });
+      return;
+    }
 
     // Créer la salle si elle n'existe pas
     if (!watchPartyRooms.has(roomId)) {
@@ -91,12 +144,26 @@ io.on('connection', (socket: Socket) => {
         isPlaying: false,
         messages: [],
         createdAt: Date.now(),
-        lastActivity: Date.now()
+        lastActivity: Date.now(),
+        maxParticipants: 20 // Limite de participants
       });
+      console.log(`Nouvelle salle créée: ${roomId} par ${username}`);
     }
 
     const room = watchPartyRooms.get(roomId)!;
-    room.participants.set(userId, { username });
+    
+    // Vérifier la limite de participants
+    if (room.participants.size >= room.maxParticipants) {
+      socket.emit('error', { message: 'La salle est pleine' });
+      return;
+    }
+
+    // Ajouter le participant
+    room.participants.set(userId, { 
+      username, 
+      joinedAt: Date.now(),
+      lastSeen: Date.now()
+    });
     room.lastActivity = Date.now();
 
     socket.join(roomId);
@@ -104,7 +171,7 @@ io.on('connection', (socket: Socket) => {
     socket.data.userId = userId;
     socket.data.username = username;
 
-    console.log(`${username} a rejoint la salle ${roomId}`);
+    console.log(`${username} a rejoint la salle ${roomId} (${room.participants.size}/${room.maxParticipants})`);
 
     // Envoyer l'état actuel de la salle au nouveau participant
     socket.emit('watch-party-joined', {
@@ -114,15 +181,34 @@ io.on('connection', (socket: Socket) => {
       currentVideo: room.currentVideo,
       currentTime: room.currentTime,
       isPlaying: room.isPlaying,
-      messages: room.messages.slice(-50) // Derniers 50 messages
+      messages: room.messages.slice(-50), // Derniers 50 messages
+      isHost: room.host === userId,
+      participantCount: room.participants.size,
+      maxParticipants: room.maxParticipants
     });
 
     // Notifier les autres participants
     socket.to(roomId).emit('participant-joined', {
       userId,
       username,
-      participants: Array.from(room.participants.keys())
+      participants: Array.from(room.participants.keys()),
+      participantCount: room.participants.size
     });
+
+    // Ajouter un message système
+    const systemMessage = {
+      id: `system-${Date.now()}`,
+      userId: 'system',
+      username: 'Système',
+      message: `${username} a rejoint la salle`,
+      timestamp: Date.now(),
+      isSystemMessage: true
+    };
+    room.messages.push(systemMessage);
+    if (room.messages.length > 100) {
+      room.messages = room.messages.slice(-100);
+    }
+    io.to(roomId).emit('new-message', systemMessage);
   });
 
   // Quitter une salle de watch party
@@ -133,32 +219,66 @@ io.on('connection', (socket: Socket) => {
 
     if (roomId && watchPartyRooms.has(roomId)) {
       const room = watchPartyRooms.get(roomId)!;
+      const wasHost = room.host === userId;
+      
       room.participants.delete(userId);
       room.lastActivity = Date.now();
 
       socket.leave(roomId);
 
-      // Si la salle est vide, la supprimer
+      console.log(`${username} a quitté la salle ${roomId}`);
+
+      // Notifier les autres participants
+      socket.to(roomId).emit('participant-left', {
+        userId,
+        username,
+        participants: Array.from(room.participants.keys()),
+        participantCount: room.participants.size
+      });
+
+      // Si l'hôte part, transférer l'hôte au premier participant restant
+      if (wasHost && room.participants.size > 0) {
+        const newHost = Array.from(room.participants.keys())[0];
+        room.host = newHost;
+        console.log(`Hôte transféré de ${username} à ${room.participants.get(newHost)?.username}`);
+        socket.to(roomId).emit('host-changed', { newHost });
+        
+        // Ajouter un message système pour le changement d'hôte
+        const hostChangeMessage = {
+          id: `system-${Date.now()}`,
+          userId: 'system',
+          username: 'Système',
+          message: `${room.participants.get(newHost)?.username} est maintenant l'hôte`,
+          timestamp: Date.now(),
+          isSystemMessage: true
+        };
+        room.messages.push(hostChangeMessage);
+        if (room.messages.length > 100) {
+          room.messages = room.messages.slice(-100);
+        }
+        io.to(roomId).emit('new-message', hostChangeMessage);
+      }
+
+      // Ajouter un message système pour le départ
+      const leaveMessage = {
+        id: `system-${Date.now()}`,
+        userId: 'system',
+        username: 'Système',
+        message: `${username} a quitté la salle`,
+        timestamp: Date.now(),
+        isSystemMessage: true
+      };
+      room.messages.push(leaveMessage);
+      if (room.messages.length > 100) {
+        room.messages = room.messages.slice(-100);
+      }
+      io.to(roomId).emit('new-message', leaveMessage);
+
+      // Supprimer la salle si elle est vide
       if (room.participants.size === 0) {
         watchPartyRooms.delete(roomId);
         console.log(`Salle ${roomId} supprimée (vide)`);
-      } else {
-        // Si l'hôte quitte, transférer l'hôte à quelqu'un d'autre
-        if (room.host === userId) {
-          const newHost = Array.from(room.participants.keys())[0];
-          room.host = newHost;
-          io.to(roomId).emit('host-changed', { newHost });
-        }
-
-        // Notifier les autres participants
-        socket.to(roomId).emit('participant-left', {
-          userId,
-          username,
-          participants: Array.from(room.participants.keys())
-        });
       }
-
-      console.log(`${username} a quitté la salle ${roomId}`);
     }
   });
 
@@ -300,6 +420,11 @@ io.on('connection', (socket: Socket) => {
     const userId = socket.data.userId;
     const username = socket.data.username;
 
+    // Quitter la room des notifications
+    if (userId) {
+      socket.leave(`notifications-${userId}`);
+    }
+
     if (roomId && watchPartyRooms.has(roomId)) {
       const room = watchPartyRooms.get(roomId)!;
       room.participants.delete(userId);
@@ -314,21 +439,106 @@ io.on('connection', (socket: Socket) => {
         if (room.host === userId) {
           const newHost = Array.from(room.participants.keys())[0];
           room.host = newHost;
+          console.log(`Hôte transféré de ${username} à ${room.participants.get(newHost)?.username} (déconnexion)`);
           io.to(roomId).emit('host-changed', { newHost });
+          
+          // Ajouter un message système pour le changement d'hôte
+          const hostChangeMessage = {
+            id: `system-${Date.now()}`,
+            userId: 'system',
+            username: 'Système',
+            message: `${room.participants.get(newHost)?.username} est maintenant l'hôte`,
+            timestamp: Date.now(),
+            isSystemMessage: true
+          };
+          room.messages.push(hostChangeMessage);
+          if (room.messages.length > 100) {
+            room.messages = room.messages.slice(-100);
+          }
+          io.to(roomId).emit('new-message', hostChangeMessage);
         }
 
-        // Notifier les autres participants
-        socket.to(roomId).emit('participant-left', {
+        // Notifier les autres participants de la déconnexion
+        socket.to(roomId).emit('participant-disconnected', {
           userId,
           username,
-          participants: Array.from(room.participants.keys())
+          participants: Array.from(room.participants.keys()),
+          participantCount: room.participants.size
         });
+
+        // Ajouter un message système pour la déconnexion
+        const disconnectMessage = {
+          id: `system-${Date.now()}`,
+          userId: 'system',
+          username: 'Système',
+          message: `${username} s'est déconnecté`,
+          timestamp: Date.now(),
+          isSystemMessage: true
+        };
+        room.messages.push(disconnectMessage);
+        if (room.messages.length > 100) {
+          room.messages = room.messages.slice(-100);
+        }
+        io.to(roomId).emit('new-message', disconnectMessage);
       }
     }
 
     console.log('Utilisateur déconnecté:', socket.id);
   });
 });
+
+// Fonctions utilitaires pour les notifications temps réel
+export const notificationService = {
+  // Envoyer une notification à un utilisateur spécifique
+  async sendNotificationToUser(userId: string, title: string, message: string, type: string = "info") {
+    try {
+      const notification = await storage.sendNotificationToUser(userId, title, message, type);
+      
+      // Envoyer la notification en temps réel
+      io.to(`notifications-${userId}`).emit('new-notification', notification);
+      
+      return notification;
+    } catch (error) {
+      console.error('Error sending notification to user:', error);
+      throw error;
+    }
+  },
+
+  // Envoyer une annonce à tous les utilisateurs
+  async sendAnnouncementToAllUsers(title: string, message: string) {
+    try {
+      const notifications = await storage.sendAnnouncementToAllUsers(title, message);
+      
+      // Envoyer l'annonce en temps réel à tous les utilisateurs connectés
+      io.emit('new-announcement', {
+        title,
+        message,
+        type: 'announcement',
+        createdAt: new Date().toISOString()
+      });
+      
+      return notifications;
+    } catch (error) {
+      console.error('Error sending announcement to all users:', error);
+      throw error;
+    }
+  },
+
+  // Marquer une notification comme lue
+  async markNotificationAsRead(notificationId: string, userId: string) {
+    try {
+      const notification = await storage.markNotificationAsRead(notificationId);
+      
+      // Notifier l'utilisateur que la notification a été marquée comme lue
+      io.to(`notifications-${userId}`).emit('notification-marked-read', { notificationId });
+      
+      return notification;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  }
+};
 
 // API routes pour Watch Party
 app.get('/api/watch-party/:roomId', (req, res) => {

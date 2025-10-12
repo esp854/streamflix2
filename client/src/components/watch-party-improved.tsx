@@ -193,6 +193,26 @@ const WatchParty: React.FC<WatchPartyProps> = ({
       setMessages(prev => [...prev, newMessage]);
     });
 
+    // Participant déconnecté
+    socket.on('participant-disconnected', (data: ParticipantEventData) => {
+      setParticipants(data.participants.map((p: string) => ({
+        userId: p,
+        username: p === user.id ? user.username : `User ${p.slice(0, 8)}`,
+        isHost: p === getHostId()
+      })));
+      
+      // Ajouter un message système
+      const newMessage: ChatMessage = {
+        id: `system-${Date.now()}`,
+        userId: 'system',
+        username: 'Système',
+        message: `${data.username} s'est déconnecté`,
+        timestamp: Date.now(),
+        isSystemMessage: true
+      };
+      setMessages(prev => [...prev, newMessage]);
+    });
+
     // Changement d'hôte
     socket.on('host-changed', (data: HostChangedData) => {
       setIsHost(data.newHost === user.id);
@@ -233,16 +253,33 @@ const WatchParty: React.FC<WatchPartyProps> = ({
       setMessages(prev => [...prev, message]);
     });
 
+    // Gestion des erreurs
+    socket.on('error', (error: { message: string }) => {
+      console.error('Erreur Watch Party:', error);
+      // Afficher une notification d'erreur à l'utilisateur
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        userId: 'system',
+        username: 'Erreur',
+        message: `Erreur: ${error.message}`,
+        timestamp: Date.now(),
+        isSystemMessage: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    });
+
     return () => {
       socket.off('watch-party-joined');
       socket.off('participant-joined');
       socket.off('participant-left');
+      socket.off('participant-disconnected');
       socket.off('host-changed');
       socket.off('video-play-sync');
       socket.off('video-pause-sync');
       socket.off('video-seek-sync');
       socket.off('video-changed');
       socket.off('new-message');
+      socket.off('error');
     };
   }, [socket, user, onVideoControl, onVideoUrlChange, setIsHost]);
 
@@ -266,8 +303,13 @@ const WatchParty: React.FC<WatchPartyProps> = ({
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
       const data = await response.json();
       setRoomId(data.roomId);
+      setRoomCode(data.roomId);
 
       // Rejoindre la salle créée
       socket.emit('join-watch-party', {
@@ -277,14 +319,37 @@ const WatchParty: React.FC<WatchPartyProps> = ({
       });
     } catch (error) {
       console.error('Erreur création watch party:', error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        userId: 'system',
+        username: 'Erreur',
+        message: `Impossible de créer la Watch Party: ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+        timestamp: Date.now(),
+        isSystemMessage: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
   const joinWatchParty = () => {
     if (!socket || !user || !roomCode.trim()) return;
 
+    // Valider le code de salle
+    if (roomCode.trim().length < 4) {
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        userId: 'system',
+        username: 'Erreur',
+        message: 'Le code de salle doit contenir au moins 4 caractères',
+        timestamp: Date.now(),
+        isSystemMessage: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      return;
+    }
+
     socket.emit('join-watch-party', {
-      roomId: roomCode.trim(),
+      roomId: roomCode.trim().toUpperCase(),
       userId: user.id,
       username: user.username
     });

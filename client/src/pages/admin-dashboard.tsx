@@ -42,6 +42,7 @@ import {
   AlertTriangle,
   Activity,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import type { User as UserType, Content, Subscription } from "@shared/schema";
@@ -49,6 +50,7 @@ import { AddVideoLinkDialog } from "@/components/admin/add-video-link-dialog";
 import CommentsModeration from "@/components/admin/CommentsModeration";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import AnalyticsTab from "@/components/admin/AnalyticsTab";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { tmdbService } from "@/lib/tmdb";
 
@@ -871,6 +873,7 @@ function AdminDashboard() {
     { id: "users", label: "Utilisateurs", icon: Users },
     { id: "subscriptions", label: "Abonnements", icon: CreditCard },
     { id: "comments", label: "Commentaires", icon: MessageSquare },
+    { id: "notifications", label: "Notifications", icon: Bell },
     { id: "analytics", label: "Statistiques", icon: TrendingUp },
     { id: "security", label: "Sécurité", icon: Shield },
     { id: "settings", label: "Paramètres", icon: Settings },
@@ -1948,6 +1951,13 @@ function AdminDashboard() {
                     <CommentsModeration />
                   </CardContent>
                 </Card>
+              </div>
+            </TabsContent>
+
+            {/* Notifications Tab */}
+            <TabsContent value="notifications" className="space-y-4 sm:space-y-6">
+              <div>
+                <AdminNotifications />
               </div>
             </TabsContent>
 

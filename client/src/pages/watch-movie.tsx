@@ -12,7 +12,7 @@ import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import ZuploadVideoPlayer from "@/components/zupload-video-player";
-import WatchParty from "@/components/watch-party";
+import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 declare global {
@@ -485,6 +485,12 @@ export default function WatchMovie() {
   }, []);
 
   const toggleWatchParty = useCallback(() => {
+    if (!isAuthenticated) {
+      // Rediriger vers la page de connexion si l'utilisateur n'est pas connecté
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
     if (isWatchPartyActive) {
       // Leave watch party
       setIsWatchPartyActive(false);
@@ -493,11 +499,20 @@ export default function WatchMovie() {
       setShowWatchPartyPanel(false);
     } else {
       // Start watch party
+      console.log('🎬 Starting Watch Party for:', {
+        title: movieDetails.movie.title,
+        videoUrl: videoUrl,
+        movieId: movieId
+      });
+      
       setIsWatchPartyActive(true);
       setShowWatchPartyPanel(true);
-      // The WatchParty component will handle room creation
+      // Generate a unique room ID
+      const roomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+      setWatchPartyRoomId(roomId);
+      setIsWatchPartyHost(true);
     }
-  }, [isWatchPartyActive]);
+  }, [isWatchPartyActive, isAuthenticated, movieDetails?.movie?.title, videoUrl, movieId]);
 
   // Update showWatchPartyPanel when isWatchPartyActive changes
   useEffect(() => {
@@ -610,11 +625,15 @@ export default function WatchMovie() {
               showWatchPartyPanel={showWatchPartyPanel}
               watchPartyComponent={
                 isWatchPartyActive ? (
-                  <WatchParty
-                    videoUrl={videoUrl}
+                  <WatchPartyEnhanced
+                    videoUrl={videoUrl || ''}
                     title={movieDetails.movie.title}
                     onVideoControl={handleVideoControl}
                     onVideoUrlChange={handleVideoUrlChange}
+                    isHost={isWatchPartyHost}
+                    setIsHost={setIsWatchPartyHost}
+                    currentVideoTime={currentTime}
+                    isVideoPlaying={isPlaying}
                   />
                 ) : undefined
               }
@@ -637,6 +656,22 @@ export default function WatchMovie() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Watch Party Overlay - Available for all video types when Watch Party is active */}
+        {isWatchPartyActive && (
+          <div className="absolute inset-0 z-50 bg-black">
+            <WatchPartyEnhanced
+              videoUrl={videoUrl || ''}
+              title={movieDetails.movie.title}
+              onVideoControl={handleVideoControl}
+              onVideoUrlChange={handleVideoUrlChange}
+              isHost={isWatchPartyHost}
+              setIsHost={setIsWatchPartyHost}
+              currentVideoTime={currentTime}
+              isVideoPlaying={isPlaying}
+            />
+          </div>
         )}
         
         {/* Buffering Indicator */}
@@ -693,18 +728,19 @@ export default function WatchMovie() {
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>
-                {/* Watch Party Button */}
-                {isZuploadVideo && (
-                  <Button
-                    onClick={toggleWatchParty}
-                    variant="ghost"
-                    size="sm"
-                    className={`text-white hover:bg-white/20 ${isWatchPartyActive ? 'bg-blue-600' : ''}`}
-                  >
-                    <Users className="w-4 h-4 mr-1" />
+                {/* Watch Party Button - Available for all video types */}
+                <Button
+                  onClick={toggleWatchParty}
+                  variant="ghost"
+                  size="sm"
+                  className={`text-white hover:bg-white/20 transition-all duration-200 ${isWatchPartyActive ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-white/20'}`}
+                  title={isWatchPartyActive ? 'Quitter la Watch Party' : 'Créer une Watch Party'}
+                >
+                  <Users className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">
                     {isWatchPartyActive ? 'Quitter' : 'Watch Party'}
-                  </Button>
-                )}
+                  </span>
+                </Button>
                 {/* Removed download button for Zupload videos */}
                 {!isZuploadVideo && (
                   <Button

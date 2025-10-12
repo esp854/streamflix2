@@ -158,6 +158,15 @@ export interface IStorage {
   updateCommentApproval(commentId: string, approved: boolean): Promise<Comment>;
   deleteComment(commentId: string): Promise<void>;
   getAllComments(): Promise<Comment[]>;
+  
+  // Notifications
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getUserNotifications(userId: string): Promise<Notification[]>;
+  getAllNotifications(): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: string): Promise<Notification>;
+  deleteNotification(notificationId: string): Promise<void>;
+  sendNotificationToUser(userId: string, title: string, message: string, type?: string): Promise<Notification>;
+  sendAnnouncementToAllUsers(title: string, message: string): Promise<Notification[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -984,6 +993,66 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(comments)
       .orderBy(desc(comments.createdAt));
+  }
+
+  // Notifications
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return created;
+  }
+
+  async getUserNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getAllNotifications(): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<Notification> {
+    const [updated] = await db
+      .update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.id, notificationId))
+      .returning();
+    return updated;
+  }
+
+  async deleteNotification(notificationId: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, notificationId));
+  }
+
+  async sendNotificationToUser(userId: string, title: string, message: string, type: string = "info"): Promise<Notification> {
+    const notification: InsertNotification = {
+      userId,
+      title,
+      message,
+      type,
+      read: false
+    };
+    return await this.createNotification(notification);
+  }
+
+  async sendAnnouncementToAllUsers(title: string, message: string): Promise<Notification[]> {
+    // Get all users
+    const allUsers = await this.getAllUsers();
+    
+    // Create notifications for all users
+    const notificationPromises = allUsers.map(user => 
+      this.sendNotificationToUser(user.id, title, message, "announcement")
+    );
+    
+    return await Promise.all(notificationPromises);
   }
 }
 
