@@ -149,24 +149,24 @@
         });
 
         // Handle PWA install prompt
-        let deferredPrompt;
+        window.deferredPrompt = null;
         window.addEventListener('beforeinstallprompt', (e) => {
           // Prevent the mini-infobar from appearing on mobile
           e.preventDefault();
           // Stash the event so it can be triggered later
-          deferredPrompt = e;
+          window.deferredPrompt = e;
 
           // Show custom install button or notification
           console.log('[PWA] App can be installed');
 
-          // You can dispatch a custom event to show install button
+          // Dispatch a custom event to show install button
           window.dispatchEvent(new CustomEvent('pwa-installable'));
         });
 
         // Handle successful installation
         window.addEventListener('appinstalled', (e) => {
           console.log('[PWA] App was installed successfully');
-          deferredPrompt = null;
+          window.deferredPrompt = null;
         });
       }
 

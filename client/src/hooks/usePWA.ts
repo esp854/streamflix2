@@ -9,7 +9,6 @@ export function usePWA() {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [deferredPrompt, setDeferredPrompt] = useState<PWAInstallPrompt | null>(null);
 
   useEffect(() => {
     // Check if app is already installed
@@ -21,31 +20,37 @@ export function usePWA() {
 
     checkInstalled();
 
-    // Listen for install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as PWAInstallPrompt);
+    // Check if install prompt is already available
+    if ((window as any).deferredPrompt) {
       setIsInstallable(true);
+    }
+
+    // Listen for install prompt
+    const handleBeforeInstallPrompt = () => {
+      // Check if install prompt is available
+      if ((window as any).deferredPrompt) {
+        setIsInstallable(true);
+      }
     };
 
     // Listen for successful installation
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setIsInstallable(false);
-      setDeferredPrompt(null);
+      (window as any).deferredPrompt = null;
     };
 
     // Listen for online/offline status
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-installable', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-installable', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -53,6 +58,7 @@ export function usePWA() {
   }, []);
 
   const install = async () => {
+    const deferredPrompt = (window as any).deferredPrompt;
     if (!deferredPrompt) return false;
 
     try {
@@ -66,7 +72,7 @@ export function usePWA() {
         console.log('[PWA] User dismissed the install prompt');
       }
 
-      setDeferredPrompt(null);
+      (window as any).deferredPrompt = null;
       setIsInstallable(false);
       return outcome === 'accepted';
     } catch (error) {

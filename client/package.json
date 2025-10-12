@@ -43,6 +43,8 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@types/cors": "^2.8.19",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^4.3.3",
     "vite": "^5.4.20"
   }
