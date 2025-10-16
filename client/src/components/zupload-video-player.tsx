@@ -529,7 +529,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
     
     // Ajustement pour s'assurer que le loader s'affiche correctement
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+    if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
       }, loaderDelay);
@@ -570,7 +570,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setIsLoading(true);
         
         // Pour les URLs d'iframe, masquer rapidement le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
           setTimeout(() => {
             setIsLoading(false);
           }, 1000);
@@ -593,7 +593,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }, 100);
         
         // Pour les URLs d'iframe, masquer rapidement le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+        if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
           setTimeout(() => {
             setIsLoading(false);
           }, 1000);
@@ -621,7 +621,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       mainVideoRef.current.src = videoUrl;
       
       // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
-      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed'))) {
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture après avoir passé la pub:', error);
         });
@@ -930,8 +930,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
       {!showAd && (
         <>
-          {/* For iframe embeds (Zupload) - Mobile optimized */}
-          {videoUrl.includes('embed') ? (
+          {/* For iframe embeds (Zupload, Frembed) - Mobile optimized */}
+          {videoUrl.includes('embed') || videoUrl.includes('frembed') ? (
             <>
               <iframe
                 src={videoUrl}
@@ -942,12 +942,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 title={title}
                 loading="lazy"
                 onLoad={() => {
-                  console.log('Iframe Zupload chargée');
+                  console.log('Iframe chargée:', videoUrl);
                   setIsLoading(false);
                   setError(null);
                 }}
                 onError={(e) => {
-                  console.error('Erreur de chargement de l\'iframe Zupload:', e);
+                  console.error('Erreur de chargement de l\'iframe:', e);
                   setIsLoading(false);
                   // Sur mobile, on affiche un message plus spécifique
                   if (isMobileDevice) {

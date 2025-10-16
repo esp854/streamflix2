@@ -134,7 +134,7 @@ export default function WatchMovie() {
     if (contentWithVideo?.odyseeUrl) {
       const url = contentWithVideo.odyseeUrl;
       setIsYouTubeVideo(url.includes("youtube.com") || url.includes("youtu.be"));
-      setIsZuploadVideo(url.includes("zupload"));
+      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed"));
       setVideoUrl(url);
     }
   }, [contentWithVideo]);
@@ -500,7 +500,7 @@ export default function WatchMovie() {
     } else {
       // Start watch party
       console.log('🎬 Starting Watch Party for:', {
-        title: movieDetails.movie.title,
+        title: movieDetails?.movie?.title,
         videoUrl: videoUrl,
         movieId: movieId
       });
@@ -615,28 +615,9 @@ export default function WatchMovie() {
           <div className="w-full h-full">
             <ZuploadVideoPlayer
               videoUrl={videoUrl}
-              title={movieDetails.movie.title}
+              title={movieDetails?.movie?.title || "Film sans titre"}
               onVideoError={handleVideoError}
-              isWatchParty={isWatchPartyActive}
-              isHost={isWatchPartyHost}
-              onVideoPlay={(time) => handleVideoControl('play', { currentTime: time })}
-              onVideoPause={(time) => handleVideoControl('pause', { currentTime: time })}
-              onVideoSeek={(time) => handleVideoControl('seek', { currentTime: time })}
-              showWatchPartyPanel={showWatchPartyPanel}
-              watchPartyComponent={
-                isWatchPartyActive ? (
-                  <WatchPartyEnhanced
-                    videoUrl={videoUrl || ''}
-                    title={movieDetails.movie.title}
-                    onVideoControl={handleVideoControl}
-                    onVideoUrlChange={handleVideoUrlChange}
-                    isHost={isWatchPartyHost}
-                    setIsHost={setIsWatchPartyHost}
-                    currentVideoTime={currentTime}
-                    isVideoPlaying={isPlaying}
-                  />
-                ) : undefined
-              }
+              onVideoEnd={() => console.log("Vidéo terminée")}
             />
           </div>
         ) : (
