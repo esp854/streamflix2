@@ -3,7 +3,21 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/admin/
 Disallow: /private/
+Disallow: /login
+Disallow: /register
 
 Sitemap: https://streamflix2-o7vx.onrender.com/sitemap.xml
 
 Host: streamflix2-o7vx.onrender.com
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 10
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 10
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 10

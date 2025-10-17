@@ -110,4 +110,45 @@
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/contact" />
   </url>
   
+  <!-- Catégories de films -->
+  <url>
+    <loc>https://streamflix2-o7vx.onrender.com/category/action</loc>
+    <lastmod>2025-09-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/action" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2-o7vx.onrender.com/category/comedie</loc>
+    <lastmod>2025-09-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/comedie" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2-o7vx.onrender.com/category/drame</loc>
+    <lastmod>2025-09-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/drame" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2-o7vx.onrender.com/category/science-fiction</loc>
+    <lastmod>2025-09-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/science-fiction" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2-o7vx.onrender.com/category/horreur</loc>
+    <lastmod>2025-09-30</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/horreur" />
+  </url>
+  
 </urlset>

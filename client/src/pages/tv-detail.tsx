@@ -198,8 +198,34 @@ export default function TVDetail() {
     });
   };
 
+  // Données structurées pour la série
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "TVSeries",
+    "name": tv.name,
+    "image": tmdbService.getBackdropUrl(tv.backdrop_path),
+    "description": tv.overview,
+    "datePublished": tv.first_air_date,
+    "endDate": tv.last_air_date,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": tv.vote_average,
+      "bestRating": 10,
+      "worstRating": 0,
+      "ratingCount": tv.vote_count
+    },
+    "genre": tv.genres?.map((g: any) => g.name),
+    "creator": tv.created_by?.map((person: any) => person.name),
+    "actor": cast.slice(0, 5).map((person: any) => person.name),
+    "numberOfSeasons": tv.number_of_seasons,
+    "numberOfEpisodes": tv.number_of_episodes
+  };
+
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
+      <script type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </script>
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img
@@ -235,7 +261,7 @@ export default function TVDetail() {
           <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-white/80 mb-4 sm:mb-6 text-sm sm:text-base" data-testid="tv-metadata">
             <span className="flex items-center space-x-1">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>{getAirYears()}</span>
+              <span>Années: {getAirYears()}</span>
             </span>
             {tv.number_of_seasons && (
               <span className="flex items-center space-x-1">
@@ -244,20 +270,20 @@ export default function TVDetail() {
               </span>
             )}
             {tv.number_of_episodes && (
-              <span>{tv.number_of_episodes} épisodes</span>
+              <span>{tv.number_of_episodes} épisodes au total</span>
             )}
             {formatEpisodeRuntime(tv.episode_run_time) && (
               <span className="flex items-center space-x-1">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{formatEpisodeRuntime(tv.episode_run_time)}</span>
+                <span>Durée moyenne: {formatEpisodeRuntime(tv.episode_run_time)}</span>
               </span>
             )}
-            <span className="hidden sm:inline">{tv.genres?.map((g: any) => g.name).join(", ")}</span>
+            <span className="hidden sm:inline">Genres: {tv.genres?.map((g: any) => g.name).join(", ")}</span>
 
             {tv.vote_average > 0 && (
               <span className="flex items-center space-x-1">
                 <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                <span>{tv.vote_average.toFixed(1)}</span>
+                <span>Note: {tv.vote_average.toFixed(1)}/10</span>
               </span>
             )}
           </div>

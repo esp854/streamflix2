@@ -116,8 +116,32 @@ export default function MovieDetail() {
     }).format(amount);
   };
 
+  // Données structurées pour le film
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Movie",
+    "name": movie.title,
+    "image": tmdbService.getBackdropUrl(movie.backdrop_path),
+    "description": movie.overview,
+    "datePublished": movie.release_date,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": movie.vote_average,
+      "bestRating": 10,
+      "worstRating": 0,
+      "ratingCount": movie.vote_count
+    },
+    "genre": movie.genres?.map(g => g.name),
+    "director": crew.filter(person => person.job === "Director").map(person => person.name),
+    "actor": cast.slice(0, 5).map(person => person.name),
+    "duration": movie.runtime ? `PT${movie.runtime}M` : undefined
+  };
+
   return (
     <div className="min-h-screen bg-background" data-testid="movie-detail-page">
+      <script type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </script>
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img
@@ -150,18 +174,18 @@ export default function MovieDetail() {
           <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-white/80 mb-4 sm:mb-6" data-testid="movie-metadata">
             <span className="flex items-center space-x-1 text-sm sm:text-base">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>{new Date(movie.release_date).getFullYear()}</span>
+              <span>Date de sortie: {new Date(movie.release_date).getFullYear()}</span>
             </span>
             {movie.runtime && (
               <span className="flex items-center space-x-1 text-sm sm:text-base">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{formatRuntime(movie.runtime)}</span>
+                <span>Durée: {formatRuntime(movie.runtime)}</span>
               </span>
             )}
-            <span className="text-sm sm:text-base">{movie.genres?.map(g => g.name).join(", ")}</span>
+            <span className="text-sm sm:text-base">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
             <div className="flex items-center space-x-1 text-sm sm:text-base">
               <Star className="w-4 h-4 sm:w-5 sm:h-5 text-accent fill-current" />
-              <span>{movie.vote_average.toFixed(1)}</span>
+              <span>Note: {movie.vote_average.toFixed(1)}/10</span>
             </div>
           </div>
 
