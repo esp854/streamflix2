@@ -773,7 +773,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(content)
       .where(eq(content.active, true))
-      .orderBy(content.displayOrder, desc(content.createdAt));
+      .orderBy(desc(content.createdAt));
   }
 
   async getContentById(contentId: string): Promise<Content | undefined> {
@@ -809,26 +809,6 @@ export class DatabaseStorage implements IStorage {
     return item || undefined;
   }
 
-  // Get content sorted by display order
-  async getContentSortedByDisplayOrder(): Promise<Content[]> {
-    return await db
-      .select()
-      .from(content)
-      .where(eq(content.active, true))
-      .orderBy(content.displayOrder, desc(content.createdAt));
-  }
-
-  // Update display order for multiple contents
-  async updateContentDisplayOrders(updates: { id: string; displayOrder: number }[]): Promise<void> {
-    // Use a transaction to ensure all updates succeed or fail together
-    for (const update of updates) {
-      await db
-        .update(content)
-        .set({ displayOrder: update.displayOrder, updatedAt: new Date() } as any)
-        .where(eq(content.id, update.id));
-    }
-  }
-
   // New method to get content by TMDB ID regardless of active status (for debugging)
   async getContentByTmdbIdAnyStatus(tmdbId: number): Promise<Content | undefined> {
     const [item] = await db
@@ -851,7 +831,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(content)
-      .orderBy(content.displayOrder, desc(content.createdAt));
+      .orderBy(desc(content.createdAt));
   }
   
   // Add missing content functions
@@ -889,7 +869,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(content)
       .where(eq(content.mediaType, type))
-      .orderBy(content.displayOrder, desc(content.createdAt));
+      .orderBy(desc(content.createdAt));
   }
 
   async getContentByGenre(genre: string): Promise<Content[]> {

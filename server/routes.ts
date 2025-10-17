@@ -2135,37 +2135,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get content sorted by display order
-  app.get("/api/content/sorted/display-order", async (req, res) => {
-    try {
-      const contents = await storage.getContentSortedByDisplayOrder();
-      res.json(contents);
-    } catch (error) {
-      console.error("Error fetching content sorted by display order:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération du contenu" });
-    }
-  });
-
-  // Update content display orders (admin only)
-  app.put("/api/admin/content/display-orders", requireAdmin, async (req, res) => {
-    try {
-      const { updates } = req.body;
-      
-      // Validate input
-      if (!Array.isArray(updates)) {
-        return res.status(400).json({ error: "Invalid updates format" });
-      }
-      
-      // Update display orders
-      await storage.updateContentDisplayOrders(updates);
-      
-      res.json({ success: true, message: "Display orders updated successfully" });
-    } catch (error) {
-      console.error("Error updating content display orders:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour des ordres d'affichage" });
-    }
-  });
-
   // Get content by genre
   app.get("/api/content/genre/:genre", async (req, res) => {
     try {
@@ -2839,39 +2808,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching contents:", error);
       res.status(500).json({ error: "Failed to fetch contents" });
-    }
-  });
-
-  // Get all content sorted by display order (for frontend)
-  app.get("/api/content", async (req: any, res: any) => {
-    try {
-      const contents = await storage.getContent();
-      res.json(contents);
-    } catch (error) {
-      console.error("Error fetching content:", error);
-      res.status(500).json({ error: "Failed to fetch content" });
-    }
-  });
-
-  // Get TV content sorted by display order
-  app.get("/api/content/tv", async (req: any, res: any) => {
-    try {
-      const contents = await storage.getContentByType('tv');
-      res.json(contents);
-    } catch (error) {
-      console.error("Error fetching TV content:", error);
-      res.status(500).json({ error: "Failed to fetch TV content" });
-    }
-  });
-
-  // Get movie content sorted by display order
-  app.get("/api/content/movies", async (req: any, res: any) => {
-    try {
-      const contents = await storage.getContentByType('movie');
-      res.json(contents);
-    } catch (error) {
-      console.error("Error fetching movie content:", error);
-      res.status(500).json({ error: "Failed to fetch movie content" });
     }
   });
 

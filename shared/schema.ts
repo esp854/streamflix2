@@ -112,7 +112,6 @@ export const content = pgTable("content", {
   quality: text("quality").notNull(), // 'sd', 'hd', '4k'
   mediaType: text("media_type").notNull(), // 'movie', 'tv'
   rating: integer("rating"), // Rating out of 10
-  displayOrder: integer("display_order").default(0).notNull(), // Ordre d'affichage
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

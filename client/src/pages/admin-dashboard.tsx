@@ -51,7 +51,6 @@ import CommentsModeration from "@/components/admin/CommentsModeration";
 import DashboardOverview from "@/components/admin/DashboardOverview";
 import AnalyticsTab from "@/components/admin/AnalyticsTab";
 import AdminNotifications from "@/components/admin/AdminNotifications";
-import DisplayOrderManager from "@/components/admin/DisplayOrderManager";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { tmdbService } from "@/lib/tmdb";
 
@@ -871,7 +870,6 @@ function AdminDashboard() {
     { id: "dashboard", label: "Tableau de Bord", icon: BarChart3 },
     { id: "content", label: "Gestion Contenus", icon: Film },
     { id: "series", label: "Séries", icon: Tv },
-    { id: "display-order", label: "Ordre d'Affichage", icon: Tv },
     { id: "users", label: "Utilisateurs", icon: Users },
     { id: "subscriptions", label: "Abonnements", icon: CreditCard },
     { id: "comments", label: "Commentaires", icon: MessageSquare },
@@ -2045,11 +2043,6 @@ function AdminDashboard() {
                   </Card>
                 </div>
               </div>
-            </TabsContent>
-            
-            {/* Display Order Tab */}
-            <TabsContent value="display-order" className="space-y-4 mt-0">
-              <DisplayOrderManager />
             </TabsContent>
           </Tabs>
         </main>
