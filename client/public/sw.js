@@ -1,8 +1,8 @@
 // Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.1.0';
-const STATIC_CACHE = 'streamflix-static-v1.1.0';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.1.0';
-const IMAGE_CACHE = 'streamflix-images-v1.1.0';
+const CACHE_NAME = 'streamflix-v1.3.0';
+const STATIC_CACHE = 'streamflix-static-v1.3.0';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.3.0';
+const IMAGE_CACHE = 'streamflix-images-v1.3.0';
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
@@ -10,10 +10,14 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/index.html',
   // PWA Icons
+  '/apple-icon-180.png',
+  '/favicon-196.png',
   '/manifest-icon-192.maskable.png',
   '/manifest-icon-512.maskable.png',
-  '/apple-icon-180.png',
-  '/favicon-196.png'
+  '/mstile-icon-128.png',
+  '/mstile-icon-270.png',
+  '/mstile-icon-558.png',
+  '/mstile-icon-558-270.png'
 ];
 
 // Install event - cache static assets
