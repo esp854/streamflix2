@@ -118,14 +118,9 @@ export default function DisplayOrderManager() {
     // Insert at target position
     updatedContent.splice(targetIndex, 0, removed);
     
-    // Update display orders
-    const updates = updatedContent.map((item, index) => ({
-      id: item.id,
-      displayOrder: index
-    }));
-    
     // Update the local state immediately for better UX
     // The actual save will happen when user clicks "Save Order"
+    queryClient.setQueryData(["/api/content/sorted/display-order"], updatedContent);
   };
 
   // Move item up
@@ -135,11 +130,8 @@ export default function DisplayOrderManager() {
     const updatedContent = [...filteredContent];
     [updatedContent[index - 1], updatedContent[index]] = [updatedContent[index], updatedContent[index - 1]];
     
-    // Update display orders
-    const updates = updatedContent.map((item, i) => ({
-      id: item.id,
-      displayOrder: i
-    }));
+    // Update the local state immediately for better UX
+    queryClient.setQueryData(["/api/content/sorted/display-order"], updatedContent);
   };
 
   // Move item down
@@ -149,11 +141,8 @@ export default function DisplayOrderManager() {
     const updatedContent = [...filteredContent];
     [updatedContent[index], updatedContent[index + 1]] = [updatedContent[index + 1], updatedContent[index]];
     
-    // Update display orders
-    const updates = updatedContent.map((item, i) => ({
-      id: item.id,
-      displayOrder: i
-    }));
+    // Update the local state immediately for better UX
+    queryClient.setQueryData(["/api/content/sorted/display-order"], updatedContent);
   };
 
   // Save display order
@@ -176,8 +165,11 @@ export default function DisplayOrderManager() {
       
       const { csrfToken } = await csrfResponse.json();
       
+      // Get current data from query cache
+      const currentData = queryClient.getQueryData<DisplayOrderItem[]>(["/api/content/sorted/display-order"]) || filteredContent;
+      
       // Prepare updates
-      const updates = filteredContent.map((item: DisplayOrderItem, index: number) => ({
+      const updates = currentData.map((item: DisplayOrderItem, index: number) => ({
         id: item.id,
         displayOrder: index
       }));
