@@ -8,7 +8,12 @@ const IMAGE_CACHE = 'streamflix-images-v1.1.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/index.html'
+  '/index.html',
+  // PWA Icons
+  '/manifest-icon-192.maskable.png',
+  '/manifest-icon-512.maskable.png',
+  '/apple-icon-180.png',
+  '/favicon-196.png'
 ];
 
 // Install event - cache static assets
