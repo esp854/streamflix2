@@ -215,7 +215,7 @@ export default function WatchTV() {
     if (videoData?.odyseeUrl) {
       const url = videoData.odyseeUrl;
       setIsYouTubeVideo(url.includes("youtube.com") || url.includes("youtu.be"));
-      setIsZuploadVideo(url.includes("zupload"));
+      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed"));
       setVideoUrl(url); // Set videoUrl here
     }
   }, [episodeData, contentWithVideo]);
