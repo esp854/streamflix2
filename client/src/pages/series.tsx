@@ -79,6 +79,27 @@ export default function Series() {
     ? [...(localContent || []), ...popularSeries].slice(0, 20) 
     : popularSeries;
 
+  // Also combine local content with other series sections
+  const allTopRatedSeries = topRatedSeries 
+    ? [...(localContent || []), ...topRatedSeries].slice(0, 20) 
+    : topRatedSeries;
+
+  const allOnTheAirSeries = onTheAirSeries 
+    ? [...(localContent || []), ...onTheAirSeries].slice(0, 20) 
+    : onTheAirSeries;
+
+  const allAiringTodaySeries = airingTodaySeries 
+    ? [...(localContent || []), ...airingTodaySeries].slice(0, 20) 
+    : airingTodaySeries;
+
+  const allDramaSeries = dramaSeries 
+    ? [...(localContent || []), ...dramaSeries].slice(0, 20) 
+    : dramaSeries;
+
+  const allComedySeries = comedySeries 
+    ? [...(localContent || []), ...comedySeries].slice(0, 20) 
+    : comedySeries;
+
   const heroSeries = allPopularSeries?.slice(0, 5) || [];
 
   useEffect(() => {
@@ -228,32 +249,32 @@ export default function Series() {
         
         <TVRow
           title="Meilleures Séries"
-          series={topRatedSeries || []}
-          isLoading={topRatedLoading}
+          series={allTopRatedSeries || []}
+          isLoading={topRatedLoading || localContentLoading}
         />
         
         <TVRow
           title="En Cours de Diffusion"
-          series={onTheAirSeries || []}
-          isLoading={onTheAirLoading}
+          series={allOnTheAirSeries || []}
+          isLoading={onTheAirLoading || localContentLoading}
         />
         
         <TVRow
           title="Diffusées Aujourd'hui"
-          series={airingTodaySeries || []}
-          isLoading={airingTodayLoading}
+          series={allAiringTodaySeries || []}
+          isLoading={airingTodayLoading || localContentLoading}
         />
         
         <TVRow
           title="Séries Dramatiques"
-          series={dramaSeries || []}
-          isLoading={dramaLoading}
+          series={allDramaSeries || []}
+          isLoading={dramaLoading || localContentLoading}
         />
         
         <TVRow
           title="Séries Comiques"
-          series={comedySeries || []}
-          isLoading={comedyLoading}
+          series={allComedySeries || []}
+          isLoading={comedyLoading || localContentLoading}
         />
       </div>
     </div>

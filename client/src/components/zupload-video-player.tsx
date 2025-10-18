@@ -1112,13 +1112,34 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 value={currentSourceIndex.toString()} 
                 onValueChange={(value) => changeVideoSource(parseInt(value))}
               >
-                <SelectTrigger className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center">
+                <SelectTrigger 
+                  className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
+                  // Ajout d'attributs pour améliorer la compatibilité mobile
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
                   <Server className="w-4 h-4 mr-1" />
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent
+                  // Ajout d'attributs pour améliorer la compatibilité mobile
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
                   {videoSources.map((source, index) => (
-                    <SelectItem key={source.id} value={index.toString()}>
+                    <SelectItem 
+                      key={source.id} 
+                      value={index.toString()}
+                      // Ajout d'attributs pour améliorer la compatibilité mobile
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
                       {source.name}
                     </SelectItem>
                   ))}
@@ -1129,51 +1150,51 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
               >
-                <RotateCcw className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
+                <RotateCcw className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline">Passer l'intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
+                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
               >
-                <SkipForward className="w-5 h-5 mr-2" />
-                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
+                <SkipForward className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline">Épisode suivant</span>
               </button>
             )}
           </div>
         </div>
         
         {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
+        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center">
             {onPreviousEpisode && (
               <Button
                 onClick={onPreviousEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
                 disabled={currentEpisode <= 1}
               >
-                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
               </Button>
             )}
           </div>
           
-          <div className="flex items-center space-x-1 sm:space-x-2">
+          <div className="flex items-center">
             {onNextEpisode && (
               <Button
                 onClick={onNextEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
                 disabled={currentEpisode >= totalEpisodes}
               >
-                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
+                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
               </Button>
             )}
           </div>
@@ -1204,7 +1225,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               <Volume2 className="w-6 h-6" />
             </Button>
             
-            <div className="flex items-center w-32">
+            <div className="flex items-center w-24 sm:w-32">
               <input
                 type="range"
                 min="0"
