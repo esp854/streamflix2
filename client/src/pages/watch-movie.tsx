@@ -610,7 +610,7 @@ export default function WatchMovie() {
     <div className="min-h-screen bg-black text-white relative">
       {/* Video container */}
       <div className="relative w-full h-screen">
-        {/* Zupload Video Player - Direct integration */}
+        {/* Zupload Video Player - Direct integration with multiple sources */}
         {isZuploadVideo && videoUrl ? (
           <div className="w-full h-full">
             <ZuploadVideoPlayer
@@ -618,6 +618,8 @@ export default function WatchMovie() {
               title={movieDetails?.movie?.title || "Film sans titre"}
               onVideoError={handleVideoError}
               onVideoEnd={() => console.log("Vidéo terminée")}
+              tmdbId={movieId}
+              mediaType="movie"
             />
           </div>
         ) : (

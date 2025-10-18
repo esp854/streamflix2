@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+
+interface VideoSource {
+  id: string;
+  name: string;
+  url: string;
+  type: 'embed' | 'direct';
+}
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
@@ -18,6 +25,10 @@ interface ZuploadVideoPlayerProps {
   onSeasonChange?: (season: number) => void;
   onEpisodeChange?: (episode: number) => void;
   onPreviousEpisode?: () => void;
+  tmdbId?: number; // Pour générer les URLs de différentes sources
+  mediaType?: 'movie' | 'tv'; // Pour différencier films et séries
+  seasonNumber?: number; // Pour les séries
+  episodeNumber?: number; // Pour les séries
 }
 
 const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
@@ -34,6 +45,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   onSeasonChange,
   onEpisodeChange,
   onPreviousEpisode,
+  tmdbId,
+  mediaType = 'movie',
+  seasonNumber = 1,
+  episodeNumber = 1,
 }) => {
   const { isAuthenticated } = useAuth();
   const adVideoRef = useRef<HTMLVideoElement>(null);
@@ -52,6 +67,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
   const userPausedRef = useRef(false); // Pour détecter les interruptions
+
+  // Nouvel état pour la gestion des sources
+  const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(80);
 
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -82,23 +104,104 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   // URL VAST de HilltopAds
   const vastTag = 'https://silkyspite.com/dum.Flzod/GONlvhZdGIUd/Iebmf9UuFZqUllZktPNTWYx2jNhjiYNwbN/TqkethN/jbY/2pNWj-AN2aMaAc';
 
+  // Générer les sources vidéo à partir du TMDB ID
+  useEffect(() => {
+    if (tmdbId) {
+      const sources: VideoSource[] = [];
+      
+      // Source Zupload (actuelle)
+      if (videoUrl) {
+        sources.push({
+          id: 'zupload',
+          name: 'Zupload',
+          url: videoUrl,
+          type: videoUrl.includes('embed') ? 'embed' : 'direct'
+        });
+      }
+      
+      // Source VidSrc
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source SuperEmbed
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://v2.superembed.stream/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://v2.superembed.stream/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source Frembed (si applicable)
+      // Note: Frembed nécessite une API key ou un compte, donc on vérifie si l'URL est déjà fournie
+      if (videoUrl && videoUrl.includes('frembed')) {
+        sources.push({
+          id: 'frembed',
+          name: 'Frembed',
+          url: videoUrl,
+          type: 'embed'
+        });
+      }
+      
+      setVideoSources(sources);
+      setCurrentSourceIndex(0); // Par défaut, utiliser la première source
+    }
+  }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
+
+  // Changer de source vidéo
+  const changeVideoSource = (index: number) => {
+    setCurrentSourceIndex(index);
+    setIsLoading(true);
+    setError(null);
+    
+    // Réinitialiser l'état de lecture
+    setIsPlaying(false);
+    if (mainVideoRef.current) {
+      mainVideoRef.current.pause();
+    }
+  };
+
   // Précharger la vidéo principale pour accélérer le chargement
   const preloadMainVideo = () => {
+    const currentSource = videoSources[currentSourceIndex];
+    if (!currentSource) return;
+    
     // Ne pas tenter de précharger les URLs d'iframe (Zupload embed)
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
-      console.log('Préchargement ignoré pour l\'URL d\'intégration:', videoUrl);
+    if (currentSource.type === 'embed') {
+      console.log('Préchargement ignoré pour l\'URL d\'intégration:', currentSource.url);
       return;
     }
     
     if (videoPreloadStartedRef.current || !mainVideoRef.current) return;
     
     videoPreloadStartedRef.current = true;
-    console.log('Préchargement de la vidéo principale:', videoUrl);
+    console.log('Préchargement de la vidéo principale:', currentSource.url);
     
     // Créer un objet vidéo temporaire pour le préchargement
     const tempVideo = document.createElement('video');
     tempVideo.preload = 'auto';
-    tempVideo.src = videoUrl;
+    tempVideo.src = currentSource.url;
     
     // Écouter les événements de chargement
     tempVideo.addEventListener('loadeddata', () => {
@@ -139,7 +242,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         if (isMobileDevice) {
           console.log('Erreur VAST sur mobile, passage à la vidéo principale');
           if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl;
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
             setIsLoading(false);
             setIsAdPlaying(false);
             setShowAd(false);
@@ -160,7 +263,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         if (isMobileDevice) {
           console.log('Réponse VAST vide sur mobile, passage à la vidéo principale');
           if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl;
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
             setIsLoading(false);
             setIsAdPlaying(false);
             setShowAd(false);
@@ -182,7 +285,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         if (isMobileDevice) {
           console.log('Erreur de parsing XML VAST sur mobile, passage à la vidéo principale');
           if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl;
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
             setIsLoading(false);
             setIsAdPlaying(false);
             setShowAd(false);
@@ -215,7 +318,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           setError('Aucune publicité disponible pour le moment. La lecture va commencer.');
           setTimeout(() => {
             if (mainVideoRef.current) {
-              mainVideoRef.current.src = videoUrl;
+              mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
               setIsLoading(false);
               setIsAdPlaying(false);
               setShowAd(false);
@@ -225,7 +328,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           return;
         }
         if (mainVideoRef.current) {
-          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+          mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || ''; // pas de pub, lance la vidéo normale
         }
         setIsLoading(false);
         setIsAdPlaying(false);
@@ -256,7 +359,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         if (isMobileDevice) {
           console.log('Pas de MediaFile dans le VAST sur mobile, passage à la vidéo principale');
           if (mainVideoRef.current) {
-            mainVideoRef.current.src = videoUrl;
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
             setIsLoading(false);
             setIsAdPlaying(false);
             setShowAd(false);
@@ -265,7 +368,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           return;
         }
         if (mainVideoRef.current) {
-          mainVideoRef.current.src = videoUrl; // pas de pub, lance la vidéo normale
+          mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || ''; // pas de pub, lance la vidéo normale
         }
         setIsLoading(false);
         setIsAdPlaying(false);
@@ -283,9 +386,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       console.error('Erreur chargement VAST:', err);
       // En cas d'erreur, passer directement à la vidéo principale
       if (mainVideoRef.current) {
-        mainVideoRef.current.src = videoUrl;
+        mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
         // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
-        if (!(videoUrl.includes('embed') || videoUrl.includes('zupload'))) {
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type !== 'embed') {
           mainVideoRef.current.play().catch(playError => {
             console.error('Erreur de lecture automatique de la vidéo:', playError);
             // Sur mobile, on ignore cette erreur
@@ -459,7 +563,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       console.log('Toutes les publicités ont été jouées, lecture de la vidéo principale');
       // Toutes les pubs ont été jouées, lancer la vidéo principale
       if (mainVideoRef.current) {
-        mainVideoRef.current.src = videoUrl;
+        mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
         // Ajout d'attributs pour améliorer la compatibilité mobile
         if (isMobileDevice) {
           mainVideoRef.current.setAttribute('playsinline', 'true');
@@ -469,7 +573,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture de la vidéo principale:', error);
           // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
-          if (videoUrl.includes('embed') || videoUrl.includes('zupload')) {
+          const currentSource = videoSources[currentSourceIndex];
+          if (currentSource && currentSource.type === 'embed') {
             setIsLoading(false);
           }
           // Sur mobile, on continue malgré l'erreur
@@ -502,6 +607,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (!isAdPlaying) {
       setIsLoading(false);
       setError(null);
+      setIsPlaying(true);
     }
   };
 
@@ -509,8 +615,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error('Erreur de chargement de la vidéo:', e);
     setIsLoading(false);
+    setIsPlaying(false);
     // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
-    if (isMobileDevice && videoUrl.includes('embed')) {
+    if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
       setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
     } else {
       setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
@@ -529,7 +636,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
     
     // Ajustement pour s'assurer que le loader s'affiche correctement
-    if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
+    const currentSource = videoSources[currentSourceIndex];
+    if (currentSource && currentSource.type === 'embed') {
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
       }, loaderDelay);
@@ -543,7 +651,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       return () => clearTimeout(loaderTimeout);
     }
-  }, [videoUrl]);
+  }, [videoSources, currentSourceIndex]);
 
   // Handle ad for non-authenticated users
   useEffect(() => {
@@ -570,7 +678,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         setIsLoading(true);
         
         // Pour les URLs d'iframe, masquer rapidement le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type === 'embed') {
           setTimeout(() => {
             setIsLoading(false);
           }, 1000);
@@ -593,7 +702,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }, 100);
         
         // Pour les URLs d'iframe, masquer rapidement le loader
-        if (videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed')) {
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type === 'embed') {
           setTimeout(() => {
             setIsLoading(false);
           }, 1000);
@@ -604,7 +714,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         }
       }
     }
-  }, [isAuthenticated, adSkipped]);
+  }, [isAuthenticated, adSkipped, videoSources, currentSourceIndex]);
 
   const skipAd = () => {
     console.log('Passage des publicités demandé par l\'utilisateur');
@@ -618,10 +728,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     
     // Passer toutes les pubs restantes et lancer la vidéo principale
     if (mainVideoRef.current) {
-      mainVideoRef.current.src = videoUrl;
+      mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
       
       // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
-      if (!(videoUrl.includes('embed') || videoUrl.includes('zupload') || videoUrl.includes('frembed'))) {
+      const currentSource = videoSources[currentSourceIndex];
+      if (currentSource && currentSource.type !== 'embed') {
         mainVideoRef.current.play().catch(error => {
           console.error('Erreur de lecture après avoir passé la pub:', error);
         });
@@ -705,6 +816,40 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       userPausedRef.current = false;
     }
   }, [showAd]);
+
+  // Gestion de la lecture/pause
+  const togglePlayPause = () => {
+    if (!mainVideoRef.current) return;
+    
+    if (isPlaying) {
+      mainVideoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      mainVideoRef.current.play().catch(error => {
+        console.error('Erreur de lecture:', error);
+      });
+      setIsPlaying(true);
+    }
+  };
+
+  // Gestion du son
+  const toggleMute = () => {
+    if (!mainVideoRef.current) return;
+    
+    mainVideoRef.current.muted = !mainVideoRef.current.muted;
+    setIsMuted(mainVideoRef.current.muted);
+  };
+
+  // Gestion du volume
+  const handleVolumeChange = (newVolume: number) => {
+    if (!mainVideoRef.current) return;
+    
+    mainVideoRef.current.volume = newVolume / 100;
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
+
+  const currentSource = videoSources[currentSourceIndex];
 
   return (
     <div
@@ -873,6 +1018,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           </div>
           
           <div className="flex space-x-1">
+            {/* Bouton Source - Nouveau bouton pour changer de source */}
+            {videoSources.length > 1 && (
+              <Select 
+                value={currentSourceIndex.toString()} 
+                onValueChange={(value) => changeVideoSource(parseInt(value))}
+              >
+                <SelectTrigger className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center">
+                  <Server className="w-4 h-4 mr-1" />
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {videoSources.map((source, index) => (
+                    <SelectItem key={source.id} value={index.toString()}>
+                      {source.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
@@ -925,24 +1090,62 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             )}
           </div>
         </div>
+        
+        {/* Bottom Controls - Play/Pause, Volume, etc. */}
+        {showControls && (
+          <div className="absolute bottom-4 left-4 right-4 flex justify-center items-center space-x-4 pointer-events-auto">
+            <Button
+              onClick={togglePlayPause}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+            >
+              {isPlaying ? (
+                <Pause className="w-6 h-6" />
+              ) : (
+                <Play className="w-6 h-6" />
+              )}
+            </Button>
+            
+            <Button
+              onClick={toggleMute}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+            >
+              <Volume2 className="w-6 h-6" />
+            </Button>
+            
+            <div className="flex items-center w-32">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
       {!showAd && (
         <>
-          {/* For iframe embeds (Zupload, Frembed) - Mobile optimized */}
-          {videoUrl.includes('embed') || videoUrl.includes('frembed') ? (
+          {/* For iframe embeds (Zupload, Frembed, VidSrc, etc.) - Mobile optimized */}
+          {currentSource && currentSource.type === 'embed' ? (
             <>
               <iframe
-                src={videoUrl}
+                src={currentSource.url}
                 className="w-full h-full touch-manipulation"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
-                title={title}
+                title={`${title} - ${currentSource.name}`}
                 loading="lazy"
                 onLoad={() => {
-                  console.log('Iframe chargée:', videoUrl);
+                  console.log('Iframe chargée:', currentSource.url);
                   setIsLoading(false);
                   setError(null);
                 }}
@@ -1000,6 +1203,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onPlaying={handleVideoPlaying}
               onError={handleVideoError}
               onEnded={onVideoEnd}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onVolumeChange={(e) => {
+                const video = e.target as HTMLVideoElement;
+                setVolume(video.volume * 100);
+                setIsMuted(video.muted);
+              }}
               playsInline
               // Ajout de propriétés pour améliorer la compatibilité mobile
               style={{ 

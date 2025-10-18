@@ -780,50 +780,51 @@ export default function WatchTV() {
     <div className="min-h-screen bg-black text-white relative">
       {/* Video container */}
       <div className="relative w-full h-screen">
-        {/* Zupload Video Player */}
-        {isZuploadVideo && videoUrl && (
-          <ZuploadVideoPlayer 
-            videoUrl={videoUrl}
-            title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
-            onVideoEnd={goToNextEpisode}
-            onNextEpisode={goToNextEpisode}
-            onSkipIntro={skipIntro}
-            currentSeason={currentSeason}
-            currentEpisode={currentEpisode}
-            totalSeasons={tvDetails.number_of_seasons || 1}
-            totalEpisodes={seasonDetails?.episodes?.length || 10}
-            onSeasonChange={(season) => {
-              const newUrl = `/watch/tv/${tvId}/${season}/${currentEpisode}`;
-              window.location.href = newUrl;
-            }}
-            onEpisodeChange={(episode) => {
-              const newUrl = `/watch/tv/${tvId}/${currentSeason}/${episode}`;
-              window.location.href = newUrl;
-            }}
-            onPreviousEpisode={goToPreviousEpisode}
-            isWatchParty={isWatchPartyActive}
-            isHost={isWatchPartyHost}
-            onVideoPlay={(time) => handleVideoControl('play', { currentTime: time })}
-            onVideoPause={(time) => handleVideoControl('pause', { currentTime: time })}
-            onVideoSeek={(time) => handleVideoControl('seek', { currentTime: time })}
-            showWatchPartyPanel={showWatchPartyPanel}
-            watchPartyComponent={
-              isWatchPartyActive ? (
-                <WatchPartyEnhanced
-                  videoUrl={videoUrl || ''}
-                  title={`${tvDetails.name} - S${currentSeason} E${currentEpisode}`}
-                  onVideoControl={handleVideoControl}
-                  onVideoUrlChange={handleVideoUrlChange}
-                  isHost={isWatchPartyHost}
-                  setIsHost={setIsWatchPartyHost}
-                  currentVideoTime={currentTime}
-                  isVideoPlaying={isPlaying}
-                />
-              ) : undefined
-            }
-          />
+        {/* Zupload Video Player - Direct integration with multiple sources */}
+        {isZuploadVideo && videoUrl ? (
+          <div className="w-full h-full">
+            <ZuploadVideoPlayer
+              videoUrl={videoUrl}
+              title={tvDetails?.tv?.name || "Série sans titre"}
+              onVideoError={handleVideoError}
+              onVideoEnd={() => console.log("Vidéo terminée")}
+              onNextEpisode={goToNextEpisode}
+              onPreviousEpisode={goToPreviousEpisode}
+              currentSeason={currentSeason}
+              currentEpisode={currentEpisode}
+              totalSeasons={tvDetails?.tv?.number_of_seasons || 1}
+              totalEpisodes={seasonDetails?.episodes?.length || 10}
+              onSeasonChange={(season) => {
+                const newUrl = `/watch/tv/${tvId}/${season}/1`;
+                window.location.href = newUrl;
+              }}
+              onEpisodeChange={(episode) => {
+                const newUrl = `/watch/tv/${tvId}/${currentSeason}/${episode}`;
+                window.location.href = newUrl;
+              }}
+              tmdbId={tvId}
+              mediaType="tv"
+              seasonNumber={currentSeason}
+              episodeNumber={currentEpisode}
+            />
+          </div>
+        ) : (
+          // Other video types (YouTube, Odysee, etc.) or fallback message
+          <>
+            {/* Video player has been removed for non-Zupload videos */}
+            <div className="w-full h-screen flex items-center justify-center bg-black">
+              <div className="text-center p-8">
+                <div className="text-4xl mb-4">🎬</div>
+                <h2 className="text-2xl font-bold mb-2">Lecteur de série non disponible</h2>
+                <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
+                <Link href="/series">
+                  <Button variant="secondary">Retour aux séries</Button>
+                </Link>
+              </div>
+            </div>
+          </>
         )}
-
+        
         {/* Watch Party Overlay - Available for all video types when Watch Party is active */}
         {isWatchPartyActive && (
           <div className="absolute inset-0 z-50 bg-black">

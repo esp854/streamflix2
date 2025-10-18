@@ -37,6 +37,8 @@ const ZuploadDirectTest: React.FC = () => {
           <ZuploadVideoPlayer 
             videoUrl={videoUrl}
             title="Épisode de Test"
+            tmdbId={385687} // Exemple de TMDB ID pour démonstration
+            mediaType="movie"
           />
         </div>
         

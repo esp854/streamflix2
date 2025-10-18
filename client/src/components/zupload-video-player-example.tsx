@@ -22,6 +22,8 @@ const ZuploadVideoPlayerExample: React.FC<ZuploadVideoPlayerExampleProps> = ({
           videoUrl={videoUrl}
           title={title}
           onVideoError={handleVideoError}
+          tmdbId={385687} // Exemple de TMDB ID pour démonstration
+          mediaType="movie"
         />
       </div>
       

@@ -36,6 +36,8 @@ const ZuploadTestPage: React.FC = () => {
           <ZuploadVideoPlayer 
             videoUrl={sampleZuploadUrl}
             title="Vidéo de démonstration Zupload"
+            tmdbId={385687} // Exemple de TMDB ID pour démonstration
+            mediaType="movie"
           />
         </div>
         
