@@ -120,7 +120,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source SuperEmbed
+      // Source SuperEmbed (fonctionne bien)
       if (mediaType === 'movie') {
         sources.push({
           id: 'superembed',
@@ -137,7 +137,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source VidSrc
+      // Source VidSrc (fonctionne bien)
       if (mediaType === 'movie') {
         sources.push({
           id: 'vidsrc',
@@ -154,7 +154,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source 2Embed
+      // Source 2Embed (fonctionne moyennement)
       if (mediaType === 'movie') {
         sources.push({
           id: '2embed',
@@ -171,88 +171,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Nouveaux services de streaming ajoutés
-      // Source MoviesAPI.Club
+      // Source FStream (nouveau service)
       if (mediaType === 'movie') {
         sources.push({
-          id: 'moviesapi',
-          name: 'MoviesAPI',
-          url: `https://moviesapi.club/movie/${tmdbId}`,
+          id: 'fstream',
+          name: 'FStream',
+          url: `https://fstream.pro/embed/${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
-          id: 'moviesapi',
-          name: 'MoviesAPI',
-          url: `https://moviesapi.club/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source Embed.su
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'embedsu',
-          name: 'Embed.su',
-          url: `https://embed.su/embed/movie/${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'embedsu',
-          name: 'Embed.su',
-          url: `https://embed.su/embed/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source SmashyStream
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'smashy',
-          name: 'SmashyStream',
-          url: `https://player.smashy.stream/movie/${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'smashy',
-          name: 'SmashyStream',
-          url: `https://player.smashy.stream/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source NEPU
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'nepu',
-          name: 'NEPU',
-          url: `https://nepu.to/movie/${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'nepu',
-          name: 'NEPU',
-          url: `https://nepu.to/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source Catflix
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'catflix',
-          name: 'Catflix',
-          url: `https://catflix.me/movie/${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'catflix',
-          name: 'Catflix',
-          url: `https://catflix.me/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          id: 'fstream',
+          name: 'FStream',
+          url: `https://fstream.pro/embed/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -271,23 +202,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           id: 'godriveplayer',
           name: 'GoDrivePlayer',
           url: `https://gomostream.com/show?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source StreamLare
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'streamlare',
-          name: 'StreamLare',
-          url: `https://streamlare.com/e/${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'streamlare',
-          name: 'StreamLare',
-          url: `https://streamlare.com/e/${tmdbId}/${seasonNumber}/${episodeNumber}`,
           type: 'embed'
         });
       }
