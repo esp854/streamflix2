@@ -5,7 +5,7 @@ import { plans } from "./plans";
 console.log('Plans imported:', plans); // Debug log
 
 import { paymentService, type CustomerInfo } from "./payment-service";
-import { notificationService } from "./index.js";
+// Notification service will be implemented directly using storage
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
@@ -2356,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // Use the notification service for real-time updates
-      const notification = await notificationService.markNotificationAsRead(id, req.user.userId);
+      const notification = await storage.markNotificationAsRead(id);
       res.json({ success: true, notification });
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -2438,7 +2438,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields: userId, title, message" });
       }
       
-      const notification = await notificationService.sendNotificationToUser(userId, title, message, type);
+      const notification = await storage.createNotification({
+        userId,
+        title,
+        message,
+        type: type || 'info',
+        read: false
+      });
       
       res.status(201).json({ 
         success: true, 
@@ -2460,7 +2466,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields: subject, message" });
       }
       
-      const notifications = await notificationService.sendAnnouncementToAllUsers(subject, message);
+      // Get all users and send notification to each
+      const allUsers = await storage.getAllUsers();
+      const notificationPromises = allUsers.map(user => 
+        storage.createNotification({
+          userId: user.id,
+          title: subject,
+          message,
+          type: 'announcement',
+          read: false
+        })
+      );
+      const notifications = await Promise.all(notificationPromises);
       
       res.status(201).json({ 
         success: true, 
@@ -4615,191 +4632,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Handle PayPal payment completed
-  async function handlePayPalPaymentCompleted(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId, planId } = customData;
-      
-      if (!userId || !planId) {
-        console.error("Missing userId or planId in custom data:", customData);
-        return;
-      }
-      
-      // Get plan information
-      const selectedPlan = plans[planId as keyof typeof plans];
-      if (!selectedPlan) {
-        console.error("Invalid plan ID:", planId);
-        return;
-      }
-      
-      // Calculate end date
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
-      
-      // Create subscription
-      const newSubscription = await storage.createSubscription({
-        userId: userId,
-        planId: planId,
-        amount: selectedPlan.amount,
-        paymentMethod: 'paypal',
-        status: 'active',
-        startDate,
-        endDate
-      });
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'success');
-      }
-      
-      console.log("Subscription activated for user:", userId);
-      
-      // Send confirmation email to user
-      try {
-        const user = await storage.getUserById(userId);
-        if (user && user.email) {
-          const subject = "Confirmation d'abonnement StreamFlix";
-          const html = `
-            <h2>Votre abonnement StreamFlix est maintenant actif !</h2>
-            <p>Bonjour ${user.username},</p>
-            <p>Nous vous confirmons que votre abonnement au plan ${selectedPlan.name} a été activé avec succès.</p>
-            <p>Vous pouvez maintenant profiter de tous les contenus disponibles sur StreamFlix.</p>
-            <p>Merci pour votre confiance !</p>
-            <p>Cordialement,<br>L'équipe StreamFlix</p>
-          `;
-          
-          // Note: We would need to implement the sendEmail function here
-          // await sendEmail(user.email, subject, html);
-          console.log(`Confirmation email would be sent to ${user.email}`);
-        }
-      } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
-      }
-    } catch (error) {
-      console.error("Error handling PayPal payment completed:", error);
-    }
-  }
-
-  // Handle PayPal payment denied
-  async function handlePayPalPaymentDenied(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom data:", customData);
-        return;
-      }
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'failed');
-      }
-      
-      console.log("PayPal payment denied for user:", userId);
-    } catch (error) {
-      console.error("Error handling PayPal payment denied:", error);
-    }
-  }
-
-  // Handle PayPal payment refunded
-  async function handlePayPalPaymentRefunded(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom data:", customData);
-        return;
-      }
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'success');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'refunded');
-      }
-      
-      console.log("PayPal payment refunded for user:", userId);
-    } catch (error) {
-      console.error("Error handling PayPal payment refunded:", error);
-    }
-  }
-
-  // Handle PayPal subscription created
-  async function handlePayPalSubscriptionCreated(event: any) {
-    try {
-      console.log("PayPal subscription created:", event);
-      // Handle subscription creation logic here if needed
-    } catch (error) {
-      console.error("Error handling PayPal subscription created:", error);
-    }
-  }
-
-  // Handle PayPal subscription cancelled
-  async function handlePayPalSubscriptionCancelled(event: any) {
-    try {
-      console.log("PayPal subscription cancelled:", event);
-      // Handle subscription cancellation logic here if needed
-    } catch (error) {
-      console.error("Error handling PayPal subscription cancelled:", error);
-    }
-  }
-
   // Create free subscription - completely separate from Lygos
   app.post("/api/subscription/create-free", authenticateToken, async (req: any, res: any) => {
     try {
@@ -4863,7 +4695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         method: 'free',
         status: 'success',
         transactionId: `free_${Date.now()}`,
-        paymentData: { planId, customerInfo }
+        paymentData: JSON.stringify({ planId, customerInfo })
       });
 
       res.json({
@@ -6083,9 +5915,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-    }
-  });
-
   app.put("/api/admin/episodes/:episodeId", requireAdmin, async (req: any, res: any) => {
     try {
       const { episodeId } = req.params;
@@ -6218,7 +6047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           method: "free",
           status: "success",
           transactionId: `free_${Date.now()}`,
-          paymentData: { planId, customerInfo }
+          paymentData: JSON.stringify({ planId, customerInfo })
         });
 
         return res.json({
@@ -6242,7 +6071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: selectedPlan.amount,
           method: "paypal",
           status: "pending",
-          paymentData: paymentResult
+          paymentData: JSON.stringify(paymentResult)
         });
 
         return res.json({

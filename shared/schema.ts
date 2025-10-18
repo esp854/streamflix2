@@ -70,7 +70,7 @@ export const payments = pgTable("payments", {
   method: text("method").notNull(), // 'orange_money', 'wave', 'paypal', 'djamo'
   status: text("status").default("pending").notNull(), // 'pending', 'success', 'failed', 'cancelled'
   transactionId: text("transaction_id"), // Djamo invoice token or other payment gateway transaction ID
-  paymentData: jsonb("payment_data"), // Store additional payment gateway specific data
+  paymentData: text("payment_data"), // Store additional payment gateway specific data as JSON string
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

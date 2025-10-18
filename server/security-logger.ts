@@ -208,38 +208,49 @@ class SecurityLogger {
       timestamp: new Date(),
       eventType: 'EMAIL_SENT',
       userId,
-      ipAddress: 'SYSTEM',
-      details: `Email sent to ${to} with subject: ${subject}`,
+      ipAddress: 'localhost', // Email sending doesn't have a specific IP
+      details: `Email sent to: ${to}, Subject: ${subject}`,
       severity: 'LOW'
     });
   }
 
   /**
-   * Log password change
+   * Get recent security events from the log file
+   * @param limit Number of recent events to retrieve (default: 100)
+   * @returns Array of recent security events
    */
-  logPasswordChange(userId: string, ipAddress: string): void {
-    this.logEvent({
-      timestamp: new Date(),
-      eventType: 'PASSWORD_CHANGE',
-      userId,
-      ipAddress,
-      details: 'User password changed',
-      severity: 'MEDIUM'
-    });
-  }
+  getRecentEvents(limit: number = 100): SecurityEvent[] {
+    try {
+      if (!fs.existsSync(this.logFilePath)) {
+        return [];
+      }
 
-  /**
-   * Log account lockout
-   */
-  logAccountLockout(userId: string, ipAddress: string): void {
-    this.logEvent({
-      timestamp: new Date(),
-      eventType: 'ACCOUNT_LOCKOUT',
-      userId,
-      ipAddress,
-      details: 'User account locked due to security policy',
-      severity: 'HIGH'
-    });
+      const content = fs.readFileSync(this.logFilePath, 'utf8');
+      const lines = content.split('\n').filter(line => line.trim() !== '');
+      
+      // Get the most recent events (last N lines)
+      const recentLines = lines.slice(-limit);
+      
+      // Parse each line as JSON
+      const events: SecurityEvent[] = [];
+      for (const line of recentLines) {
+        try {
+          const event = JSON.parse(line);
+          // Convert timestamp string back to Date object
+          event.timestamp = new Date(event.timestamp);
+          events.push(event);
+        } catch (parseError) {
+          // Skip invalid lines
+          console.warn('Failed to parse security log line:', line);
+        }
+      }
+      
+      // Return events in reverse chronological order (newest first)
+      return events.reverse();
+    } catch (error) {
+      console.error('Error reading security logs:', error);
+      return [];
+    }
   }
 }
 
