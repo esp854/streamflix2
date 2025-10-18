@@ -141,14 +141,99 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         sources.push({
           id: 'superembed',
           name: 'SuperEmbed',
-          url: `https://v2.superembed.stream/movie?tmdb=${tmdbId}`,
+          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=1&e=1`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
           id: 'superembed',
           name: 'SuperEmbed',
-          url: `https://v2.superembed.stream/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source 2Embed
+      if (mediaType === 'movie') {
+        sources.push({
+          id: '2embed',
+          name: '2Embed',
+          url: `https://www.2embed.cc/embed/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: '2embed',
+          name: '2Embed',
+          url: `https://www.2embed.cc/embedtv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source GoDrivePlayer
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'godriveplayer',
+          name: 'GoDrivePlayer',
+          url: `https://gomostream.com/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'godriveplayer',
+          name: 'GoDrivePlayer',
+          url: `https://gomostream.com/show?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source StreamLare
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'streamlare',
+          name: 'StreamLare',
+          url: `https://streamlare.com/e/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'streamlare',
+          name: 'StreamLare',
+          url: `https://streamlare.com/e/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source AsianLoad (pour le contenu asiatique)
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'asianload',
+          name: 'AsianLoad',
+          url: `https://asianload.to/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'asianload',
+          name: 'AsianLoad',
+          url: `https://asianload.to/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source DramaCool (pour le contenu asiatique)
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'dramacool',
+          name: 'DramaCool',
+          url: `https://dramacool.com/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'dramacool',
+          name: 'DramaCool',
+          url: `https://dramacool.com/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
