@@ -9,8 +9,29 @@ import { useShare } from "@/hooks/use-share";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useQuery } from "@tanstack/react-query";
 
+// Add interface for local content
+interface LocalContent {
+  id: string;
+  tmdbId: number;
+  title: string;
+  name?: string;
+  overview: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  firstAirDate?: string;
+  mediaType: 'tv';
+  odyseeUrl?: string;
+  active: boolean;
+  voteAverage?: number;
+  genreIds?: number[];
+}
+
+// Create a type that combines both interfaces
+type TVSeriesType = TMDBTVSeries | LocalContent;
+
 interface TVCardProps {
-  series: TMDBTVSeries;
+  series: TVSeriesType;
   size?: "small" | "medium" | "large";
   showOverlay?: boolean;
 }
@@ -27,15 +48,23 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
    const { shouldRedirectToPayment } = useSubscriptionCheck();
 
    // Check if series is favorite
-   const { data: favoriteStatus } = checkFavorite(series.id);
+   const seriesId = 'tmdbId' in series ? series.tmdbId : parseInt(series.id);
+   const seriesIdStr = seriesId.toString();
+   const { data: favoriteStatus } = checkFavorite(seriesId);
    const isFavorite = favoriteStatus?.isFavorite || false;
 
   // Vérifier si le contenu est actif dans la base de données avec React Query pour le caching
   const { data: contentActiveData, isLoading: contentActiveLoading } = useQuery({
-    queryKey: ["content-active", series.id],
+    queryKey: ["content-active", seriesId],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/contents/tmdb/${series.id}`);
+        // For local content, check if it's active directly
+        if ('active' in series) {
+          return series.active;
+        }
+        
+        // For TMDB content, check the database
+        const response = await fetch(`/api/contents/tmdb/${seriesId}`);
         if (response.ok) {
           const content = await response.json();
           return content.active !== false; // Si active est false, le contenu est inactif
@@ -56,20 +85,23 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     setImageError(true);
   };
 
-  // Load trailer when hovering
+  // Load trailer when hovering (only for TMDB content)
   const loadTrailer = async () => {
-    if (trailerUrl) return; // Already loaded
+    // Only load trailers for TMDB content, not local content
+    if ('tmdbId' in series) {
+      if (trailerUrl) return; // Already loaded
 
-    try {
-      const details = await tmdbService.getTVShowDetails(series.id);
-      if (details.videos && details.videos.results) {
-        const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-        if (trailer) {
-          setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
+      try {
+        const details = await tmdbService.getTVShowDetails(series.tmdbId);
+        if (details.videos && details.videos.results) {
+          const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+          if (trailer) {
+            setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
+          }
         }
+      } catch (error) {
+        console.error('Error loading trailer:', error);
       }
-    } catch (error) {
-      console.error('Error loading trailer:', error);
     }
   };
 
@@ -77,12 +109,14 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
   const handleMouseEnter = () => {
     setIsHovering(true);
     loadTrailer();
-    // Start trailer after a short delay
-    trailerTimeoutRef.current = setTimeout(() => {
-      if (trailerUrl) {
-        setShowTrailer(true);
-      }
-    }, 500);
+    // Start trailer after a short delay (only for TMDB content)
+    if ('tmdbId' in series) {
+      trailerTimeoutRef.current = setTimeout(() => {
+        if (trailerUrl) {
+          setShowTrailer(true);
+        }
+      }, 500);
+    }
   };
 
   // Handle mouse leave
@@ -118,26 +152,55 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
       return;
     }
     
-    window.location.href = `/watch/tv/${series.id}/1/1`;
+    // For local content without video links, redirect to the detail page instead
+    if ('odyseeUrl' in series && !series.odyseeUrl) {
+      window.location.href = `/tv/${seriesId}`;
+    } else {
+      window.location.href = `/watch/tv/${seriesId}/1/1`;
+    }
   };
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    await toggleFavorite(series, 'tv');
+    
+    // Create a compatible object for the toggleFavorite function
+    const favoriteObject = 'tmdbId' in series 
+      ? {
+          id: series.tmdbId,
+          name: series.name || series.title,
+          poster_path: series.posterPath || null,
+          genre_ids: series.genreIds || [],
+          first_air_date: series.firstAirDate || ""
+        } as unknown as TMDBTVSeries
+      : series;
+      
+    await toggleFavorite(favoriteObject, 'tv');
   };
 
   const handleAddToList = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // TODO: Implement watchlist functionality (separate from favorites)
-    console.log('Add to watchlist:', series.name);
+    console.log('Add to watchlist:', 'name' in series ? series.name : series.title);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    await shareContent(series, 'tv');
+    
+    // Create a compatible object for the shareContent function
+    const shareObject = 'tmdbId' in series 
+      ? {
+          id: series.tmdbId,
+          name: series.name || series.title,
+          poster_path: series.posterPath || null,
+          genre_ids: series.genreIds || [],
+          first_air_date: series.firstAirDate || ""
+        } as unknown as TMDBTVSeries
+      : series;
+      
+    await shareContent(shareObject, 'tv');
   };
 
   const sizeClasses = {
@@ -152,7 +215,21 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     large: "h-72 sm:h-80 md:h-96",
   };
 
-  const genres = series.genre_ids?.slice(0, 2).map(id => TV_GENRE_MAP[id]).filter(Boolean) || [];
+  // Get genres for both TMDB and local content
+  const genreIds = 'genre_ids' in series ? series.genre_ids : series.genreIds || [];
+  const genres = genreIds?.slice(0, 2).map(id => TV_GENRE_MAP[id]).filter(Boolean) || [];
+
+  // Get name/title for both TMDB and local content
+  const name = 'name' in series ? series.name : series.title;
+  
+  // Get first air date for both TMDB and local content
+  const firstAirDate = 'first_air_date' in series ? series.first_air_date : series.firstAirDate;
+  
+  // Get poster path for both TMDB and local content
+  const posterPath = 'poster_path' in series ? series.poster_path : series.posterPath;
+  
+  // Get vote average for both TMDB and local content
+  const voteAverage = 'vote_average' in series ? series.vote_average : series.voteAverage;
 
   // Si le contenu n'est pas actif, on ne l'affiche pas
   if (!contentActive) {
@@ -161,9 +238,9 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
 
   return (
     <Link
-      href={`/tv/${series.id}`}
+      href={`/tv/${seriesId}`}
       className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer tv-card block`}
-      data-testid={`tv-card-${series.id}`}
+      data-testid={`tv-card-${seriesIdStr}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -176,15 +253,15 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
               frameBorder="0"
               allow="autoplay; encrypted-media"
               allowFullScreen
-              title={`${series.name} trailer`}
+              title={`${name} trailer`}
             />
           ) : (
             <img
-              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(series.poster_path)}
-              alt={series.name}
+              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(posterPath || null)}
+              alt={name || ""}
               className={`w-full ${heightClasses[size]} object-cover`}
               onError={handleImageError}
-              data-testid={`tv-poster-${series.id}`}
+              data-testid={`tv-poster-${seriesIdStr}`}
             />
           )}
           
@@ -203,10 +280,10 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
               </div>
               
               {/* Rating badge */}
-              {series.vote_average > 0 && (
-                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`tv-rating-${series.id}`}>
+              {voteAverage && voteAverage > 0 && (
+                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`tv-rating-${seriesIdStr}`}>
                   <Star className="w-3 h-3 fill-current" />
-                  <span>{series.vote_average.toFixed(1)}</span>
+                  <span>{voteAverage.toFixed(1)}</span>
                 </div>
               )}
 
@@ -218,7 +295,7 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
                   onClick={handleToggleFavorite}
                   disabled={isAddingToFavorites}
                   className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
-                  data-testid={`button-favorite-${series.id}`}
+                  data-testid={`button-favorite-${seriesIdStr}`}
                   title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
                 >
                   <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
@@ -228,7 +305,7 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
                   variant="secondary"
                   onClick={handleAddToList}
                   className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-add-list-${series.id}`}
+                  data-testid={`button-add-list-${seriesIdStr}`}
                   title="Ajouter à ma liste"
                 >
                   <Plus className="w-4 h-4" />
@@ -238,7 +315,7 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
                   variant="secondary"
                   onClick={handleShare}
                   className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-share-${series.id}`}
+                  data-testid={`button-share-${seriesIdStr}`}
                   title="Partager"
                 >
                   <Share2 className="w-4 h-4" />
@@ -248,13 +325,13 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
           )}
         </div>
         
-        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${series.id}`}>
-          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${series.id}`}>
-            {series.name}
+        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${seriesIdStr}`}>
+          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${seriesIdStr}`}>
+            {name}
           </h3>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${series.id}`}>
-              {series.first_air_date ? new Date(series.first_air_date).getFullYear() : "Date inconnue"} • {genres.join(", ")}
+            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${seriesIdStr}`}>
+              {firstAirDate ? new Date(firstAirDate).getFullYear() : "Date inconnue"} • {genres.join(", ")}
             </p>
           </div>
         </div>

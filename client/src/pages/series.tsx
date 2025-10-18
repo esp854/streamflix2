@@ -19,52 +19,54 @@ interface LocalContent {
   releaseDate?: string;
   firstAirDate?: string;
   mediaType: 'tv';
+  odyseeUrl?: string;
+  active: boolean;
 }
 
 export default function Series() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
-  const { data: popularSeries, isLoading: popularLoading } = useQuery({
+  const { data: popularSeries, isLoading: popularLoading, isError: popularError } = useQuery({
     queryKey: ["/api/tmdb/tv/popular"],
     queryFn: () => tmdbService.getPopularTVShows(),
   });
 
-  const { data: topRatedSeries, isLoading: topRatedLoading } = useQuery({
+  const { data: topRatedSeries, isLoading: topRatedLoading, isError: topRatedError } = useQuery({
     queryKey: ["/api/tmdb/tv/top_rated"],
     queryFn: () => tmdbService.getTopRatedTVShows(),
   });
 
-  const { data: onTheAirSeries, isLoading: onTheAirLoading } = useQuery({
+  const { data: onTheAirSeries, isLoading: onTheAirLoading, isError: onTheAirError } = useQuery({
     queryKey: ["/api/tmdb/tv/on_the_air"],
     queryFn: () => tmdbService.getOnTheAirTVShows(),
   });
 
-  const { data: airingTodaySeries, isLoading: airingTodayLoading } = useQuery({
+  const { data: airingTodaySeries, isLoading: airingTodayLoading, isError: airingTodayError } = useQuery({
     queryKey: ["/api/tmdb/tv/airing_today"],
     queryFn: () => tmdbService.getAiringTodayTVShows(),
   });
 
-  const { data: dramaSeries, isLoading: dramaLoading } = useQuery({
+  const { data: dramaSeries, isLoading: dramaLoading, isError: dramaError } = useQuery({
     queryKey: ["/api/tmdb/tv/genre/18"],
     queryFn: () => tmdbService.getTVShowsByGenre(18),
   });
 
-  const { data: comedySeries, isLoading: comedyLoading } = useQuery({
+  const { data: comedySeries, isLoading: comedyLoading, isError: comedyError } = useQuery({
     queryKey: ["/api/tmdb/tv/genre/35"],
     queryFn: () => tmdbService.getTVShowsByGenre(35),
   });
 
-  // New query to fetch local content
+  // New query to fetch ALL local content (including content without video links)
   const { data: localContent, isLoading: localContentLoading } = useQuery({
-    queryKey: ["local-content"],
+    queryKey: ["local-all-content"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/admin/content");
         if (!response.ok) return [];
         const data = await response.json();
-        // Filter only TV series that have been added locally
-        return data.filter((item: LocalContent) => item.mediaType === 'tv' && item.tmdbId);
+        // Filter only TV series (both with and without video links)
+        return data.filter((item: LocalContent) => item.mediaType === 'tv');
       } catch (error) {
         console.error("Error fetching local content:", error);
         return [];
@@ -72,7 +74,7 @@ export default function Series() {
     },
   });
 
-  // Combine TMDB series with local content
+  // Combine TMDB series with ALL local content (including those without video links)
   const allPopularSeries = popularSeries 
     ? [...(localContent || []), ...popularSeries].slice(0, 20) 
     : popularSeries;
@@ -93,7 +95,8 @@ export default function Series() {
     setIsPlaying(!isPlaying);
   };
 
-  if (popularLoading) {
+  // Handle loading state
+  if (popularLoading || localContentLoading) {
     return (
       <section className="relative h-screen overflow-hidden bg-muted animate-pulse" data-testid="series-hero-loading">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -101,6 +104,17 @@ export default function Series() {
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Chargement des séries...</p>
           </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Handle error state
+  if (popularError) {
+    return (
+      <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
+        <div className="text-center">
+          <p className="text-xl text-muted-foreground">Erreur lors du chargement des séries</p>
         </div>
       </section>
     );
@@ -209,7 +223,7 @@ export default function Series() {
         <TVRow
           title="Séries Populaires"
           series={allPopularSeries || []}
-          isLoading={popularLoading}
+          isLoading={popularLoading || localContentLoading}
         />
         
         <TVRow

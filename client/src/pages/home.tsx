@@ -21,6 +21,8 @@ interface LocalContent {
   backdropPath?: string;
   releaseDate?: string;
   mediaType: 'movie';
+  odyseeUrl?: string;
+  active: boolean;
 }
 
 export default function Home() {
@@ -62,16 +64,16 @@ export default function Home() {
     enabled: activeSections.includes('popular'), // Only fetch when section is active
   });
 
-  // New query to fetch local content
+  // New query to fetch ALL local content (including content without video links)
   const { data: localContent, isLoading: localContentLoading } = useQuery({
-    queryKey: ["local-content"],
+    queryKey: ["local-all-content"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/admin/content");
         if (!response.ok) return [];
         const data = await response.json();
-        // Filter only movies that have been added locally
-        return data.filter((item: LocalContent) => item.mediaType === 'movie' && item.tmdbId);
+        // Filter only movies (both with and without video links)
+        return data.filter((item: LocalContent) => item.mediaType === 'movie');
       } catch (error) {
         console.error("Error fetching local content:", error);
         return [];
@@ -79,7 +81,7 @@ export default function Home() {
     },
   });
 
-  // Combine TMDB movies with local content
+  // Combine TMDB movies with ALL local content (including those without video links)
   const allPopularMovies = popularMovies 
     ? [...(localContent || []), ...popularMovies].slice(0, 20) 
     : popularMovies;
@@ -107,6 +109,29 @@ export default function Home() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('horror'), // Only fetch when section is active
   });
+
+  // Handle loading state
+  if (popularLoading || localContentLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (popularError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-muted-foreground">Erreur lors du chargement des films</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background" data-testid="home-page">

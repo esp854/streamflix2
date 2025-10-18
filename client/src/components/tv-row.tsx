@@ -4,9 +4,28 @@ import { Button } from "@/components/ui/button";
 import { TMDBTVSeries } from "@/types/movie";
 import TVCard from "./tv-card";
 
+// Add interface for local content
+interface LocalContent {
+  id: string;
+  tmdbId: number;
+  title: string;
+  name?: string;
+  overview: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  firstAirDate?: string;
+  mediaType: 'tv';
+  odyseeUrl?: string;
+  active: boolean;
+}
+
+// Create a type that combines both interfaces
+type TVSeriesType = TMDBTVSeries | LocalContent;
+
 interface TVRowProps {
   title: string;
-  series: TMDBTVSeries[];
+  series: TVSeriesType[];
   isLoading?: boolean;
 }
 
@@ -95,7 +114,7 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
           data-testid="tv-container"
         >
           {series.map((show) => (
-            <TVCard key={show.id} series={show} />
+            <TVCard key={'tmdbId' in show ? show.tmdbId : show.id} series={show} />
           ))}
         </div>
       </div>

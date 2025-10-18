@@ -4,9 +4,28 @@ import { Button } from "@/components/ui/button";
 import { TMDBMovie } from "@/types/movie";
 import MovieCard from "./movie-card";
 
+// Add interface for local content
+interface LocalContent {
+  id: string;
+  tmdbId: number;
+  title: string;
+  overview: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  mediaType: 'movie';
+  odyseeUrl?: string;
+  active: boolean;
+  voteAverage?: number;
+  genreIds?: number[];
+}
+
+// Create a type that combines both interfaces
+type MovieType = TMDBMovie | LocalContent;
+
 interface MovieRowProps {
   title: string;
-  movies: TMDBMovie[];
+  movies: MovieType[];
   isLoading?: boolean;
   isError?: boolean;
 }
@@ -112,7 +131,7 @@ export default function MovieRow({ title, movies, isLoading }: MovieRowProps) {
           data-testid="movie-container"
         >
           {movies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+            <MovieCard key={'tmdbId' in movie ? movie.tmdbId.toString() : movie.id} movie={movie as TMDBMovie} />
           ))}
         </div>
       </div>
