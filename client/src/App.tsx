@@ -6,41 +6,38 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { AuthProvider } from "@/contexts/auth-context";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
-import Home from "@/pages/home";
-import MovieDetail from "@/pages/movie-detail";
-import TVDetail from "@/pages/tv-detail";
-import WatchMovie from "@/pages/watch-movie";
-import WatchTV from "@/pages/watch-tv";
-import Search from "@/pages/search";
-import Category from "@/pages/category";
-import Trending from "@/pages/trending";
-import Favorites from "@/pages/favorites";
-import ContinueWatching from "@/pages/continue-watching";
-import Profile from "@/pages/profile";
-import Contact from "@/pages/contact";
-import Terms from "@/pages/terms";
-import Privacy from "@/pages/privacy";
-import HelpCenter from "@/pages/help-center";
-import AdminDashboard from "@/pages/admin-dashboard";
-import Subscription from "@/pages/subscription";
-import PaymentSuccess from "@/pages/payment-success";
-import PaymentCancelled from "@/pages/payment-cancelled";
-import PlanDemo from "@/pages/plan-demo";
-import NotFound from "@/pages/not-found";
-import Series from "@/pages/series";
-import ZuploadTest from "@/pages/zupload-test";
-import ZuploadEpisodeTest from "@/pages/zupload-episode-test";
-import ZuploadDirectTest from "@/pages/zupload-direct-test";
+import Home from "./pages/home";
+import MovieDetail from "./pages/movie-detail";
+import TVDetail from "./pages/tv-detail";
+import WatchMovie from "./pages/watch-movie";
+import WatchTV from "./pages/watch-tv";
+import WatchParty from "./pages/watch-party";
+import Series from "./pages/series";
+import Search from "./pages/search";
+import Profile from "./pages/profile";
+import AdminDashboard from "./pages/admin-dashboard";
+import Subscription from "./pages/subscription";
+import NotFound from "./pages/not-found";
+import Universe from "./pages/universe";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
-import UpcomingMovies from "@/pages/upcoming-movies";
-import NowPlayingMovies from "@/pages/now-playing-movies";
-import WatchPartyPage from "@/pages/watch-party";
 
-// Login route component that opens the AuthModal
+const routes = [
+  { path: "/", component: Home },
+  { path: "/movie/:id", component: MovieDetail },
+  { path: "/universe/:id", component: Universe },
+  { path: "/series", component: Series },
+  { path: "/tv/:id", component: TVDetail },
+  { path: "/search", component: Search },
+  { path: "/profile", component: Profile },
+  { path: "/admin", component: AdminDashboard },
+  { path: "/subscription", component: Subscription },
+  { path: "/*", component: NotFound },
+];
+
 function LoginRoute() {
   const [, setLocation] = useWouterLocation();
   
@@ -80,7 +77,7 @@ function Router() {
       {/* Watch routes - full screen without navbar/footer */}
       <Route path="/watch/movie/:id" component={WatchMovie} />
       <Route path="/watch/tv/:id/:season?/:episode?" component={WatchTV} />
-      <Route path="/watch-party/:roomId?" component={WatchPartyPage} />
+      <Route path="/watch-party/:roomId?" component={WatchParty} />
       
       {/* Authentication route */}
       <Route path="/login" component={LoginRoute} />
@@ -88,33 +85,15 @@ function Router() {
       {/* Admin route */}
       <Route path="/admin" component={AdminDashboard} />
       
-      {/* Test routes */}
-      <Route path="/zupload-test" component={ZuploadTest} />
-      <Route path="/zupload-episode-test" component={ZuploadEpisodeTest} />
-      <Route path="/zupload-direct-test" component={ZuploadDirectTest} />
-      
       {/* Regular routes with navbar/footer */}
       <Route path="/" component={Home} />
       <Route path="/movie/:id" component={MovieDetail} />
+      <Route path="/universe/:id" component={Universe} />
       <Route path="/series" component={Series} />
       <Route path="/tv/:id" component={TVDetail} />
       <Route path="/search" component={Search} />
-      <Route path="/category/:genre" component={Category} />
-      <Route path="/trending" component={Trending} />
-      <Route path="/favorites" component={Favorites} />
-      <Route path="/continue-watching" component={ContinueWatching} />
       <Route path="/profile" component={Profile} />
       <Route path="/subscription" component={Subscription} />
-      <Route path="/payment-success" component={PaymentSuccess} />
-      <Route path="/paiement/success" component={PaymentSuccess} />
-      <Route path="/paiement/cancel" component={PaymentCancelled} />
-      <Route path="/plan-demo" component={PlanDemo} />
-      <Route path="/contact" component={Contact} />
-      <Route path="/help" component={HelpCenter} />
-      <Route path="/terms" component={Terms} />
-      <Route path="/privacy" component={Privacy} />
-      <Route path="/movies/upcoming" component={UpcomingMovies} />
-      <Route path="/movies/now-playing" component={NowPlayingMovies} />
       <Route component={NotFound} />
     </Switch>
   );

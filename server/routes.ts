@@ -4155,6 +4155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
 
       if (!apiKey) {
+        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4162,19 +4163,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
-      );
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
 
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB Movie Search URL:", url);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
       res.json(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error searching movies:", error);
-      res.status(500).json({ error: "Failed to search movies" });
+      // Handle timeout errors specifically
+      if (error.name === 'AbortError') {
+        return res.status(408).json({ 
+          error: "Request timeout - the server took too long to respond",
+          possible_cause: "Network issue or TMDB API not responding"
+        });
+      }
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search movies",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search movies" });
+      }
     }
   });
 
@@ -4185,6 +4219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
 
       if (!apiKey) {
+        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4192,19 +4227,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
-      );
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
 
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB Multi Search URL:", url);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
       res.json(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error searching multi content:", error);
-      res.status(500).json({ error: "Failed to search content" });
+      // Handle timeout errors specifically
+      if (error.name === 'AbortError') {
+        return res.status(408).json({ 
+          error: "Request timeout - the server took too long to respond",
+          possible_cause: "Network issue or TMDB API not responding"
+        });
+      }
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search content",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search content" });
+      }
     }
   });
 
@@ -4355,6 +4423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
       
       if (!apiKey) {
+        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4362,22 +4431,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
-      );
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
+
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB TV Search URL:", url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      res.status(500).json({ error: "Failed to search TV shows" });
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search TV shows",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search TV shows" });
+      }
     }
   });
-
+  
   // Create payment invoice for subscription with PayPal
   app.post("/api/subscription/create-payment-paypal", authenticateToken, async (req: any, res: any) => {
     try {
@@ -5616,6 +5706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
       
       if (!apiKey) {
+        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -5623,22 +5714,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
-      );
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
+
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB TV Search URL:", url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      res.status(500).json({ error: "Failed to search TV shows" });
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search TV shows",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search TV shows" });
+      }
     }
   });
-  
+
+  app.get("/api/tmdb/search", async (req: any, res: any) => {
+    try {
+      const { query } = req.query;
+      const apiKey = process.env.TMDB_API_KEY;
+
+      if (!apiKey) {
+        console.error("TMDB API key not configured");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      if (!query) {
+        return res.status(400).json({ error: "Search query is required" });
+      }
+
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
+
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB Movie Search URL:", url);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error searching movies:", error);
+      // Handle timeout errors specifically
+      if (error.name === 'AbortError') {
+        return res.status(408).json({ 
+          error: "Request timeout - the server took too long to respond",
+          possible_cause: "Network issue or TMDB API not responding"
+        });
+      }
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search movies",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search movies" });
+      }
+    }
+  });
+
+  // Multi-search endpoint for both movies and TV shows
+  app.get("/api/tmdb/multi-search", async (req: any, res: any) => {
+    try {
+      const { query } = req.query;
+      const apiKey = process.env.TMDB_API_KEY;
+
+      if (!apiKey) {
+        console.error("TMDB API key not configured");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      if (!query) {
+        return res.status(400).json({ error: "Search query is required" });
+      }
+
+      // Validate query parameter
+      const searchQuery = query as string;
+      if (!searchQuery.trim()) {
+        return res.status(400).json({ error: "Search query cannot be empty" });
+      }
+
+      const encodedQuery = encodeURIComponent(searchQuery.trim());
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
+      
+      console.log("TMDB Multi Search URL:", url);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.error("TMDB API error:", response.status, response.statusText);
+        // Log response body for debugging
+        const errorText = await response.text();
+        console.error("TMDB API error body:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error searching multi content:", error);
+      // Handle timeout errors specifically
+      if (error.name === 'AbortError') {
+        return res.status(408).json({ 
+          error: "Request timeout - the server took too long to respond",
+          possible_cause: "Network issue or TMDB API not responding"
+        });
+      }
+      // Send more detailed error information in development
+      if (process.env.NODE_ENV === 'development') {
+        res.status(500).json({ 
+          error: "Failed to search content",
+          details: error instanceof Error ? error.message : String(error)
+        });
+      } else {
+        res.status(500).json({ error: "Failed to search content" });
+      }
+    }
+  });
+
   // Check payment status
   app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
     try {
@@ -5841,6 +6080,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching episodes:", error);
       res.status(500).json({ error: "Erreur lors de la récupération des épisodes" });
+    }
+  });
+
     }
   });
 

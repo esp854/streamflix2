@@ -50,6 +50,16 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
     }
   };
 
+  // Filtrer les séries pour n'afficher que celles qui sont actives
+  const activeSeries = series.filter(show => {
+    // Pour le contenu local, vérifier la propriété active
+    if ('active' in show) {
+      return show.active !== false;
+    }
+    // Pour le contenu TMDB, on l'affiche par défaut
+    return true;
+  });
+
   if (isLoading) {
     return (
       <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-loading">
@@ -69,7 +79,7 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
     );
   }
 
-  if (!series.length) {
+  if (!activeSeries.length) {
     return (
       <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-empty">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>
@@ -113,8 +123,8 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
           className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4"
           data-testid="tv-container"
         >
-          {series.map((show) => (
-            <TVCard key={'tmdbId' in show ? show.tmdbId : show.id} series={show} />
+          {activeSeries.map((show, index) => (
+            <TVCard key={`${'tmdbId' in show ? show.tmdbId : show.id}-${index}`} series={show} />
           ))}
         </div>
       </div>

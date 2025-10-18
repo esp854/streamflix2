@@ -10,7 +10,7 @@ import { TMDBTVSeries } from "@/types/movie";
 // Add this interface for local content
 interface LocalContent {
   id: string;
-  tmdbId: number;
+  tmdbId?: number; // Rendre tmdbId optionnel pour les contenus locaux
   title: string;
   name?: string;
   overview: string;
@@ -27,52 +27,86 @@ export default function Series() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
+  // Gestion des requêtes avec des options de retry
+  const queryOptions = {
+    retry: 1, // Reduce retry attempts to save bandwidth
+    retryDelay: 1000,
+    // Reduce cache time to save memory on mobile devices
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  };
+
   const { data: popularSeries, isLoading: popularLoading, isError: popularError } = useQuery({
     queryKey: ["/api/tmdb/tv/popular"],
     queryFn: () => tmdbService.getPopularTVShows(),
+    ...queryOptions,
   });
 
   const { data: topRatedSeries, isLoading: topRatedLoading, isError: topRatedError } = useQuery({
     queryKey: ["/api/tmdb/tv/top_rated"],
     queryFn: () => tmdbService.getTopRatedTVShows(),
+    ...queryOptions,
   });
 
   const { data: onTheAirSeries, isLoading: onTheAirLoading, isError: onTheAirError } = useQuery({
     queryKey: ["/api/tmdb/tv/on_the_air"],
     queryFn: () => tmdbService.getOnTheAirTVShows(),
+    ...queryOptions,
   });
 
   const { data: airingTodaySeries, isLoading: airingTodayLoading, isError: airingTodayError } = useQuery({
     queryKey: ["/api/tmdb/tv/airing_today"],
     queryFn: () => tmdbService.getAiringTodayTVShows(),
+    ...queryOptions,
   });
 
   const { data: dramaSeries, isLoading: dramaLoading, isError: dramaError } = useQuery({
     queryKey: ["/api/tmdb/tv/genre/18"],
     queryFn: () => tmdbService.getTVShowsByGenre(18),
+    ...queryOptions,
   });
 
   const { data: comedySeries, isLoading: comedyLoading, isError: comedyError } = useQuery({
     queryKey: ["/api/tmdb/tv/genre/35"],
     queryFn: () => tmdbService.getTVShowsByGenre(35),
+    ...queryOptions,
   });
 
   // New query to fetch ALL local content (including content without video links)
-  const { data: localContent, isLoading: localContentLoading } = useQuery({
+  const { data: localContent, isLoading: localContentLoading, isError: localContentError } = useQuery({
     queryKey: ["local-all-content"],
     queryFn: async () => {
       try {
         const response = await fetch("/api/admin/content");
-        if (!response.ok) return [];
+        if (!response.ok) {
+          // If we get a 401, try to refresh the page to trigger re-authentication
+          if (response.status === 401) {
+            console.log("Authentication required, attempting to refresh...");
+            window.location.reload();
+          }
+          return [];
+        }
         const data = await response.json();
         // Filter only TV series (both with and without video links)
-        return data.filter((item: LocalContent) => item.mediaType === 'tv');
+        // Assurez-vous que les contenus locaux sont correctement filtrés
+        return data.filter((item: LocalContent) => 
+          item.mediaType === 'tv' && 
+          (item.active === undefined || item.active === true) // Inclure les contenus actifs
+        );
       } catch (error) {
         console.error("Error fetching local content:", error);
         return [];
       }
     },
+    ...queryOptions,
   });
+
+  // Gestion globale des états de chargement
+  const isLoading = popularLoading || topRatedLoading || onTheAirLoading || 
+                   airingTodayLoading || dramaLoading || comedyLoading || localContentLoading;
+
+  // Gestion globale des erreurs
+  const isError = popularError || topRatedError || onTheAirError || 
+                 airingTodayError || dramaError || comedyError || localContentError;
 
   // Combine TMDB series with ALL local content (including those without video links)
   const allPopularSeries = popularSeries 
@@ -100,14 +134,22 @@ export default function Series() {
     ? [...(localContent || []), ...comedySeries].slice(0, 20) 
     : comedySeries;
 
-  const heroSeries = allPopularSeries?.slice(0, 5) || [];
+  // Combiner toutes les séries pour le carrousel (avec plus d'options)
+  const heroSeries = allPopularSeries?.slice(0, 10) || []; // Augmenter à 10 séries
+
+  // Ajouter un useEffect pour déboguer les contenus locaux
+  useEffect(() => {
+    if (localContent && localContent.length > 0) {
+      console.log("Contenus locaux récupérés:", localContent);
+    }
+  }, [localContent]);
 
   useEffect(() => {
     if (!isPlaying || heroSeries.length === 0) return;
 
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSeries.length);
-    }, 6000);
+    }, 8000); // Augmenter à 8 secondes pour une meilleure expérience
 
     return () => clearInterval(interval);
   }, [isPlaying, heroSeries.length]);
@@ -117,7 +159,7 @@ export default function Series() {
   };
 
   // Handle loading state
-  if (popularLoading || localContentLoading) {
+  if (isLoading) {
     return (
       <section className="relative h-screen overflow-hidden bg-muted animate-pulse" data-testid="series-hero-loading">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -131,11 +173,14 @@ export default function Series() {
   }
 
   // Handle error state
-  if (popularError) {
+  if (isError) {
     return (
       <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
-        <div className="text-center">
-          <p className="text-xl text-muted-foreground">Erreur lors du chargement des séries</p>
+        <div className="text-center p-8">
+          <p className="text-xl text-muted-foreground mb-4">Erreur lors du chargement des séries</p>
+          <Button onClick={() => window.location.reload()} variant="secondary">
+            Réessayer
+          </Button>
         </div>
       </section>
     );
@@ -180,6 +225,7 @@ export default function Series() {
                 onError={(e) => {
                   e.currentTarget.src = "/placeholder-backdrop.jpg";
                 }}
+                loading="lazy"
               />
               <div className="absolute inset-0 gradient-overlay"></div>
               <div className="absolute inset-0 gradient-bottom"></div>
@@ -240,7 +286,7 @@ export default function Series() {
       </section>
       
       {/* TV Series Sections */}
-      <div className="space-y-8">
+      <div className="space-y-8 py-12">
         <TVRow
           title="Séries Populaires"
           series={allPopularSeries || []}

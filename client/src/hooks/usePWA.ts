@@ -26,11 +26,12 @@ export function usePWA() {
     }
 
     // Listen for install prompt
-    const handleBeforeInstallPrompt = () => {
-      // Check if install prompt is available
-      if ((window as any).deferredPrompt) {
-        setIsInstallable(true);
-      }
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      (window as any).deferredPrompt = e;
+      setIsInstallable(true);
     };
 
     // Listen for successful installation
@@ -44,13 +45,13 @@ export function usePWA() {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('pwa-installable', handleBeforeInstallPrompt);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      window.removeEventListener('pwa-installable', handleBeforeInstallPrompt);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);

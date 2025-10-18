@@ -20,6 +20,7 @@ export default function Search() {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeTab, setActiveTab] = useState("movies");
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Close suggestions when clicking outside
@@ -48,23 +49,32 @@ export default function Search() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const { data: searchResults, isLoading } = useQuery({
+  // Reduce retry attempts and cache time for mobile performance
+  const queryOptions = {
+    retry: 1,
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  };
+
+  const { data: searchResults, isLoading, error } = useQuery({
     queryKey: [`/api/tmdb/search`, debouncedQuery],
     queryFn: () => tmdbService.searchMovies(debouncedQuery),
     enabled: debouncedQuery.length > 0,
+    ...queryOptions,
   });
 
-  const { data: tvSearchResults, isLoading: tvLoading } = useQuery({
+  const { data: tvSearchResults, isLoading: tvLoading, error: tvError } = useQuery({
     queryKey: [`/api/tmdb/tv/search`, debouncedQuery],
     queryFn: () => tmdbService.searchTVShows(debouncedQuery),
-    enabled: debouncedQuery.length > 0,
+    enabled: debouncedQuery.length > 0 && activeTab === "tv",
+    ...queryOptions,
   });
 
-  // Get search suggestions
+  // Get search suggestions - only fetch when needed
   const { data: suggestions } = useQuery({
     queryKey: [`/api/tmdb/multi-search`, debouncedQuery],
     queryFn: () => tmdbService.multiSearch(debouncedQuery),
     enabled: debouncedQuery.length > 2 && showSuggestions,
+    ...queryOptions,
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -85,6 +95,11 @@ export default function Search() {
     setSearchQuery("");
     setDebouncedQuery("");
     setShowSuggestions(false);
+  };
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
   };
 
   return (
@@ -139,6 +154,7 @@ export default function Search() {
                             src={tmdbService.getPosterUrl(item.poster_path)}
                             alt={item.title || item.name}
                             className="w-8 h-12 object-cover rounded"
+                            loading="lazy"
                           />
                         ) : (
                           <div className="w-8 h-12 bg-muted rounded flex items-center justify-center">
@@ -155,7 +171,7 @@ export default function Search() {
                           {item.title || item.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {item.media_type === 'movie' ? 'Film' : 'Série'} • {new Date(item.release_date || item.first_air_date).getFullYear()}
+                          {item.media_type === 'movie' ? 'Film' : 'Série'} • {item.release_date || item.first_air_date ? new Date(item.release_date || item.first_air_date).getFullYear() : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -174,8 +190,22 @@ export default function Search() {
           </div>
         )}
 
+        {/* Error handling */}
+        {(error || tvError) && debouncedQuery && (
+          <div className="text-center py-12" data-testid="search-error">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Erreur de recherche</h3>
+            <p className="text-muted-foreground mb-4">
+              Une erreur s'est produite lors de la recherche. Veuillez réessayer.
+            </p>
+            <Button onClick={() => window.location.reload()} variant="secondary">
+              Réessayer
+            </Button>
+          </div>
+        )}
+
         {!isLoading && !tvLoading && debouncedQuery && (searchResults || tvSearchResults) && (
-          <Tabs defaultValue="movies" className="w-full" data-testid="search-results">
+          <Tabs defaultValue="movies" className="w-full" onValueChange={handleTabChange} data-testid="search-results">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="movies" className="flex items-center space-x-2">
                 <Film className="h-4 w-4" />
@@ -189,9 +219,9 @@ export default function Search() {
 
             <TabsContent value="movies">
               {searchResults && searchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" data-testid="search-results-grid">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-results-grid">
                   {searchResults.map((movie) => (
-                    <MovieCard key={movie.id} movie={movie} size="small" />
+                    <MovieCard key={movie.id} movie={movie} size="small" showOverlay={window.innerWidth > 768} />
                   ))}
                 </div>
               ) : (
@@ -207,9 +237,9 @@ export default function Search() {
 
             <TabsContent value="tv">
               {tvSearchResults && tvSearchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" data-testid="search-tv-results-grid">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-tv-results-grid">
                   {tvSearchResults.map((series) => (
-                    <TVCard key={series.id} series={series} size="small" />
+                    <TVCard key={series.id} series={series} size="small" showOverlay={window.innerWidth > 768} />
                   ))}
                 </div>
               ) : (

@@ -10,6 +10,7 @@ export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [movieTrailers, setMovieTrailers] = useState<Record<number, Video | null>>({});
+  const [trailerLoaded, setTrailerLoaded] = useState(false);
 
   const { data: trendingMovies, isLoading, isError } = useQuery({
     queryKey: ['/api/tmdb/trending'],
@@ -21,26 +22,30 @@ export default function HeroCarousel() {
   // Increased from 5 to 10 movies in the carousel
   const heroMovies = trendingMovies?.slice(0, 10) || [];
 
-  // Fetch trailers for each movie
+  // Fetch trailers only for the current movie to reduce resource usage
   useEffect(() => {
-    if (heroMovies && heroMovies.length > 0) {
-      heroMovies.forEach(async (movie) => {
-        if (!movieTrailers[movie.id]) {
+    if (heroMovies && heroMovies.length > 0 && !trailerLoaded) {
+      const currentMovie = heroMovies[currentSlide];
+      if (currentMovie && !movieTrailers[currentMovie.id]) {
+        const loadTrailer = async () => {
           try {
-            const movieDetails = await tmdbService.getMovieDetails(movie.id);
+            const movieDetails = await tmdbService.getMovieDetails(currentMovie.id);
             const trailers = movieDetails.videos?.results?.filter(
               (video: Video) => video.type === "Trailer" && video.site === "YouTube"
             );
             const trailer = trailers && trailers.length > 0 ? trailers[0] : null;
-            setMovieTrailers(prev => ({ ...prev, [movie.id]: trailer }));
+            setMovieTrailers(prev => ({ ...prev, [currentMovie.id]: trailer }));
+            setTrailerLoaded(true);
           } catch (error) {
-            console.error(`Error fetching trailer for movie ${movie.id}:`, error);
-            setMovieTrailers(prev => ({ ...prev, [movie.id]: null }));
+            console.error(`Error fetching trailer for movie ${currentMovie.id}:`, error);
+            setMovieTrailers(prev => ({ ...prev, [currentMovie.id]: null }));
+            setTrailerLoaded(true);
           }
-        }
-      });
+        };
+        loadTrailer();
+      }
     }
-  }, [heroMovies]);
+  }, [heroMovies, currentSlide, trailerLoaded]);
 
   useEffect(() => {
     if (!isPlaying || heroMovies.length === 0) return;
@@ -48,6 +53,8 @@ export default function HeroCarousel() {
     // Adjust interval based on number of movies - 6 seconds per movie
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroMovies.length);
+      // Reset trailer loaded state when slide changes
+      setTrailerLoaded(false);
     }, 6000);
 
     return () => clearInterval(interval);
@@ -107,9 +114,9 @@ export default function HeroCarousel() {
             }`}
             data-testid={`hero-slide-${index}`}
           >
-            {movieTrailers[movie.id] ? (
+            {index === currentSlide && currentTrailer ? (
               <iframe
-                src={`https://www.youtube.com/embed/${movieTrailers[movie.id]?.key}?autoplay=1&mute=1&loop=1&playlist=${movieTrailers[movie.id]?.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1`}
+                src={`https://www.youtube.com/embed/${currentTrailer.key}?autoplay=1&mute=1&loop=1&playlist=${currentTrailer.key}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1`}
                 className="w-full h-full object-cover"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -175,7 +182,10 @@ export default function HeroCarousel() {
         {heroMovies.map((_, index) => (
           <button
             key={index}
-            onClick={() => setCurrentSlide(index)}
+            onClick={() => {
+              setCurrentSlide(index);
+              setTrailerLoaded(false);
+            }}
             className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-colors duration-200 ${
               index === currentSlide ? "bg-primary" : "bg-white/50"
             }`}

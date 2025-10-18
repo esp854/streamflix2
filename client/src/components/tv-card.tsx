@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 // Add interface for local content
 interface LocalContent {
   id: string;
-  tmdbId: number;
+  tmdbId?: number;
   title: string;
   name?: string;
   overview: string;
@@ -38,18 +38,26 @@ interface TVCardProps {
 
 export default function TVCard({ series, size = "medium", showOverlay = true }: TVCardProps) {
    const [imageError, setImageError] = useState(false);
-   const [showTrailer, setShowTrailer] = useState(false);
-   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
    const [isHovering, setIsHovering] = useState(false);
-   const videoRef = useRef<HTMLVideoElement>(null);
-   const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
    const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
    const { shareContent } = useShare();
    const { shouldRedirectToPayment } = useSubscriptionCheck();
 
+   // Fonction utilitaire pour extraire l'ID numérique
+   const getSeriesId = (): number => {
+     if ('tmdbId' in series && series.tmdbId) {
+       return series.tmdbId;
+     }
+     if ('id' in series && typeof series.id === 'string') {
+       const parsed = parseInt(series.id, 10);
+       return isNaN(parsed) ? 0 : parsed;
+     }
+     return 0;
+   };
+
    // Check if series is favorite
-   const seriesId = 'tmdbId' in series ? series.tmdbId : parseInt(series.id);
-   const seriesIdStr = seriesId.toString();
+   const seriesId = getSeriesId();
+   const stringSeriesId = 'tmdbId' in series ? series.tmdbId?.toString() || series.id.toString() : series.id.toString();
    const { data: favoriteStatus } = checkFavorite(seriesId);
    const isFavorite = favoriteStatus?.isFavorite || false;
 
@@ -72,11 +80,15 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
         return true; // Par défaut, on suppose que le contenu est actif
       } catch (error) {
         console.error('Error checking content status:', error);
-        return true; // En cas d'erreur, on affiche le contenu
+        // En cas d'erreur, on affiche le contenu par défaut
+        return true;
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    // Ajouter un retry en cas d'erreur
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const contentActive = contentActiveData !== undefined ? contentActiveData : true;
@@ -85,62 +97,18 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     setImageError(true);
   };
 
-  // Load trailer when hovering (only for TMDB content)
-  const loadTrailer = async () => {
-    // Only load trailers for TMDB content, not local content
-    if ('tmdbId' in series) {
-      if (trailerUrl) return; // Already loaded
-
-      try {
-        const details = await tmdbService.getTVShowDetails(series.tmdbId);
-        if (details.videos && details.videos.results) {
-          const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-          if (trailer) {
-            setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading trailer:', error);
-      }
-    }
-  };
-
-  // Handle mouse enter
+  // Handle mouse enter - simplified for mobile
   const handleMouseEnter = () => {
-    setIsHovering(true);
-    loadTrailer();
-    // Start trailer after a short delay (only for TMDB content)
-    if ('tmdbId' in series) {
-      trailerTimeoutRef.current = setTimeout(() => {
-        if (trailerUrl) {
-          setShowTrailer(true);
-        }
-      }, 500);
+    // Only show overlay effects on non-mobile devices
+    if (window.innerWidth > 768) {
+      setIsHovering(true);
     }
   };
 
   // Handle mouse leave
   const handleMouseLeave = () => {
     setIsHovering(false);
-    setShowTrailer(false);
-    if (trailerTimeoutRef.current) {
-      clearTimeout(trailerTimeoutRef.current);
-      trailerTimeoutRef.current = null;
-    }
-    // Pause video if playing
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
   };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (trailerTimeoutRef.current) {
-        clearTimeout(trailerTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -154,9 +122,9 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     
     // For local content without video links, redirect to the detail page instead
     if ('odyseeUrl' in series && !series.odyseeUrl) {
-      window.location.href = `/tv/${seriesId}`;
+      window.location.href = `/tv/${stringSeriesId}`;
     } else {
-      window.location.href = `/watch/tv/${seriesId}/1/1`;
+      window.location.href = `/watch/tv/${stringSeriesId}/1/1`;
     }
   };
 
@@ -165,24 +133,29 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     e.stopPropagation();
     
     // Create a compatible object for the toggleFavorite function
-    const favoriteObject = 'tmdbId' in series 
-      ? {
-          id: series.tmdbId,
-          name: series.name || series.title,
-          poster_path: series.posterPath || null,
-          genre_ids: series.genreIds || [],
-          first_air_date: series.firstAirDate || ""
-        } as unknown as TMDBTVSeries
-      : series;
+    if ('tmdbId' in series && series.tmdbId) {
+      const favoriteObject = {
+        id: series.tmdbId,
+        name: series.name || series.title,
+        poster_path: series.posterPath || null,
+        genre_ids: series.genreIds || [],
+        first_air_date: series.firstAirDate || ""
+      } as unknown as TMDBTVSeries;
       
-    await toggleFavorite(favoriteObject, 'tv');
+      await toggleFavorite(favoriteObject, 'tv');
+    } else {
+      // For local content, we might need a different approach
+      const title = 'name' in series ? series.name : series.title;
+      console.log('Cannot add local content to favorites:', title);
+    }
   };
 
   const handleAddToList = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // TODO: Implement watchlist functionality (separate from favorites)
-    console.log('Add to watchlist:', 'name' in series ? series.name : series.title);
+    const title = 'name' in series ? series.name : series.title;
+    console.log('Add to watchlist:', title);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -190,17 +163,21 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     e.stopPropagation();
     
     // Create a compatible object for the shareContent function
-    const shareObject = 'tmdbId' in series 
-      ? {
-          id: series.tmdbId,
-          name: series.name || series.title,
-          poster_path: series.posterPath || null,
-          genre_ids: series.genreIds || [],
-          first_air_date: series.firstAirDate || ""
-        } as unknown as TMDBTVSeries
-      : series;
+    if ('tmdbId' in series && series.tmdbId) {
+      const shareObject = {
+        id: series.tmdbId,
+        name: series.name || series.title,
+        poster_path: series.posterPath || null,
+        genre_ids: series.genreIds || [],
+        first_air_date: series.firstAirDate || ""
+      } as unknown as TMDBTVSeries;
       
-    await shareContent(shareObject, 'tv');
+      await shareContent(shareObject, 'tv');
+    } else {
+      // For local content, we might need a different approach
+      const title = 'name' in series ? series.name : series.title;
+      console.log('Cannot share local content:', title);
+    }
   };
 
   const sizeClasses = {
@@ -236,101 +213,101 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     return null;
   }
 
+  // URL de l'image avec fallback
+  const imageUrl = imageError 
+    ? "/placeholder-movie.jpg" 
+    : posterPath 
+      ? tmdbService.getPosterUrl(posterPath)
+      : "/placeholder-movie.jpg";
+
   return (
     <Link
-      href={`/tv/${seriesId}`}
+      href={`/tv/${stringSeriesId}`}
       className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer tv-card block`}
-      data-testid={`tv-card-${seriesIdStr}`}
+      data-testid={`tv-card-${stringSeriesId}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
         <div className="relative overflow-hidden rounded-md transition-transform duration-300 group-hover:scale-105">
-          {showTrailer && trailerUrl ? (
-            <iframe
-              ref={videoRef as any}
-              src={trailerUrl}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              title={`${name} trailer`}
-            />
-          ) : (
-            <img
-              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(posterPath || null)}
-              alt={name || ""}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              onError={handleImageError}
-              data-testid={`tv-poster-${seriesIdStr}`}
-            />
-          )}
+          <img
+            src={imageUrl}
+            alt={name || ""}
+            className={`w-full ${heightClasses[size]} object-cover`}
+            onError={handleImageError}
+            data-testid={`tv-poster-${stringSeriesId}`}
+            loading="lazy"
+          />
           
           {showOverlay && (
             <>
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
               
-              {/* Play overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <button 
-                  onClick={handlePlayClick}
-                  className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
-                >
-                  <Play className="w-5 h-5 ml-1" />
-                </button>
-              </div>
+              {/* Play overlay - only show on desktop */}
+              {window.innerWidth > 768 && (
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button 
+                    onClick={handlePlayClick}
+                    className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
+                  >
+                    <Play className="w-5 h-5 ml-1" />
+                  </button>
+                </div>
+              )}
               
               {/* Rating badge */}
               {voteAverage && voteAverage > 0 && (
-                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`tv-rating-${seriesIdStr}`}>
+                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`tv-rating-${stringSeriesId}`}>
                   <Star className="w-3 h-3 fill-current" />
                   <span>{voteAverage.toFixed(1)}</span>
                 </div>
               )}
 
-              {/* Action buttons */}
-              <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleToggleFavorite}
-                  disabled={isAddingToFavorites}
-                  className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
-                  data-testid={`button-favorite-${seriesIdStr}`}
-                  title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                >
-                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleAddToList}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-add-list-${seriesIdStr}`}
-                  title="Ajouter à ma liste"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleShare}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-share-${seriesIdStr}`}
-                  title="Partager"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
-              </div>
+              {/* Action buttons - only show on desktop */}
+              {window.innerWidth > 768 && (
+                <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleToggleFavorite}
+                    disabled={isAddingToFavorites}
+                    className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
+                    data-testid={`button-favorite-${stringSeriesId}`}
+                    title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                  >
+                    <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleAddToList}
+                    className="w-8 h-8 rounded-full bg-black/50 text-white"
+                    data-testid={`button-add-list-${stringSeriesId}`}
+                    title="Ajouter à ma liste"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleShare}
+                    className="w-8 h-8 rounded-full bg-black/50 text-white"
+                    data-testid={`button-share-${stringSeriesId}`}
+                    title="Partager"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
         
-        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${seriesIdStr}`}>
-          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${seriesIdStr}`}>
+        <div className="mt-2 sm:mt-3" data-testid={`tv-info-${stringSeriesId}`}>
+          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`tv-title-${stringSeriesId}`}>
             {name}
           </h3>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${seriesIdStr}`}>
+            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`tv-year-${stringSeriesId}`}>
               {firstAirDate ? new Date(firstAirDate).getFullYear() : "Date inconnue"} • {genres.join(", ")}
             </p>
           </div>

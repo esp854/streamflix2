@@ -36,23 +36,21 @@ interface MovieCardProps {
 
 export default function MovieCard({ movie, size = "medium", showOverlay = true }: MovieCardProps) {
    const [imageError, setImageError] = useState(false);
-   const [showTrailer, setShowTrailer] = useState(false);
-   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
    const [isHovering, setIsHovering] = useState(false);
-   const videoRef = useRef<HTMLVideoElement>(null);
-   const trailerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
    const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
    const { shareContent } = useShare();
    const { shouldRedirectToPayment } = useSubscriptionCheck();
 
    // Check if movie is favorite
-   const movieId = 'tmdbId' in movie ? movie.tmdbId : parseInt(movie.id);
-   const { data: favoriteStatus } = checkFavorite(movieId);
+   const isTMDBMovie = 'tmdbId' in movie;
+   const numericMovieId = isTMDBMovie ? movie.tmdbId : (typeof movie.id === 'string' ? parseInt(movie.id, 10) || 0 : movie.id);
+   const stringMovieId = isTMDBMovie ? movie.tmdbId.toString() : movie.id.toString();
+   const { data: favoriteStatus } = checkFavorite(numericMovieId);
    const isFavorite = favoriteStatus?.isFavorite || false;
 
   // Vérifier si le contenu est actif dans la base de données avec React Query pour le caching
   const { data: contentActiveData, isLoading: contentActiveLoading } = useQuery({
-    queryKey: ["content-active", movieId],
+    queryKey: ["content-active", numericMovieId],
     queryFn: async () => {
       try {
         // For local content, check if it's active directly
@@ -61,7 +59,7 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
         }
         
         // For TMDB content, check the database
-        const response = await fetch(`/api/contents/tmdb/${movieId}`);
+        const response = await fetch(`/api/contents/tmdb/${numericMovieId}`);
         if (response.ok) {
           const content = await response.json();
           return content.active !== false; // Si active est false, le contenu est inactif
@@ -82,62 +80,18 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
     setImageError(true);
   };
 
-  // Load trailer when hovering (only for TMDB content)
-  const loadTrailer = async () => {
-    // Only load trailers for TMDB content, not local content
-    if ('tmdbId' in movie) {
-      if (trailerUrl) return; // Already loaded
-
-      try {
-        const details = await tmdbService.getMovieDetails(movie.tmdbId);
-        if (details.videos && details.videos.results) {
-          const trailer = details.videos.results.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-          if (trailer) {
-            setTrailerUrl(`https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&loop=1&playlist=${trailer.key}&controls=0&modestbranding=1&showinfo=0&rel=0`);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading trailer:', error);
-      }
-    }
-  };
-
-  // Handle mouse enter
+  // Handle mouse enter - simplified for mobile
   const handleMouseEnter = () => {
-    setIsHovering(true);
-    loadTrailer();
-    // Start trailer after a short delay (only for TMDB content)
-    if ('tmdbId' in movie) {
-      trailerTimeoutRef.current = setTimeout(() => {
-        if (trailerUrl) {
-          setShowTrailer(true);
-        }
-      }, 500);
+    // Only show overlay effects on non-mobile devices
+    if (window.innerWidth > 768) {
+      setIsHovering(true);
     }
   };
 
   // Handle mouse leave
   const handleMouseLeave = () => {
     setIsHovering(false);
-    setShowTrailer(false);
-    if (trailerTimeoutRef.current) {
-      clearTimeout(trailerTimeoutRef.current);
-      trailerTimeoutRef.current = null;
-    }
-    // Pause video if playing
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
   };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (trailerTimeoutRef.current) {
-        clearTimeout(trailerTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -151,9 +105,9 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
     
     // For local content without video links, redirect to the detail page instead
     if ('odyseeUrl' in movie && !movie.odyseeUrl) {
-      window.location.href = `/movie/${movieId}`;
+      window.location.href = `/movie/${stringMovieId}`;
     } else {
-      window.location.href = `/watch/movie/${movieId}`;
+      window.location.href = `/watch/movie/${stringMovieId}`;
     }
   };
 
@@ -235,99 +189,92 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
 
   return (
     <Link
-      href={`/movie/${movieId}`}
+      href={`/movie/${stringMovieId}`}
       className={`flex-shrink-0 ${sizeClasses[size]} group cursor-pointer movie-card block`}
-      data-testid={`movie-card-${movieId}`}
+      data-testid={`movie-card-${stringMovieId}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
         <div className="relative overflow-hidden rounded-md transition-transform duration-300 group-hover:scale-105">
-          {showTrailer && trailerUrl ? (
-            <iframe
-              ref={videoRef as any}
-              src={trailerUrl}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              title={`${title} trailer`}
-            />
-          ) : (
-            <img
-              src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(posterPath || null)}
-              alt={title || ""}
-              className={`w-full ${heightClasses[size]} object-cover`}
-              onError={handleImageError}
-              data-testid={`movie-poster-${movieId}`}
-            />
-          )}
+          <img
+            src={imageError ? "/placeholder-movie.jpg" : tmdbService.getPosterUrl(posterPath || null)}
+            alt={title || ""}
+            className={`w-full ${heightClasses[size]} object-cover`}
+            onError={handleImageError}
+            data-testid={`movie-poster-${stringMovieId}`}
+            loading="lazy"
+          />
           
           {showOverlay && (
             <>
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300"></div>
               
-              {/* Play overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <button 
-                  onClick={handlePlayClick}
-                  className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
-                >
-                  <Play className="w-5 h-5 ml-1" />
-                </button>
-              </div>
+              {/* Play overlay - only show on desktop */}
+              {window.innerWidth > 768 && (
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button 
+                    onClick={handlePlayClick}
+                    className="bg-primary/80 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-primary transition-colors"
+                  >
+                    <Play className="w-5 h-5 ml-1" />
+                  </button>
+                </div>
+              )}
               
               {/* Rating badge */}
               {voteAverage && voteAverage > 0 && (
-                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`movie-rating-${movieId}`}>
+                <div className="absolute top-2 left-2 bg-accent text-white px-2 py-1 rounded text-sm font-semibold flex items-center space-x-1" data-testid={`movie-rating-${stringMovieId}`}>
                   <Star className="w-3 h-3 fill-current" />
                   <span>{voteAverage.toFixed(1)}</span>
                 </div>
               )}
 
-              {/* Action buttons */}
-              <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleToggleFavorite}
-                  disabled={isAddingToFavorites}
-                  className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
-                  data-testid={`button-favorite-${movieId}`}
-                  title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                >
-                  <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleAddToList}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-add-list-${movieId}`}
-                  title="Ajouter à ma liste"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  onClick={handleShare}
-                  className="w-8 h-8 rounded-full bg-black/50 text-white"
-                  data-testid={`button-share-${movieId}`}
-                  title="Partager"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
-              </div>
+              {/* Action buttons - only show on desktop */}
+              {window.innerWidth > 768 && (
+                <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleToggleFavorite}
+                    disabled={isAddingToFavorites}
+                    className={`w-8 h-8 rounded-full ${isFavorite ? "bg-primary text-white" : "bg-black/50 text-white"}`}
+                    data-testid={`button-favorite-${stringMovieId}`}
+                    title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                  >
+                    <Heart className={`w-4 h-4 ${isFavorite ? "fill-current" : ""}`} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleAddToList}
+                    className="w-8 h-8 rounded-full bg-black/50 text-white"
+                    data-testid={`button-add-list-${stringMovieId}`}
+                    title="Ajouter à ma liste"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    onClick={handleShare}
+                    className="w-8 h-8 rounded-full bg-black/50 text-white"
+                    data-testid={`button-share-${stringMovieId}`}
+                    title="Partager"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
         
-        <div className="mt-2 sm:mt-3" data-testid={`movie-info-${movieId}`}>
-          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`movie-title-${movieId}`}>
+        <div className="mt-2 sm:mt-3" data-testid={`movie-info-${stringMovieId}`}>
+          <h3 className="text-sm sm:text-base text-foreground font-medium group-hover:text-primary transition-colors duration-200 line-clamp-1" data-testid={`movie-title-${stringMovieId}`}>
             {title}
           </h3>
           <div className="flex items-center justify-between mt-1">
-            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`movie-year-${movieId}`}>
+            <p className="text-xs sm:text-sm text-muted-foreground" data-testid={`movie-year-${stringMovieId}`}>
               {releaseDate ? new Date(releaseDate).getFullYear() : "Date inconnue"} • {genres.join(", ")}
             </p>
           </div>
