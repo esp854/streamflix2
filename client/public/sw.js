@@ -1,8 +1,8 @@
 // Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.7.0';
-const STATIC_CACHE = 'streamflix-static-v1.7.0';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.0';
-const IMAGE_CACHE = 'streamflix-images-v1.7.0';
+const CACHE_NAME = 'streamflix-v1.7.1';
+const STATIC_CACHE = 'streamflix-static-v1.7.1';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.1';
+const IMAGE_CACHE = 'streamflix-images-v1.7.1';
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
   '/favicon-196.png',
   '/manifest-icon-192.maskable.png',
   '/manifest-icon-512.maskable.png',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
   '/mstile-icon-128.png',
   '/mstile-icon-270.png',
   '/mstile-icon-558.png',
