@@ -109,6 +109,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (tmdbId) {
       const sources: VideoSource[] = [];
       
+      // Services qui fonctionnent bien (en premier)
       // Source Zupload (actuelle)
       if (videoUrl) {
         sources.push({
@@ -116,23 +117,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           name: 'Zupload',
           url: videoUrl,
           type: videoUrl.includes('embed') ? 'embed' : 'direct'
-        });
-      }
-      
-      // Source VidSrc
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
-          type: 'embed'
         });
       }
       
@@ -149,6 +133,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           id: 'superembed',
           name: 'SuperEmbed',
           url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source VidSrc
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -170,6 +171,93 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
+      // Nouveaux services de streaming ajoutés
+      // Source MoviesAPI.Club
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'moviesapi',
+          name: 'MoviesAPI',
+          url: `https://moviesapi.club/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'moviesapi',
+          name: 'MoviesAPI',
+          url: `https://moviesapi.club/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source Embed.su
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'embedsu',
+          name: 'Embed.su',
+          url: `https://embed.su/embed/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'embedsu',
+          name: 'Embed.su',
+          url: `https://embed.su/embed/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source SmashyStream
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'smashy',
+          name: 'SmashyStream',
+          url: `https://player.smashy.stream/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'smashy',
+          name: 'SmashyStream',
+          url: `https://player.smashy.stream/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source NEPU
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'nepu',
+          name: 'NEPU',
+          url: `https://nepu.to/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'nepu',
+          name: 'NEPU',
+          url: `https://nepu.to/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source Catflix
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'catflix',
+          name: 'Catflix',
+          url: `https://catflix.me/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'catflix',
+          name: 'Catflix',
+          url: `https://catflix.me/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Services avec fiabilité moyenne
       // Source GoDrivePlayer
       if (mediaType === 'movie') {
         sources.push({
@@ -204,40 +292,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source AsianLoad (pour le contenu asiatique)
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'asianload',
-          name: 'AsianLoad',
-          url: `https://asianload.to/embed/movie?tmdb=${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'asianload',
-          name: 'AsianLoad',
-          url: `https://asianload.to/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source DramaCool (pour le contenu asiatique)
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'dramacool',
-          name: 'DramaCool',
-          url: `https://dramacool.com/embed/movie?tmdb=${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'dramacool',
-          name: 'DramaCool',
-          url: `https://dramacool.com/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
+      // Services qui nécessitent une configuration supplémentaire ou sont moins fiables (en dernier)
       // Source Frembed (si applicable)
       // Note: Frembed nécessite une API key ou un compte, donc on vérifie si l'URL est déjà fournie
       if (videoUrl && videoUrl.includes('frembed')) {

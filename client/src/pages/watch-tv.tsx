@@ -55,6 +55,11 @@ export default function WatchTV() {
   const [isWatchPartyHost, setIsWatchPartyHost] = useState(false);
   const [showWatchPartyPanel, setShowWatchPartyPanel] = useState(false);
 
+  // Video error handler
+  const handleVideoError = useCallback((error: string) => {
+    setVideoError(error);
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
