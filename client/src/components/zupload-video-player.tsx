@@ -109,7 +109,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (tmdbId) {
       const sources: VideoSource[] = [];
       
-      // Services qui fonctionnent bien (en premier)
+      // Source VidSrc (prioritaire)
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
       // Source Zupload (actuelle)
       if (videoUrl) {
         sources.push({
@@ -137,23 +153,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source VidSrc (fonctionne bien)
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
       // Source 2Embed (fonctionne moyennement)
       if (mediaType === 'movie') {
         sources.push({
@@ -171,19 +170,54 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source FStream (nouveau service)
+      // Nouveaux services de streaming ajoutés
+      // Source MoviesAPI.Club
       if (mediaType === 'movie') {
         sources.push({
-          id: 'fstream',
-          name: 'FStream',
-          url: `https://fstream.pro/embed/${tmdbId}`,
+          id: 'moviesapi',
+          name: 'MoviesAPI',
+          url: `https://moviesapi.club/movie/${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
-          id: 'fstream',
-          name: 'FStream',
-          url: `https://fstream.pro/embed/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          id: 'moviesapi',
+          name: 'MoviesAPI',
+          url: `https://moviesapi.club/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source Embed.su
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'embedsu',
+          name: 'Embed.su',
+          url: `https://embed.su/embed/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'embedsu',
+          name: 'Embed.su',
+          url: `https://embed.su/embed/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source SmashyStream
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'smashy',
+          name: 'SmashyStream',
+          url: `https://player.smashy.stream/movie/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'smashy',
+          name: 'SmashyStream',
+          url: `https://player.smashy.stream/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -219,7 +253,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       
       setVideoSources(sources);
-      setCurrentSourceIndex(0); // Par défaut, utiliser la première source
+      setCurrentSourceIndex(0); // Par défaut, utiliser la première source (VidSrc)
     }
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
 
