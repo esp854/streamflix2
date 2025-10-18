@@ -5,6 +5,21 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Info, Pause, PlayIcon } from "lucide-react";
 import { Link } from "wouter";
+import { TMDBTVSeries } from "@/types/movie";
+
+// Add this interface for local content
+interface LocalContent {
+  id: string;
+  tmdbId: number;
+  title: string;
+  name?: string;
+  overview: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  firstAirDate?: string;
+  mediaType: 'tv';
+}
 
 export default function Series() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,7 +55,29 @@ export default function Series() {
     queryFn: () => tmdbService.getTVShowsByGenre(35),
   });
 
-  const heroSeries = popularSeries?.slice(0, 5) || [];
+  // New query to fetch local content
+  const { data: localContent, isLoading: localContentLoading } = useQuery({
+    queryKey: ["local-content"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/admin/content");
+        if (!response.ok) return [];
+        const data = await response.json();
+        // Filter only TV series that have been added locally
+        return data.filter((item: LocalContent) => item.mediaType === 'tv' && item.tmdbId);
+      } catch (error) {
+        console.error("Error fetching local content:", error);
+        return [];
+      }
+    },
+  });
+
+  // Combine TMDB series with local content
+  const allPopularSeries = popularSeries 
+    ? [...(localContent || []), ...popularSeries].slice(0, 20) 
+    : popularSeries;
+
+  const heroSeries = allPopularSeries?.slice(0, 5) || [];
 
   useEffect(() => {
     if (!isPlaying || heroSeries.length === 0) return;
@@ -87,17 +124,23 @@ export default function Series() {
       <section className="relative h-screen overflow-hidden" data-testid="series-hero">
         {/* Background Images */}
         <div className="absolute inset-0">
-          {heroSeries.map((series, index) => (
+          {heroSeries.map((series: TMDBTVSeries | LocalContent, index: number) => (
             <div
-              key={series.id}
+              key={'tmdbId' in series ? series.tmdbId : series.id}
               className={`absolute inset-0 transition-opacity duration-1000 ${
                 index === currentSlide ? "opacity-100" : "opacity-0"
               }`}
               data-testid={`series-hero-slide-${index}`}
             >
               <img
-                src={tmdbService.getBackdropUrl(series.backdrop_path)}
-                alt={series.name}
+                src={
+                  'backdropPath' in series && series.backdropPath
+                    ? tmdbService.getBackdropUrl(series.backdropPath)
+                    : 'backdrop_path' in series && series.backdrop_path
+                    ? tmdbService.getBackdropUrl(series.backdrop_path)
+                    : "/placeholder-backdrop.jpg"
+                }
+                alt={'name' in series ? series.name : series.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.src = "/placeholder-backdrop.jpg";
@@ -112,19 +155,19 @@ export default function Series() {
         {/* Content */}
         <div className="absolute bottom-1/4 left-8 md:left-16 max-w-lg z-10" data-testid="series-hero-content">
           <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight text-white" data-testid="series-hero-title">
-            {currentSeries.name}
+            {'name' in currentSeries ? currentSeries.name : currentSeries.title}
           </h1>
           <p className="text-lg md:text-xl text-white/80 mb-6 leading-relaxed line-clamp-3" data-testid="series-hero-overview">
             {currentSeries.overview}
           </p>
           <div className="flex space-x-4" data-testid="series-hero-actions">
-            <Link href={`/tv/${currentSeries.id}`}>
+            <Link href={`/tv/${'tmdbId' in currentSeries ? currentSeries.tmdbId : currentSeries.id}`}>
               <Button className="btn-primary flex items-center space-x-2" data-testid="button-watch-series">
                 <Play className="w-5 h-5" />
                 <span>Regarder</span>
               </Button>
             </Link>
-            <Link href={`/tv/${currentSeries.id}`}>
+            <Link href={`/tv/${'tmdbId' in currentSeries ? currentSeries.tmdbId : currentSeries.id}`}>
               <Button className="btn-secondary flex items-center space-x-2" data-testid="button-info-series">
                 <Info className="w-5 h-5" />
                 <span>Plus d'infos</span>
@@ -148,7 +191,7 @@ export default function Series() {
 
         {/* Slide Indicators */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20" data-testid="series-carousel-indicators">
-          {heroSeries.map((_, index) => (
+          {heroSeries.map((_: any, index: number) => (
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
@@ -165,7 +208,7 @@ export default function Series() {
       <div className="space-y-8">
         <TVRow
           title="Séries Populaires"
-          series={popularSeries || []}
+          series={allPopularSeries || []}
           isLoading={popularLoading}
         />
         
