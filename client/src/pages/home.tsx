@@ -9,6 +9,19 @@ import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
+import { TMDBMovie } from "@/types/movie";
+
+// Add this interface for local content
+interface LocalContent {
+  id: string;
+  tmdbId: number;
+  title: string;
+  overview: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  mediaType: 'movie';
+}
 
 export default function Home() {
   const { shouldShowAds } = useAuthCheck();
@@ -48,6 +61,28 @@ export default function Home() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('popular'), // Only fetch when section is active
   });
+
+  // New query to fetch local content
+  const { data: localContent, isLoading: localContentLoading } = useQuery({
+    queryKey: ["local-content"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/admin/content");
+        if (!response.ok) return [];
+        const data = await response.json();
+        // Filter only movies that have been added locally
+        return data.filter((item: LocalContent) => item.mediaType === 'movie' && item.tmdbId);
+      } catch (error) {
+        console.error("Error fetching local content:", error);
+        return [];
+      }
+    },
+  });
+
+  // Combine TMDB movies with local content
+  const allPopularMovies = popularMovies 
+    ? [...(localContent || []), ...popularMovies].slice(0, 20) 
+    : popularMovies;
 
   const { data: actionMovies, isLoading: actionLoading, isError: actionError } = useQuery({
     queryKey: ["/api/tmdb/genre/28"],
@@ -102,8 +137,8 @@ export default function Home() {
       <div className="space-y-6 sm:space-y-8">
         <MovieRow
           title="Films Populaires"
-          movies={popularMovies || []}
-          isLoading={popularLoading}
+          movies={allPopularMovies || []}
+          isLoading={popularLoading || localContentLoading}
         />
         
         {activeSections.includes('action') && (
