@@ -37,7 +37,12 @@ export default function Series() {
 
   const { data: popularSeries, isLoading: popularLoading, isError: popularError } = useQuery({
     queryKey: ["/api/tmdb/tv/popular"],
-    queryFn: () => tmdbService.getPopularTVShows(),
+    queryFn: async () => {
+      console.log("Fetching popular TV shows...");
+      const result = await tmdbService.getPopularTVShows();
+      console.log("Popular TV shows result:", result);
+      return result;
+    },
     ...queryOptions,
   });
 

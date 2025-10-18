@@ -4296,24 +4296,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // TV Series endpoints
   app.get("/api/tmdb/tv/popular", async (req: any, res: any) => {
     try {
+      console.log("Fetching popular TV shows from TMDB...");
       const apiKey = process.env.TMDB_API_KEY;
       if (!apiKey) {
+        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`
-      );
+      const url = `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`;
+      console.log("TMDB API URL:", url);
+      
+      const response = await fetch(url);
+      console.log("TMDB API response status:", response.status);
       
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("TMDB API error response:", errorText);
+        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log("TMDB API data fetched, number of results:", data.results ? data.results.length : 0);
       res.json(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching popular TV shows:", error);
-      res.status(500).json({ error: "Failed to fetch popular TV shows" });
+      res.status(500).json({ error: "Failed to fetch popular TV shows", details: error.message });
     }
   });
 

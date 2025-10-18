@@ -92,6 +92,17 @@ Les fichiers SEO se trouvent dans le dossier `client/public/` :
 - `robots.txt` - Instructions pour les robots d'indexation
 - `sitemap.xml` - Carte du site pour les moteurs de recherche
 
+## Génériques d'univers
+
+StreamFlix inclut des génériques d'ambiance pour chaque univers de streaming (Netflix, Disney+, etc.) qui s'affichent au survol des logos dans la page d'accueil.
+
+Pour télécharger les génériques officiels :
+
+1. Exécutez le script de téléchargement : `node scripts/download-trailers.js`
+2. Ou suivez le guide détaillé : `scripts/download-universe-trailers.md`
+
+Les vidéos seront automatiquement intégrées dans l'interface utilisateur.
+
 ## Démarrage
 
 ```bash
@@ -127,3 +138,4 @@ npm run dev:client
 - `EMAIL_CONFIGURATION.md` - Guide de configuration des emails
 - `GMAIL_SETUP_GUIDE.md` - Guide détaillé de configuration Gmail
 - `server/TROUBLESHOOTING_CHECKLIST.md` - Liste de vérification pour le dépannage des emails
+- `scripts/download-universe-trailers.md` - Guide pour télécharger les génériques d'univers

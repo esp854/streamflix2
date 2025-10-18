@@ -336,12 +336,20 @@ class TMDBService {
     }
 
     try {
+      console.log("Fetching popular TV shows from API...");
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/popular`);
+      console.log("TMDB API response status:", response.status);
+      
       if (!response.ok) {
-        throw new Error("Failed to fetch popular TV shows");
+        const errorText = await response.text();
+        console.error("TMDB API error response:", errorText);
+        throw new Error(`Failed to fetch popular TV shows: ${response.status} ${response.statusText}`);
       }
+      
       const data: TVResponse = await response.json();
+      console.log("TMDB API response data:", data);
       const result = data.results;
+      console.log("Number of TV shows fetched:", result ? result.length : 0);
       
       // Cache the result
       this.cache.set(cacheKey, result);

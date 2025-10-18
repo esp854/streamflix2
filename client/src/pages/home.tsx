@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import { TMDBMovie } from "@/types/movie";
 import { Link } from "wouter";
+import { UNIVERSE_TRAILERS, getYoutubeEmbedUrl } from "@/lib/universe-trailers";
 
 // Add this interface for local content
 interface LocalContent {
@@ -35,49 +36,49 @@ export default function Home() {
     {
       id: 'netflix',
       name: 'Netflix',
-      logo: '/logos/netflix.svg',
+      logo: '/logos/netflix.jpeg',
       color: 'bg-red-600',
       trailer: '/trailers/netflix.mp4'
     },
     {
       id: 'disney',
       name: 'Disney+',
-      logo: '/logos/disney.svg',
+      logo: '/logos/disney.jpeg',
       color: 'bg-blue-600',
       trailer: '/trailers/disney.mp4'
     },
     {
       id: 'prime',
       name: 'Prime Video',
-      logo: '/logos/prime.svg',
+      logo: '/logos/prime.jpeg',
       color: 'bg-blue-400',
       trailer: '/trailers/prime.mp4'
     },
     {
       id: 'paramount',
       name: 'Paramount+',
-      logo: '/logos/paramount.svg',
+      logo: '/logos/paramount.jpeg',
       color: 'bg-blue-800',
       trailer: '/trailers/paramount.mp4'
     },
     {
       id: 'apple',
       name: 'Apple TV+',
-      logo: '/logos/apple.svg',
+      logo: '/logos/apple.jpeg',
       color: 'bg-gray-800',
       trailer: '/trailers/apple.mp4'
     },
     {
       id: 'marvel',
       name: 'Marvel',
-      logo: '/logos/marvel.svg',
+      logo: '/logos/marvel.jpeg',
       color: 'bg-red-700',
       trailer: '/trailers/marvel.mp4'
     },
     {
       id: 'dc',
       name: 'DC',
-      logo: '/logos/dc.svg',
+      logo: '/logos/dc.jpeg',
       color: 'bg-blue-900',
       trailer: '/trailers/dc.mp4'
     }
@@ -243,16 +244,14 @@ export default function Home() {
                 />
               </div>
               <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <video 
-                  autoPlay 
-                  loop 
-                  muted 
-                  playsInline
+                <iframe
+                  src={getYoutubeEmbedUrl(UNIVERSE_TRAILERS[universe.id as keyof typeof UNIVERSE_TRAILERS]?.youtubeId || '')}
                   className="w-full h-full object-cover"
-                  preload="none"
-                >
-                  <source src={universe.trailer} type="video/mp4" />
-                </video>
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={`${universe.name} trailer`}
+                />
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-4 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <h3 className="text-white text-lg font-bold text-center">{universe.name}</h3>
