@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 20px; background: #2a2a2a; border-radius: 8px; }
+        .result { margin: 10px 0; padding: 10px; background: #3a3a3a; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #1e1e1e; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test API Endpoints</h1>
+        
+        <div class="test-section">
+            <h2>Admin Content API</h2>
+            <button onclick="testAdminContent()">Test /api/admin/content</button>
+            <div id="admin-content-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>TMDB TV Popular API</h2>
+            <button onclick="testTmdbTvPopular()">Test /api/tmdb/tv/popular</button>
+            <div id="tmdb-tv-popular-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>TMDB TV Top Rated API</h2>
+            <button onclick="testTmdbTvTopRated()">Test /api/tmdb/tv/top_rated</button>
+            <div id="tmdb-tv-top-rated-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testAdminContent() {
+            const resultDiv = document.getElementById('admin-content-result');
+            try {
+                resultDiv.innerHTML = '<p>Fetching...</p>';
+                const response = await fetch('/api/admin/content');
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <p>Status: ${response.status} ${response.statusText}</p>
+                    <p>Content count: ${data.length}</p>
+                    <pre>${JSON.stringify(data.slice(0, 3), null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testTmdbTvPopular() {
+            const resultDiv = document.getElementById('tmdb-tv-popular-result');
+            try {
+                resultDiv.innerHTML = '<p>Fetching...</p>';
+                const response = await fetch('/api/tmdb/tv/popular');
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <p>Status: ${response.status} ${response.statusText}</p>
+                    <p>TV shows count: ${data.results?.length || 0}</p>
+                    <pre>${JSON.stringify(data.results?.slice(0, 3), null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testTmdbTvTopRated() {
+            const resultDiv = document.getElementById('tmdb-tv-top-rated-result');
+            try {
+                resultDiv.innerHTML = '<p>Fetching...</p>';
+                const response = await fetch('/api/tmdb/tv/top_rated');
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <p>Status: ${response.status} ${response.statusText}</p>
+                    <p>TV shows count: ${data.results?.length || 0}</p>
+                    <pre>${JSON.stringify(data.results?.slice(0, 3), null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

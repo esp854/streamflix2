@@ -7,10 +7,10 @@ import { Play, Info, Pause, PlayIcon } from "lucide-react";
 import { Link } from "wouter";
 import { TMDBTVSeries } from "@/types/movie";
 
-// Add this interface for local content
+// Add this interface for local content (matching TVRow exactly)
 interface LocalContent {
   id: string;
-  tmdbId?: number; // Rendre tmdbId optionnel pour les contenus locaux
+  tmdbId: number;
   title: string;
   name?: string;
   overview: string;
@@ -23,25 +23,34 @@ interface LocalContent {
   active: boolean;
 }
 
+// Create a type that combines both interfaces
+type TVSeriesType = TMDBTVSeries | LocalContent;
+
 export default function Series() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
   // Gestion des requêtes avec des options de retry
   const queryOptions = {
-    retry: 1, // Reduce retry attempts to save bandwidth
-    retryDelay: 1000,
-    // Reduce cache time to save memory on mobile devices
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2, // Augmenter les tentatives de retry
+    retryDelay: 1500,
+    // Réduire le temps de cache pour obtenir des données plus fraîches
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes
   };
 
-  const { data: popularSeries, isLoading: popularLoading, isError: popularError } = useQuery({
+  const { data: popularSeries, isLoading: popularLoading, isError: popularError, error: popularErrorMsg } = useQuery({
     queryKey: ["/api/tmdb/tv/popular"],
     queryFn: async () => {
       console.log("Fetching popular TV shows...");
-      const result = await tmdbService.getPopularTVShows();
-      console.log("Popular TV shows result:", result);
-      return result;
+      try {
+        const result = await tmdbService.getPopularTVShows();
+        console.log("Popular TV shows result:", result);
+        return result;
+      } catch (error) {
+        console.error("Error fetching popular TV shows:", error);
+        throw error;
+      }
     },
     ...queryOptions,
   });
@@ -88,6 +97,7 @@ export default function Series() {
             console.log("Authentication required, attempting to refresh...");
             window.location.reload();
           }
+          // Return empty array instead of throwing error to prevent complete failure
           return [];
         }
         const data = await response.json();
@@ -99,6 +109,7 @@ export default function Series() {
         );
       } catch (error) {
         console.error("Error fetching local content:", error);
+        // Return empty array instead of throwing error to prevent complete failure
         return [];
       }
     },
@@ -114,33 +125,33 @@ export default function Series() {
                  airingTodayError || dramaError || comedyError || localContentError;
 
   // Combine TMDB series with ALL local content (including those without video links)
-  const allPopularSeries = popularSeries 
+  const allPopularSeries: TVSeriesType[] = popularSeries 
     ? [...(localContent || []), ...popularSeries].slice(0, 20) 
-    : popularSeries;
+    : (localContent || []);
 
   // Also combine local content with other series sections
-  const allTopRatedSeries = topRatedSeries 
+  const allTopRatedSeries: TVSeriesType[] = topRatedSeries 
     ? [...(localContent || []), ...topRatedSeries].slice(0, 20) 
-    : topRatedSeries;
+    : (localContent || []);
 
-  const allOnTheAirSeries = onTheAirSeries 
+  const allOnTheAirSeries: TVSeriesType[] = onTheAirSeries 
     ? [...(localContent || []), ...onTheAirSeries].slice(0, 20) 
-    : onTheAirSeries;
+    : (localContent || []);
 
-  const allAiringTodaySeries = airingTodaySeries 
+  const allAiringTodaySeries: TVSeriesType[] = airingTodaySeries 
     ? [...(localContent || []), ...airingTodaySeries].slice(0, 20) 
-    : airingTodaySeries;
+    : (localContent || []);
 
-  const allDramaSeries = dramaSeries 
+  const allDramaSeries: TVSeriesType[] = dramaSeries 
     ? [...(localContent || []), ...dramaSeries].slice(0, 20) 
-    : dramaSeries;
+    : (localContent || []);
 
-  const allComedySeries = comedySeries 
+  const allComedySeries: TVSeriesType[] = comedySeries 
     ? [...(localContent || []), ...comedySeries].slice(0, 20) 
-    : comedySeries;
+    : (localContent || []);
 
   // Combiner toutes les séries pour le carrousel (avec plus d'options)
-  const heroSeries = allPopularSeries?.slice(0, 10) || []; // Augmenter à 10 séries
+  const heroSeries: TVSeriesType[] = allPopularSeries?.slice(0, 10) || []; // Augmenter à 10 séries
 
   // Ajouter un useEffect pour déboguer les contenus locaux
   useEffect(() => {
@@ -179,10 +190,21 @@ export default function Series() {
 
   // Handle error state
   if (isError) {
+    console.error("Error loading series data:", {
+      popularError: popularErrorMsg,
+      topRatedError,
+      onTheAirError,
+      airingTodayError,
+      dramaError,
+      comedyError,
+      localContentError
+    });
+    
     return (
       <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
         <div className="text-center p-8">
           <p className="text-xl text-muted-foreground mb-4">Erreur lors du chargement des séries</p>
+          <p className="text-sm text-muted-foreground mb-4">Détails: {popularErrorMsg?.message || "Erreur inconnue"}</p>
           <Button onClick={() => window.location.reload()} variant="secondary">
             Réessayer
           </Button>
@@ -196,6 +218,9 @@ export default function Series() {
       <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
         <div className="text-center">
           <p className="text-xl text-muted-foreground">Aucune série disponible</p>
+          <Button onClick={() => window.location.reload()} variant="secondary" className="mt-4">
+            Réessayer
+          </Button>
         </div>
       </section>
     );
@@ -209,7 +234,7 @@ export default function Series() {
       <section className="relative h-screen overflow-hidden" data-testid="series-hero">
         {/* Background Images */}
         <div className="absolute inset-0">
-          {heroSeries.map((series: TMDBTVSeries | LocalContent, index: number) => (
+          {heroSeries.map((series: TVSeriesType, index: number) => (
             <div
               key={'tmdbId' in series ? series.tmdbId : series.id}
               className={`absolute inset-0 transition-opacity duration-1000 ${

@@ -343,12 +343,13 @@ class TMDBService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("TMDB API error response:", errorText);
-        throw new Error(`Failed to fetch popular TV shows: ${response.status} ${response.statusText}`);
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       
       const data: TVResponse = await response.json();
       console.log("TMDB API response data:", data);
-      const result = data.results;
+      const result = data.results || [];
       console.log("Number of TV shows fetched:", result ? result.length : 0);
       
       // Cache the result
@@ -356,7 +357,8 @@ class TMDBService {
       return result;
     } catch (error) {
       console.error("Error fetching popular TV shows:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -371,17 +373,19 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/top_rated`);
       if (!response.ok) {
-        throw new Error("Failed to fetch top rated TV shows");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TVResponse = await response.json();
-      const result = data.results;
+      const result = data.results || [];
       
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
     } catch (error) {
       console.error("Error fetching top rated TV shows:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -396,17 +400,19 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/on_the_air`);
       if (!response.ok) {
-        throw new Error("Failed to fetch on the air TV shows");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TVResponse = await response.json();
-      const result = data.results;
+      const result = data.results || [];
       
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
     } catch (error) {
       console.error("Error fetching on the air TV shows:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -421,17 +427,19 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/airing_today`);
       if (!response.ok) {
-        throw new Error("Failed to fetch airing today TV shows");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TVResponse = await response.json();
-      const result = data.results;
+      const result = data.results || [];
       
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
     } catch (error) {
       console.error("Error fetching airing today TV shows:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -446,17 +454,19 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/genre/${genreId}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch TV shows by genre");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TVResponse = await response.json();
-      const result = data.results;
+      const result = data.results || [];
       
       // Cache the result
       this.cache.set(cacheKey, result);
       return result;
     } catch (error) {
       console.error("Error fetching TV shows by genre:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -472,7 +482,8 @@ class TMDBService {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/${id}`);
       if (!response.ok) {
         console.error(`Failed to fetch TV show details for ID ${id}:`, response.status, response.statusText);
-        throw new Error(`Failed to fetch TV show details: ${response.status} ${response.statusText}`);
+        // Return empty object instead of throwing error to prevent complete failure
+        return {};
       }
       const data = await response.json();
       
@@ -481,7 +492,8 @@ class TMDBService {
       return data;
     } catch (error) {
       console.error("Error fetching TV show details:", error);
-      throw error;
+      // Return empty object instead of throwing error to prevent complete failure
+      return {};
     }
   }
 
@@ -490,13 +502,15 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
-        throw new Error("Failed to search TV shows");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TVResponse = await response.json();
-      return data.results;
+      return data.results || [];
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -513,7 +527,8 @@ class TMDBService {
       console.log(`[DEBUG] TMDB season response status: ${response.status}, content-type: ${response.headers.get('content-type')}`);
       if (!response.ok) {
         console.log(`[DEBUG] TMDB season response not ok, status: ${response.status}`);
-        throw new Error("Failed to fetch TV season details");
+        // Return empty object instead of throwing error to prevent complete failure
+        return {};
       }
       const data = await response.json();
       console.log(`[DEBUG] TMDB season data received:`, data);
@@ -523,7 +538,8 @@ class TMDBService {
       return data;
     } catch (error) {
       console.error("Error fetching TV season details:", error);
-      throw error;
+      // Return empty object instead of throwing error to prevent complete failure
+      return {};
     }
   }
 
@@ -533,13 +549,15 @@ class TMDBService {
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/multi-search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
-        throw new Error("Failed to search content");
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data = await response.json();
       return data.results || [];
     } catch (error) {
       console.error("Error searching content:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 

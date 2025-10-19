@@ -16,7 +16,6 @@ import Series from "./pages/series";
 import Search from "./pages/search";
 import Profile from "./pages/profile";
 import AdminDashboard from "./pages/admin-dashboard";
-import Subscription from "./pages/subscription";
 import NotFound from "./pages/not-found";
 import Universe from "./pages/universe";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -34,7 +33,6 @@ const routes = [
   { path: "/search", component: Search },
   { path: "/profile", component: Profile },
   { path: "/admin", component: AdminDashboard },
-  { path: "/subscription", component: Subscription },
   { path: "/*", component: NotFound },
 ];
 
@@ -93,7 +91,6 @@ function Router() {
       <Route path="/tv/:id" component={TVDetail} />
       <Route path="/search" component={Search} />
       <Route path="/profile" component={Profile} />
-      <Route path="/subscription" component={Subscription} />
       <Route component={NotFound} />
     </Switch>
   );

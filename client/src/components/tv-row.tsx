@@ -79,7 +79,8 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
     );
   }
 
-  if (!activeSeries.length) {
+  // Si la liste est vide, afficher un message approprié
+  if (!activeSeries || activeSeries.length === 0) {
     return (
       <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-empty">
         <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>

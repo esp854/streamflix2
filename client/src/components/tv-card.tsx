@@ -9,10 +9,10 @@ import { useShare } from "@/hooks/use-share";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useQuery } from "@tanstack/react-query";
 
-// Add interface for local content
+// Add interface for local content (matching TVRow exactly)
 interface LocalContent {
   id: string;
-  tmdbId?: number;
+  tmdbId: number;
   title: string;
   name?: string;
   overview: string;
