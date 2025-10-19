@@ -4,7 +4,6 @@ import HeroCarousel from "@/components/hero-carousel";
 import MovieRow from "@/components/movie-row";
 import CategoryGrid from "@/components/category-grid";
 import TelegramBanner from "@/components/telegram-banner";
-import SubscriptionBanner from "@/components/subscription-banner";
 import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
@@ -162,11 +161,6 @@ export default function Home() {
       {/* Telegram Banner */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <TelegramBanner />
-      </div>
-
-      {/* Subscription Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8">
-        <SubscriptionBanner />
       </div>
 
       {/* Movie Sections */}
