@@ -49,7 +49,13 @@ Pour utiliser l'API Frembed pour récupérer automatiquement les liens de stream
    ```
    FREMbed_API_KEY=votre_cle_api_frembed
    ```
-3. Les liens seront automatiquement récupérés via l'API Frembed lors de la lecture
+3. Les liens seront automatiquement récupérés via les endpoints API Frembed lors de la lecture
+
+Les endpoints API utilisés sont :
+- `https://frembed.cfd/api/movie?tmdb={tmdbId}&api_key={apiKey}` - Détails du film
+- `https://frembed.cfd/api/movie/sources?tmdb={tmdbId}&api_key={apiKey}` - Sources du film
+- `https://frembed.cfd/api/tv?tmdb={tmdbId}&api_key={apiKey}` - Détails de la série
+- `https://frembed.cfd/api/tv?tmdb={tmdbId}&season={season}&episode={episode}&api_key={apiKey}` - Sources de l'épisode
 
 ### Autres sources supportées
 

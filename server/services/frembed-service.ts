@@ -66,8 +66,9 @@ export class FrembedService {
     }
 
     try {
+      // Utilisation de l'endpoint API correct pour les films
       const response = await fetch(
-        `${this.baseUrl}/movie/tmdb/${tmdbId}?api_key=${this.apiKey}`
+        `${this.baseUrl}/movie?tmdb=${tmdbId}&api_key=${this.apiKey}`
       );
 
       if (!response.ok) {
@@ -94,8 +95,9 @@ export class FrembedService {
     }
 
     try {
+      // Utilisation de l'endpoint API correct pour les séries
       const response = await fetch(
-        `${this.baseUrl}/tv/tmdb/${tmdbId}?api_key=${this.apiKey}`
+        `${this.baseUrl}/tv?tmdb=${tmdbId}&api_key=${this.apiKey}`
       );
 
       if (!response.ok) {
@@ -122,8 +124,9 @@ export class FrembedService {
     }
 
     try {
+      // Utilisation de l'endpoint API correct pour les épisodes
       const response = await fetch(
-        `${this.baseUrl}/tv/tmdb/${tmdbId}/${season}/${episode}?api_key=${this.apiKey}`
+        `${this.baseUrl}/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&api_key=${this.apiKey}`
       );
 
       if (!response.ok) {
@@ -150,8 +153,9 @@ export class FrembedService {
     }
 
     try {
+      // Utilisation de l'endpoint API correct pour les sources de films
       const response = await fetch(
-        `${this.baseUrl}/movie/tmdb/${tmdbId}/sources?api_key=${this.apiKey}`
+        `${this.baseUrl}/movie/sources?tmdb=${tmdbId}&api_key=${this.apiKey}`
       );
 
       if (!response.ok) {

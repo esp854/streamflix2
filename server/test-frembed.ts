@@ -26,6 +26,16 @@ async function testFrembedService() {
     const episodeSources = await frembedService.getEpisodeSources(1396, 1, 1);
     console.log("Episode sources:", episodeSources);
     
+    // Test movie details
+    console.log("\nTesting movie details for TMDB ID 680 (Pulp Fiction)...");
+    const movieDetails = await frembedService.getMovieByTmdbId(680);
+    console.log("Movie details:", movieDetails);
+    
+    // Test TV show details
+    console.log("\nTesting TV show details for TMDB ID 1396 (Breaking Bad)...");
+    const tvDetails = await frembedService.getTVShowByTmdbId(1396);
+    console.log("TV show details:", tvDetails);
+    
   } catch (error) {
     console.error("Error testing Frembed service:", error);
   }
