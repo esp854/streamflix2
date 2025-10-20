@@ -835,16 +835,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   cursor: 'not-allowed'
                 }}
               />
-
-              {/* Message d'instruction pour Frembed - afficher uniquement pour Frembed */}
-              {currentSource.name === 'Frembed' && (
-                <div 
-                  className="absolute top-4 right-4 bg-black/70 text-white text-xs sm:text-sm px-2 py-1 rounded z-40 hidden sm:block"
-                  style={{ maxWidth: '200px' }}
-                >
-                  Utilisez le bouton plein écran de l'iframe
-                </div>
-              )}
             </>
           ) : (
             // For direct video files
