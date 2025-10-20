@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useAuth } from '../contexts/auth-context';
 import WatchParty from '../components/watch-party-improved';
-import ZuploadVideoPlayer from '../components/zupload-video-player';
+import { ZuploadVideoPlayer } from '../components/zupload-video-player';
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from 'lucide-react';
 

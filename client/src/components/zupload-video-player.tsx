@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize, Settings, RotateCcw, SkipBack, SkipForward, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useToast } from "@/components/ui/use-toast";
 import { isMobile } from "react-device-detect";
 import { useFrembedMovieSources, useFrembedEpisodeSources } from "@/hooks/useFrembedSources";
 
@@ -23,10 +22,25 @@ interface ZuploadVideoPlayerProps {
   onEnded?: () => void;
   onNextEpisode?: () => void;
   onPreviousEpisode?: () => void;
+  onVideoError?: (error: string) => void;
+  onVideoEnd?: () => void;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+  onSeasonChange?: (season: number) => void;
+  onEpisodeChange?: (episode: number) => void;
+  isWatchParty?: boolean;
+  isHost?: boolean;
+  onVideoPlay?: (time: number) => void;
+  onVideoPause?: (time: number) => void;
+  onVideoSeek?: (time: number) => void;
+  watchPartyCurrentTime?: number;
+  watchPartyIsPlaying?: boolean;
   className?: string;
 }
 
-export function ZuploadVideoPlayer({
+export const ZuploadVideoPlayer = forwardRef<HTMLVideoElement, ZuploadVideoPlayerProps>(({
   tmdbId,
   mediaType,
   seasonNumber,
@@ -36,9 +50,23 @@ export function ZuploadVideoPlayer({
   onEnded,
   onNextEpisode,
   onPreviousEpisode,
+  onVideoError,
+  onVideoEnd,
+  currentSeason,
+  currentEpisode,
+  totalSeasons,
+  totalEpisodes,
+  onSeasonChange,
+  onEpisodeChange,
+  isWatchParty,
+  isHost,
+  onVideoPlay,
+  onVideoPause,
+  onVideoSeek,
+  watchPartyCurrentTime,
+  watchPartyIsPlaying,
   className = ""
-}: ZuploadVideoPlayerProps) {
-  const { toast } = useToast();
+}, ref) => {
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -324,23 +352,9 @@ export function ZuploadVideoPlayer({
       setIsLoading(false);
       setError(`Erreur de chargement: ${video.error?.message || 'Erreur inconnue'}`);
       
-      // Essayer la source suivante si disponible
-      if (retryCount < 2 && videoSources.length > currentSourceIndex + 1) {
-        toast({
-          title: "Erreur de lecture",
-          description: `Impossible de lire la vidéo. Tentative avec la source suivante...`,
-          variant: "destructive"
-        });
-        setTimeout(() => {
-          changeVideoSource(currentSourceIndex + 1);
-          setRetryCount(prev => prev + 1);
-        }, 2000);
-      } else {
-        toast({
-          title: "Erreur de lecture",
-          description: "Impossible de lire la vidéo avec toutes les sources disponibles.",
-          variant: "destructive"
-        });
+      // Appeler le callback d'erreur si fourni
+      if (onVideoError) {
+        onVideoError(`Erreur de chargement: ${video.error?.message || 'Erreur inconnue'}`);
       }
     };
 
@@ -371,7 +385,7 @@ export function ZuploadVideoPlayer({
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('progress', handleProgress);
     };
-  }, [currentSourceIndex, videoSources, retryCount, toast]);
+  }, [currentSourceIndex, videoSources, onVideoError]);
 
   // Gestion de la lecture/ pause
   useEffect(() => {
@@ -425,14 +439,17 @@ export function ZuploadVideoPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
+      // Appeler le callback onEnded si fourni
       if (onEnded) onEnded();
+      // Appeler le callback onVideoEnd si fourni
+      if (onVideoEnd) onVideoEnd();
     };
 
     video.addEventListener('ended', handleEnded);
     return () => {
       video.removeEventListener('ended', handleEnded);
     };
-  }, [onEnded]);
+  }, [onEnded, onVideoEnd]);
 
   // Auto-hide controls after 3 seconds (or 5 seconds on mobile)
   useEffect(() => {
@@ -890,4 +907,4 @@ export function ZuploadVideoPlayer({
       )}
     </div>
   );
-}
+});
