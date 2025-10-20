@@ -49,6 +49,11 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
        return series.tmdbId;
      }
      if ('id' in series && typeof series.id === 'string') {
+       // Pour les contenus locaux, l'ID peut être une chaîne comme "tmdb-12345"
+       if (series.id.startsWith('tmdb-')) {
+         const tmdbId = parseInt(series.id.substring(5), 10);
+         return isNaN(tmdbId) ? 0 : tmdbId;
+       }
        const parsed = parseInt(series.id, 10);
        return isNaN(parsed) ? 0 : parsed;
      }
@@ -72,10 +77,13 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
         }
         
         // For TMDB content, check the database
-        const response = await fetch(`/api/contents/tmdb/${seriesId}`);
-        if (response.ok) {
-          const content = await response.json();
-          return content.active !== false; // Si active est false, le contenu est inactif
+        // Ne faire la requête que si on a un ID valide
+        if (seriesId > 0) {
+          const response = await fetch(`/api/contents/tmdb/${seriesId}`);
+          if (response.ok) {
+            const content = await response.json();
+            return content.active !== false; // Si active est false, le contenu est inactif
+          }
         }
         return true; // Par défaut, on suppose que le contenu est actif
       } catch (error) {
@@ -89,8 +97,11 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
     // Ajouter un retry en cas d'erreur
     retry: 2,
     retryDelay: 1000,
+    // Ne pas bloquer l'affichage en cas d'erreur
+    enabled: seriesId > 0, // Ne faire la requête que si on a un ID valide
   });
 
+  // Par défaut, on considère que le contenu est actif si on n'a pas d'information
   const contentActive = contentActiveData !== undefined ? contentActiveData : true;
 
   const handleImageError = () => {
@@ -209,7 +220,8 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
   const voteAverage = 'vote_average' in series ? series.vote_average : series.voteAverage;
 
   // Si le contenu n'est pas actif, on ne l'affiche pas
-  if (!contentActive) {
+  // Mais seulement pour le contenu local, pas pour le contenu TMDB
+  if ('active' in series && !contentActive) {
     return null;
   }
 

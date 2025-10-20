@@ -95,6 +95,7 @@ export default function Series() {
           // Pour toutes les erreurs (y compris 401/403), retourner un tableau vide
           // Le serveur renverra maintenant le contenu actif même pour les utilisateurs non-admin
           console.log("Erreur lors de la récupération du contenu local, statut:", response.status);
+          // Même en cas d'erreur, on continue avec un tableau vide pour ne pas bloquer l'affichage
           return [];
         }
         const data = await response.json();
@@ -123,28 +124,28 @@ export default function Series() {
 
   // Combine TMDB series with ALL local content (including those without video links)
   const allPopularSeries: TVSeriesType[] = popularSeries 
-    ? [...(localContent || []), ...popularSeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...popularSeries].slice(0, 20) 
     : (localContent || []);
 
   // Also combine local content with other series sections
   const allTopRatedSeries: TVSeriesType[] = topRatedSeries 
-    ? [...(localContent || []), ...topRatedSeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...topRatedSeries].slice(0, 20) 
     : (localContent || []);
 
   const allOnTheAirSeries: TVSeriesType[] = onTheAirSeries 
-    ? [...(localContent || []), ...onTheAirSeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...onTheAirSeries].slice(0, 20) 
     : (localContent || []);
 
   const allAiringTodaySeries: TVSeriesType[] = airingTodaySeries 
-    ? [...(localContent || []), ...airingTodaySeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...airingTodaySeries].slice(0, 20) 
     : (localContent || []);
 
   const allDramaSeries: TVSeriesType[] = dramaSeries 
-    ? [...(localContent || []), ...dramaSeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...dramaSeries].slice(0, 20) 
     : (localContent || []);
 
   const allComedySeries: TVSeriesType[] = comedySeries 
-    ? [...(localContent || []), ...comedySeries].slice(0, 20) 
+    ? [...(localContent && localContent.length > 0 ? localContent : []), ...comedySeries].slice(0, 20) 
     : (localContent || []);
 
   // Combiner toutes les séries pour le carrousel (avec plus d'options)
@@ -185,8 +186,12 @@ export default function Series() {
     );
   }
 
-  // Handle error state
-  if (isError) {
+  // Handle error state - mais seulement si toutes les sources de données échouent
+  const hasAnyData = popularSeries || topRatedSeries || onTheAirSeries || 
+                     airingTodaySeries || dramaSeries || comedySeries || 
+                     (localContent && localContent.length > 0);
+
+  if (isError && !hasAnyData) {
     console.error("Error loading series data:", {
       popularError: popularErrorMsg,
       topRatedError,
@@ -210,7 +215,8 @@ export default function Series() {
     );
   }
 
-  if (!heroSeries.length) {
+  // Si aucune série n'est disponible, afficher un message approprié
+  if (!heroSeries.length && !hasAnyData) {
     return (
       <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
         <div className="text-center">
