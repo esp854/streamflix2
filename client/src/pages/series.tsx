@@ -92,12 +92,13 @@ export default function Series() {
       try {
         const response = await fetch("/api/admin/content");
         if (!response.ok) {
-          // If we get a 401, try to refresh the page to trigger re-authentication
-          if (response.status === 401) {
-            console.log("Authentication required, attempting to refresh...");
-            window.location.reload();
+          // Si l'utilisateur n'est pas authentifié ou n'a pas les droits
+          if (response.status === 401 || response.status === 403) {
+            console.log("Accès refusé - l'utilisateur n'est pas administrateur");
+            // Retourner un tableau vide au lieu de lancer une erreur
+            return [];
           }
-          // Return empty array instead of throwing error to prevent complete failure
+          // Pour d'autres erreurs, retourner un tableau vide
           return [];
         }
         const data = await response.json();
