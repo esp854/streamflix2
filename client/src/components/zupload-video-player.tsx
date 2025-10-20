@@ -808,9 +808,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 // Pour Frembed, utiliser les contrôles natifs - configuration optimisée
                 {...(currentSource.name === 'Frembed' && {
                   allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking; web-share; cross-origin-isolated;",
-                  allowFullScreen: true,
-                  // Sandbox avec permissions étendues pour permettre le plein écran
-                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms allow-pointer-lock allow-downloads allow-modals"
+                  allowFullScreen: true
+                  // Note: L'attribut sandbox a été supprimé car il est interdit selon les spécifications du projet
+                  // Il peut bloquer les publicités, ce qui viole les politiques de l'infrastructure Frembed
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
@@ -835,6 +835,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   cursor: 'not-allowed'
                 }}
               />
+
+              {/* Message d'instruction pour Frembed - afficher uniquement pour Frembed */}
+              {currentSource.name === 'Frembed' && (
+                <div 
+                  className="absolute bottom-4 left-4 bg-black/70 text-white text-xs sm:text-sm px-2 py-1 rounded z-40"
+                  style={{ maxWidth: '200px' }}
+                >
+                  Cliquez sur le bouton plein écran dans l'iframe
+                </div>
+              )}
             </>
           ) : (
             // For direct video files
