@@ -395,27 +395,37 @@ export default function WatchMovie() {
 
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
-    
+  
     // Pour Frembed, utiliser le plein écran natif de l'iframe
     // Ne pas interférer avec les contrôles natifs de Frembed
     console.log('Utilisation du plein écran natif de Frembed');
-    // Aucune action personnalisée - laisser Frembed gérer le plein écran
-  }, [isZuploadVideo, videoUrl]);
-
-  const fallbackToContainerFullscreen = useCallback(() => {
-    const videoContainer = document.querySelector('.relative.w-full.h-screen');
-    if (!videoContainer) return;
-    
-    if (!document.fullscreenElement) {
-      videoContainer.requestFullscreen().catch(err => {
-        console.error('Failed to enter fullscreen:', err);
-      });
-    } else {
-      document.exitFullscreen().catch(err => {
-        console.error('Failed to exit fullscreen:', err);
-      });
+  
+    // Pour Frembed, permettre l'accès au bouton plein écran natif
+    // On peut essayer d'accéder à l'iframe et déclencher son plein écran
+    const iframe = document.querySelector('iframe[src*="frembed"]') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      // Tenter d'envoyer un message à l'iframe pour activer le plein écran
+      try {
+        iframe.contentWindow.postMessage('requestFullscreen', '*');
+      } catch (e) {
+        console.log('Impossible d\'accéder directement au plein écran Frembed');
+      }
     }
-  }, []);
+  
+    // Fallback: utiliser le conteneur si l'iframe ne répond pas
+    const videoContainer = document.querySelector('.relative.w-full.h-screen');
+    if (videoContainer) {
+      if (!document.fullscreenElement) {
+        videoContainer.requestFullscreen().catch(err => {
+          console.error('Failed to enter fullscreen:', err);
+        });
+      } else {
+        document.exitFullscreen().catch(err => {
+          console.error('Failed to exit fullscreen:', err);
+        });
+      }
+    }
+  }, [isZuploadVideo, videoUrl]);
 
   const handleGoHome = useCallback(() => {
     if (!isMountedRef.current) return;
