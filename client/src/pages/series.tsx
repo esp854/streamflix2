@@ -123,33 +123,37 @@ export default function Series() {
                  airingTodayError || dramaError || comedyError || localContentError;
 
   // Combine TMDB series with ALL local content (including those without video links)
+  // Amélioration de la combinaison pour mieux gérer les séries ajoutées manuellement
   const allPopularSeries: TVSeriesType[] = popularSeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...popularSeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   // Also combine local content with other series sections
   const allTopRatedSeries: TVSeriesType[] = topRatedSeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...topRatedSeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   const allOnTheAirSeries: TVSeriesType[] = onTheAirSeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...onTheAirSeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   const allAiringTodaySeries: TVSeriesType[] = airingTodaySeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...airingTodaySeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   const allDramaSeries: TVSeriesType[] = dramaSeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...dramaSeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   const allComedySeries: TVSeriesType[] = comedySeries 
     ? [...(localContent && localContent.length > 0 ? localContent : []), ...comedySeries].slice(0, 20) 
-    : (localContent || []);
+    : (localContent && localContent.length > 0 ? localContent : []);
 
   // Combiner toutes les séries pour le carrousel (avec plus d'options)
-  const heroSeries: TVSeriesType[] = allPopularSeries?.slice(0, 10) || []; // Augmenter à 10 séries
+  // Amélioration pour mieux afficher les séries ajoutées manuellement
+  const heroSeries: TVSeriesType[] = allPopularSeries?.slice(0, 10) || 
+                                    (localContent && localContent.length > 0 ? localContent.slice(0, 10) : []) || 
+                                    [];
 
   // Ajouter un useEffect pour déboguer les contenus locaux
   useEffect(() => {

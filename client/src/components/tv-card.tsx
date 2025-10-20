@@ -62,7 +62,22 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
 
    // Check if series is favorite
    const seriesId = getSeriesId();
-   const stringSeriesId = 'tmdbId' in series ? series.tmdbId?.toString() || series.id.toString() : series.id.toString();
+   // Amélioration de la gestion de l'identifiant pour la navigation
+   const stringSeriesId = (() => {
+     if ('tmdbId' in series && series.tmdbId) {
+       return series.tmdbId.toString();
+     }
+     if ('id' in series && typeof series.id === 'string') {
+       // Pour les contenus locaux, on utilise l'ID directement
+       // Si c'est un ID TMDB formaté comme "tmdb-12345", on extrait le numéro
+       if (series.id.startsWith('tmdb-')) {
+         return series.id.substring(5);
+       }
+       // Sinon, on utilise l'ID tel quel
+       return series.id;
+     }
+     return "0";
+   })();
    const { data: favoriteStatus } = checkFavorite(seriesId);
    const isFavorite = favoriteStatus?.isFavorite || false;
 

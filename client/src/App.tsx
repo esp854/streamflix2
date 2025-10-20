@@ -23,6 +23,9 @@ import AuthModal from "@/components/auth/auth-modal";
 import SplashScreen from "@/components/SplashScreen";
 import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
+import TrendingPage from "./pages/trending";
+import Favorites from "./pages/favorites";
+import NowPlayingMovies from "./pages/now-playing-movies";
 
 const routes = [
   { path: "/", component: Home },
@@ -33,6 +36,10 @@ const routes = [
   { path: "/search", component: Search },
   { path: "/profile", component: Profile },
   { path: "/admin", component: AdminDashboard },
+  // Routes manquantes
+  { path: "/films", component: NowPlayingMovies },
+  { path: "/tendances", component: TrendingPage },
+  { path: "/ma-liste", component: Favorites },
   { path: "/*", component: NotFound },
 ];
 
@@ -91,6 +98,10 @@ function Router() {
       <Route path="/tv/:id" component={TVDetail} />
       <Route path="/search" component={Search} />
       <Route path="/profile" component={Profile} />
+      {/* Routes manquantes */}
+      <Route path="/films" component={NowPlayingMovies} />
+      <Route path="/tendances" component={TrendingPage} />
+      <Route path="/ma-liste" component={Favorites} />
       <Route component={NotFound} />
     </Switch>
   );

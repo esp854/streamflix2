@@ -18,8 +18,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import PWAInstallButton from "@/components/PWAInstallButton";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -54,10 +52,10 @@ export default function Navbar() {
 
   const navigationLinks = [
     { href: "/", label: "Accueil", active: location === "/" },
-    { href: "/category/28", label: "Films", active: location.startsWith("/category") },
+    { href: "/films", label: "Films", active: location === "/films" },
     { href: "/series", label: "Séries", active: location === "/series" },
-    { href: "/favorites", label: "Ma Liste", active: location === "/favorites" },
-    { href: "/trending", label: "Tendances", active: location === "/trending" },
+    { href: "/ma-liste", label: "Ma Liste", active: location === "/ma-liste" },
+    { href: "/tendances", label: "Tendances", active: location === "/tendances" },
   ];
 
   return (
@@ -286,8 +284,8 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/category/28"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location.startsWith("/category") ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            href="/films"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Film className="w-5 h-5" />
             <span className="text-xs">Films</span>
@@ -302,16 +300,16 @@ export default function Navbar() {
           </Link>
 
           <Link
-            href="/favorites"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/favorites" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            href="/ma-liste"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Heart className="w-5 h-5" />
             <span className="text-xs">Favoris</span>
           </Link>
 
           <Link
-            href="/trending"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/trending" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            href="/tendances"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <TrendingUp className="w-5 h-5" />
             <span className="text-xs">Tendance</span>

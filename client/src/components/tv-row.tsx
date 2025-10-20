@@ -60,25 +60,6 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
     return true;
   });
 
-  if (isLoading) {
-    return (
-      <section className="py-8 px-4 sm:px-6 lg:px-8" data-testid="tv-row-loading">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">{title}</h2>
-        <div className="flex space-x-4 overflow-hidden">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="flex-shrink-0 w-48 md:w-56">
-              <div className="bg-muted rounded-md h-72 md:h-80 animate-pulse"></div>
-              <div className="mt-3 space-y-2">
-                <div className="bg-muted h-4 rounded animate-pulse"></div>
-                <div className="bg-muted h-3 rounded w-2/3 animate-pulse"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
   // Si la liste est vide, afficher un message approprié
   if (!activeSeries || activeSeries.length === 0) {
     return (
