@@ -174,28 +174,50 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
       }
-      
-      // Source Frembed - Utiliser le hook pour obtenir la bonne URL
-      const { data: frembedSources } = useFrembedSources(
-        tmdbId, 
-        mediaType === 'tv' ? seasonNumber : undefined, 
-        mediaType === 'tv' ? episodeNumber : undefined
-      );
-      
-      if (frembedSources && frembedSources.length > 0) {
-        sources.push({
-          id: 'frembed',
-          name: 'Frembed',
-          url: frembedSources[0].url,
-          type: 'embed'
-        });
-      }
     }
     
     console.log('Sources vidéo générées:', sources);
     setVideoSources(sources);
     setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
+
+  // Utilisation du hook useFrembedSources - déplacé au niveau approprié
+  const { data: frembedSources } = useFrembedSources(
+    tmdbId || 0, 
+    mediaType === 'tv' ? seasonNumber : undefined, 
+    mediaType === 'tv' ? episodeNumber : undefined
+  );
+
+  // Effet pour ajouter la source Frembed quand elle est disponible
+  useEffect(() => {
+    if (frembedSources && frembedSources.length > 0 && tmdbId) {
+      setVideoSources(prevSources => {
+        // Vérifier si la source Frembed existe déjà
+        const existingFrembedIndex = prevSources.findIndex(source => source.id === 'frembed');
+        
+        if (existingFrembedIndex >= 0) {
+          // Mettre à jour la source existante
+          const updatedSources = [...prevSources];
+          updatedSources[existingFrembedIndex] = {
+            ...updatedSources[existingFrembedIndex],
+            url: frembedSources[0].url
+          };
+          return updatedSources;
+        } else {
+          // Ajouter la nouvelle source
+          return [
+            ...prevSources,
+            {
+              id: 'frembed',
+              name: 'Frembed',
+              url: frembedSources[0].url,
+              type: 'embed'
+            }
+          ];
+        }
+      });
+    }
+  }, [frembedSources, tmdbId, mediaType, seasonNumber, episodeNumber]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
