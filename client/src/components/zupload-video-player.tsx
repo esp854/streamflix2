@@ -802,10 +802,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
-                // Pour Frembed, utiliser les contrôles natifs - ne pas interférer
-                {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;"
-                })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div
