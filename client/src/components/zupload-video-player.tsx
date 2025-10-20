@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { useFrembedSources } from '@/hooks/useFrembedSources'; // Ajout de l'import
 
 interface VideoSource {
   id: string;
@@ -174,12 +175,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source Frembed (uniquement si URL fournie)
-      if (videoUrl && (videoUrl.includes('frembed') || videoUrl.includes('frembed.fun'))) {
+      // Source Frembed - Utiliser le hook pour obtenir la bonne URL
+      const { data: frembedSources } = useFrembedSources(
+        tmdbId, 
+        mediaType === 'tv' ? seasonNumber : undefined, 
+        mediaType === 'tv' ? episodeNumber : undefined
+      );
+      
+      if (frembedSources && frembedSources.length > 0) {
         sources.push({
           id: 'frembed',
           name: 'Frembed',
-          url: videoUrl,
+          url: frembedSources[0].url,
           type: 'embed'
         });
       }
