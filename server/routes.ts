@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { FrembedService } from './services/frembed-service';
+
 import { storage } from "./storage";
 
 import { db } from "./db";
