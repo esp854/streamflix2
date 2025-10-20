@@ -666,14 +666,35 @@ export default function WatchTV() {
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
     
-    if (!document.fullscreenElement) {
-      if (videoRef.current) {
-        videoRef.current.requestFullscreen();
+    // Essayer d'abord de mettre l'iframe en plein écran si c'est une vidéo Zupload
+    if (isZuploadVideo && videoUrl) {
+      const iframe = document.querySelector('iframe');
+      if (iframe && iframe.requestFullscreen) {
+        iframe.requestFullscreen().catch(err => {
+          console.error('Failed to enter fullscreen for iframe:', err);
+          // Fallback to container fullscreen
+          fallbackToContainerFullscreen();
+        });
+        return;
       }
-      setIsFullscreen(true);
+    }
+    
+    // Fallback to container fullscreen
+    fallbackToContainerFullscreen();
+  }, [isZuploadVideo, videoUrl]);
+
+  const fallbackToContainerFullscreen = useCallback(() => {
+    const videoContainer = document.querySelector('.relative.w-full.h-screen');
+    if (!videoContainer) return;
+    
+    if (!document.fullscreenElement) {
+      videoContainer.requestFullscreen().catch(err => {
+        console.error('Failed to enter fullscreen:', err);
+      });
     } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+      document.exitFullscreen().catch(err => {
+        console.error('Failed to exit fullscreen:', err);
+      });
     }
   }, []);
 

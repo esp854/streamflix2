@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2 } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -696,6 +696,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               </Select>
             )}
             
+            {/* Bouton Plein écran */}
+            
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
@@ -752,38 +754,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         {/* Bottom Controls - Play/Pause, Volume, etc. */}
         {showControls && (
           <div className="absolute bottom-4 left-4 right-4 flex justify-center items-center space-x-4 pointer-events-auto">
-            <Button
-              onClick={togglePlayPause}
-              variant="ghost"
-              size="icon"
-              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6" />
-              ) : (
-                <Play className="w-6 h-6" />
-              )}
-            </Button>
-            
-            <Button
-              onClick={toggleMute}
-              variant="ghost"
-              size="icon"
-              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
-            >
-              <Volume2 className="w-6 h-6" />
-            </Button>
-            
-            <div className="flex items-center w-24 sm:w-32">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
+
           </div>
         )}
       </div>
