@@ -769,8 +769,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 src={currentSource.url}
                 className="w-full h-full touch-manipulation"
                 frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
+                // Attributs par défaut pour les iframes
+                {...!(currentSource.name === 'Frembed') && {
+                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen",
+                  allowFullScreen: true
+                }}
                 title={`${title} - ${currentSource.name}`}
                 loading="lazy"
                 onLoad={() => {
@@ -802,10 +805,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
-                // Pour Frembed, utiliser les contrôles natifs - ne pas interférer
+                // Pour Frembed, utiliser les contrôles natifs - configuration optimisée
                 {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;",
-                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms"
+                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking; web-share; cross-origin-isolated;",
+                  allowFullScreen: true,
+                  // Sandbox avec permissions étendues pour permettre le plein écran
+                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms allow-pointer-lock allow-downloads allow-modals"
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
