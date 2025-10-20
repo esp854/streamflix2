@@ -203,12 +203,19 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       };
       
       // Vérifier si la source Frembed existe déjà
-      const existingFrembedIndex = videoSources.findIndex(source => source.id === 'frembed-auto');
-      
-      if (existingFrembedIndex === -1) {
-        // Ajouter la source Frembed si elle n'existe pas
-        setVideoSources(prevSources => [...prevSources, frembedSource]);
-      }
+      setVideoSources(prevSources => {
+        const existingFrembedIndex = prevSources.findIndex(source => source.id === 'frembed-auto');
+        
+        if (existingFrembedIndex === -1) {
+          // Ajouter la source Frembed si elle n'existe pas
+          return [...prevSources, frembedSource];
+        } else {
+          // Mettre à jour la source Frembed existante
+          const newSources = [...prevSources];
+          newSources[existingFrembedIndex] = frembedSource;
+          return newSources;
+        }
+      });
     }
   }, [frembedSources, frembedLoading]);
 
@@ -791,14 +798,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 src={currentSource.url}
                 className="w-full h-full touch-manipulation"
                 frameBorder="0"
-                // Amélioration des attributs pour Frembed
-                {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;",
-                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms"
-                })}
-                {...!(currentSource.name === 'Frembed') && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                 allowFullScreen
                 title={`${title} - ${currentSource.name}`}
                 loading="lazy"
@@ -831,6 +831,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
+                // Pour Frembed, utiliser les contrôles natifs - ne pas interférer
+                {...(currentSource.name === 'Frembed' && {
+                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;",
+                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms"
+                })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div

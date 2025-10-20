@@ -20,31 +20,21 @@ export const useFrembedSources = (tmdbId: number, mediaType: 'movie' | 'tv', sea
         let apiUrl: string;
         
         if (mediaType === 'movie') {
-          apiUrl = `/api/frembed/movie/${tmdbId}`;
+          apiUrl = `https://frembed.fun/api/embed/${tmdbId}`;
         } else if (mediaType === 'tv' && season && episode) {
-          apiUrl = `/api/frembed/series/${tmdbId}/${season}/${episode}`;
+          apiUrl = `https://frembed.fun/api/embed/${tmdbId}?s=${season}&e=${episode}`;
         } else {
           setSources([]);
           setLoading(false);
           return;
         }
         
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error('Failed to fetch Frembed sources');
-        }
-        
-        const data = await response.json();
-        
-        if (data.url) {
-          setSources([{
-            url: data.url,
-            quality: 'auto',
-            type: 'iframe'
-          }]);
-        } else {
-          setSources([]);
-        }
+        // Utiliser l'API Frembed directement comme spécifié dans les mémoires
+        setSources([{
+          url: apiUrl,
+          quality: 'auto',
+          type: 'iframe'
+        }]);
         
         setError(null);
       } catch (err) {
