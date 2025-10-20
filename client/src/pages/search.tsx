@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { tmdbService } from "@/lib/tmdb";
 import MovieCard from "@/components/movie-card";
 import TVCard from "@/components/tv-card";
-import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 
 export default function Search() {
@@ -105,7 +104,7 @@ export default function Search() {
   return (
     <div className="min-h-screen bg-background py-8" data-testid="search-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {shouldShowAds && <AdvertisementBanner />}
+  
         
         {/* Search Header */}
         <div className="mb-8" ref={searchRef}>

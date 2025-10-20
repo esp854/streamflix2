@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { tmdbService } from "@/lib/tmdb";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";

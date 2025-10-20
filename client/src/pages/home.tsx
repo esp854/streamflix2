@@ -4,7 +4,6 @@ import HeroCarousel from "@/components/hero-carousel";
 import MovieRow from "@/components/movie-row";
 import CategoryGrid from "@/components/category-grid";
 import TelegramBanner from "@/components/telegram-banner";
-import AdvertisementBanner from "@/components/AdvertisementBanner";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useEffect, useState } from "react";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -151,12 +150,7 @@ export default function Home() {
       {/* PWA Install Banner */}
       <PWAInstallBanner />
       
-      {/* Advertisement Banner for unauthenticated users */}
-      {shouldShowAds && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <AdvertisementBanner />
-        </div>
-      )}
+
 
       {/* Telegram Banner */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
