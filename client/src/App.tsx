@@ -26,7 +26,6 @@ import { useLocation as useWouterLocation } from "wouter";
 import TrendingPage from "./pages/trending";
 import Favorites from "./pages/favorites";
 import MoviesPage from "./pages/movies";
-import Category from "./pages/category";
 
 const routes = [
   { path: "/", component: Home },
@@ -41,7 +40,6 @@ const routes = [
   { path: "/films", component: MoviesPage },
   { path: "/tendances", component: TrendingPage },
   { path: "/ma-liste", component: Favorites },
-  { path: "/category/:genre", component: Category },
   { path: "/*", component: NotFound },
 ];
 
@@ -104,7 +102,6 @@ function Router() {
       <Route path="/films" component={MoviesPage} />
       <Route path="/tendances" component={TrendingPage} />
       <Route path="/ma-liste" component={Favorites} />
-      <Route path="/category/:genre" component={Category} />
       <Route component={NotFound} />
     </Switch>
   );

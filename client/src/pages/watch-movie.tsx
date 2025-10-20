@@ -133,7 +133,7 @@ export default function WatchMovie() {
     if (contentWithVideo?.odyseeUrl) {
       const url = contentWithVideo.odyseeUrl;
       setIsYouTubeVideo(url.includes("youtube.com") || url.includes("youtu.be"));
-      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed"));
+      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed") || url.includes("embed"));
       setVideoUrl(url);
     }
   }, [contentWithVideo]);

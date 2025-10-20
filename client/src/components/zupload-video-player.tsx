@@ -109,7 +109,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (tmdbId) {
       const sources: VideoSource[] = [];
       
-      // Source Frembed (prioritaire)
+      // Source Zupload (prioritaire)
+      if (videoUrl) {
+        sources.push({
+          id: 'zupload',
+          name: 'Zupload',
+          url: videoUrl,
+          type: videoUrl.includes('embed') ? 'embed' : 'direct'
+        });
+      }
+      
+      // Source Frembed
       // Note: Frembed nécessite une API key ou un compte, donc on vérifie si l'URL est déjà fournie
       if (videoUrl && videoUrl.includes('frembed')) {
         sources.push({
@@ -134,16 +144,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           name: 'VidSrc',
           url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
-        });
-      }
-      
-      // Source Zupload (actuelle)
-      if (videoUrl) {
-        sources.push({
-          id: 'zupload',
-          name: 'Zupload',
-          url: videoUrl,
-          type: videoUrl.includes('embed') ? 'embed' : 'direct'
         });
       }
       
@@ -234,12 +234,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       
       setVideoSources(sources);
-      setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Frembed si disponible)
+      setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
     }
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
+    console.log(`Changement de source: ${index} (${videoSources[index]?.name})`);
     setCurrentSourceIndex(index);
     setIsLoading(true);
     setError(null);
@@ -316,13 +317,20 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     console.error('Erreur de chargement de la vidéo:', e);
     setIsLoading(false);
     setIsPlaying(false);
-    // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
-    if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
-      setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
+    
+    // Essayer la source suivante si disponible
+    if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
+      console.log('Tentative de la source suivante...');
+      changeVideoSource(currentSourceIndex + 1);
     } else {
-      setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
+      // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
+      if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
+        setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
+      } else {
+        setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
+      }
+      onVideoError?.('Failed to load video content');
     }
-    onVideoError?.('Failed to load video content');
   };
 
   // Reset loading state when videoUrl changes
@@ -802,11 +810,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onError={(e) => {
                   console.error('Erreur de chargement de l\'iframe:', e);
                   setIsLoading(false);
-                  // Sur mobile, on affiche un message plus spécifique
-                  if (isMobileDevice) {
-                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
+                  // Essayer la source suivante si disponible
+                  if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
+                    console.log('Tentative de la source suivante pour l\'iframe...');
+                    changeVideoSource(currentSourceIndex + 1);
                   } else {
-                    setError('Impossible de charger la vidéo');
+                    // Sur mobile, on affiche un message plus spécifique
+                    if (isMobileDevice) {
+                      setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
+                    } else {
+                      setError('Impossible de charger la vidéo');
+                    }
+                    onVideoError?.('Impossible de charger la vidéo');
                   }
                   onVideoError?.('Impossible de charger la vidéo');
                 }}
