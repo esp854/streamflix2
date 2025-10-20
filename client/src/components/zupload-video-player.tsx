@@ -192,6 +192,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           url: `https://www.wiflix.me/film-${tmdbId}.html`,
           type: 'embed'
         });
+        
+        // Alternative : Movizland
+        sources.push({
+          id: 'movizland',
+          name: 'Movizland',
+          url: `https://www.movizland.com/watch-${tmdbId}-film.html`,
+          type: 'embed'
+        });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         // French Stream pour séries
         sources.push({
@@ -206,6 +214,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           id: 'wiflix-tv',
           name: 'Wiflix',
           url: `https://www.wiflix.me/serie-${tmdbId}-saison-${seasonNumber}.html`,
+          type: 'embed'
+        });
+        
+        // Alternative : Movizland pour séries
+        sources.push({
+          id: 'movizland-tv',
+          name: 'Movizland',
+          url: `https://www.movizland.com/watch-${tmdbId}-saison-${seasonNumber}-episode-${episodeNumber}.html`,
           type: 'embed'
         });
       }
