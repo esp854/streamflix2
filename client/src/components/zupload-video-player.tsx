@@ -175,7 +175,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       
       // Source Frembed (uniquement si URL fournie)
-      if (videoUrl && videoUrl.includes('frembed')) {
+      if (videoUrl && (videoUrl.includes('frembed') || videoUrl.includes('frembed.fun'))) {
         sources.push({
           id: 'frembed',
           name: 'Frembed',

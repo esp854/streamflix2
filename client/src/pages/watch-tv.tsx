@@ -219,7 +219,7 @@ export default function WatchTV() {
     if (videoData?.odyseeUrl) {
       const url = videoData.odyseeUrl;
       setIsYouTubeVideo(url.includes("youtube.com") || url.includes("youtu.be"));
-      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed") || url.includes("embed"));
+      setIsZuploadVideo(url.includes("zupload") || url.includes("frembed") || url.includes("embed") || url.includes("frembed.fun"));
       setVideoUrl(url); // Set videoUrl here
     }
   }, [episodeData, contentWithVideo]);
@@ -666,8 +666,8 @@ export default function WatchTV() {
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
     
-    // Essayer d'abord de mettre l'iframe en plein écran si c'est une vidéo Zupload
-    if (isZuploadVideo && videoUrl) {
+    // Essayer d'abord de mettre l'iframe en plein écran si c'est une vidéo Zupload ou Frembed
+    if ((isZuploadVideo || videoUrl?.includes('frembed')) && videoUrl) {
       const iframe = document.querySelector('iframe');
       if (iframe && iframe.requestFullscreen) {
         iframe.requestFullscreen().catch(err => {

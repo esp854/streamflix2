@@ -98,7 +98,9 @@ self.addEventListener('fetch', (event) => {
     'selfishzone.com',
     '*.selfishzone.com',
     'silent-basis.pro',
-    '*.silent-basis.pro'
+    '*.silent-basis.pro',
+    'frembed.fun',
+    '*.frembed.fun'
   ];
 
   // Check if the request is to an allowed external domain
