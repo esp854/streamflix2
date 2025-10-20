@@ -174,6 +174,41 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
       }
+      
+      // Sources supplémentaires en français
+      if (mediaType === 'movie') {
+        // French Stream
+        sources.push({
+          id: 'frenchstream',
+          name: 'French Stream',
+          url: `https://www.french-streaming.com/film-${tmdbId}.html`,
+          type: 'embed'
+        });
+        
+        // Wiflix
+        sources.push({
+          id: 'wiflix',
+          name: 'Wiflix',
+          url: `https://www.wiflix.me/film-${tmdbId}.html`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        // French Stream pour séries
+        sources.push({
+          id: 'frenchstream-tv',
+          name: 'French Stream',
+          url: `https://www.french-streaming.com/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
+          type: 'embed'
+        });
+        
+        // Wiflix pour séries
+        sources.push({
+          id: 'wiflix-tv',
+          name: 'Wiflix',
+          url: `https://www.wiflix.me/serie-${tmdbId}-saison-${seasonNumber}.html`,
+          type: 'embed'
+        });
+      }
     }
     
     console.log('Sources vidéo générées:', sources);
