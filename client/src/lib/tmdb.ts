@@ -524,12 +524,17 @@ class TMDBService {
   async searchTVShows(query: string): Promise<TMDBTVSeries[]> {
     // Don't cache search results as they're user-specific
     try {
+      console.log(`[DEBUG] Searching TV shows with query: ${query}`);
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/search?query=${encodeURIComponent(query)}`);
+      console.log(`[DEBUG] TV search response status: ${response.status}`);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[DEBUG] TV search error response: ${errorText}`);
         // Return empty array instead of throwing error to prevent complete failure
         return [];
       }
       const data: TVResponse = await response.json();
+      console.log(`[DEBUG] TV search results count: ${data.results?.length || 0}`);
       return data.results || [];
     } catch (error) {
       console.error("Error searching TV shows:", error);

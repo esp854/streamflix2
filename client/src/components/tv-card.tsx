@@ -60,6 +60,10 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
      if ('id' in series && typeof series.id === 'number') {
        return series.id;
      }
+     // Pour les données de recherche TMDB, l'ID est directement disponible
+     if (series.id) {
+       return typeof series.id === 'number' ? series.id : parseInt(series.id.toString(), 10) || 0;
+     }
      return 0;
    };
 
@@ -78,6 +82,10 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
        return series.id;
      }
      if ('id' in series && typeof series.id === 'number') {
+       return series.id.toString();
+     }
+     // Pour les données de recherche TMDB, l'ID est directement disponible
+     if (series.id) {
        return series.id.toString();
      }
      return "0";
