@@ -109,19 +109,30 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (tmdbId) {
       const sources: VideoSource[] = [];
       
-      // Source Frembed (prioritaire) - Utilisation des endpoints directs
-      if (mediaType === 'movie') {
+      // Source Frembed (prioritaire)
+      // Note: Frembed nécessite une API key ou un compte, donc on vérifie si l'URL est déjà fournie
+      if (videoUrl && videoUrl.includes('frembed')) {
         sources.push({
           id: 'frembed',
           name: 'Frembed',
-          url: `https://frembed.fun/api/embed/${tmdbId}`,
+          url: videoUrl,
+          type: 'embed'
+        });
+      }
+      
+      // Source VidSrc
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
-          id: 'frembed',
-          name: 'Frembed',
-          url: `https://frembed.fun/api/embed/${tmdbId}?s=${seasonNumber}&e=${episodeNumber}`,
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -149,23 +160,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           id: 'superembed',
           name: 'SuperEmbed',
           url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source VidSrc
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'vidsrc',
-          name: 'VidSrc',
-          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -240,7 +234,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       }
       
       setVideoSources(sources);
-      setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Frembed)
+      setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Frembed si disponible)
     }
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
 
