@@ -175,8 +175,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Sources supplémentaires en français
+      // Sources avec API en français
       if (mediaType === 'movie') {
+        // G2Stream API pour films français
+        sources.push({
+          id: 'g2stream',
+          name: 'G2Stream',
+          url: `https://api.g2stream.com/embed/movie/${tmdbId}`,
+          type: 'embed'
+        });
+        
         // French Stream
         sources.push({
           id: 'frenchstream',
@@ -201,6 +209,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        // G2Stream API pour séries françaises
+        sources.push({
+          id: 'g2stream-tv',
+          name: 'G2Stream',
+          url: `https://api.g2stream.com/embed/series/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+        
         // French Stream pour séries
         sources.push({
           id: 'frenchstream-tv',
