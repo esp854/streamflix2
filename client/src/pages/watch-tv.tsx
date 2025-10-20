@@ -666,21 +666,10 @@ export default function WatchTV() {
   const toggleFullscreen = useCallback(() => {
     if (!isMountedRef.current) return;
     
-    // Essayer d'abord de mettre l'iframe en plein écran si c'est une vidéo Zupload ou Frembed
-    if ((isZuploadVideo || videoUrl?.includes('frembed')) && videoUrl) {
-      const iframe = document.querySelector('iframe');
-      if (iframe && iframe.requestFullscreen) {
-        iframe.requestFullscreen().catch(err => {
-          console.error('Failed to enter fullscreen for iframe:', err);
-          // Fallback to container fullscreen
-          fallbackToContainerFullscreen();
-        });
-        return;
-      }
-    }
-    
-    // Fallback to container fullscreen
-    fallbackToContainerFullscreen();
+    // Pour Frembed, utiliser le plein écran natif de l'iframe
+    // Ne pas interférer avec les contrôles natifs de Frembed
+    console.log('Utilisation du plein écran natif de Frembed');
+    // Aucune action personnalisée - laisser Frembed gérer le plein écran
   }, [isZuploadVideo, videoUrl]);
 
   const fallbackToContainerFullscreen = useCallback(() => {
