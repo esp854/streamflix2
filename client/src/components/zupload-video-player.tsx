@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useFrembedSources } from '@/hooks/useFrembedSources'; // Ajout de l'import
 
 interface VideoSource {
   id: string;
@@ -175,49 +174,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source Frembed (générée automatiquement via l'API)
-      // Note: Cette source sera ajoutée via le hook useFrembedSources
+      // Source Frembed (uniquement si URL fournie)
+      if (videoUrl && (videoUrl.includes('frembed') || videoUrl.includes('frembed.fun'))) {
+        sources.push({
+          id: 'frembed',
+          name: 'Frembed',
+          url: videoUrl,
+          type: 'embed'
+        });
+      }
     }
     
     console.log('Sources vidéo générées:', sources);
     setVideoSources(sources);
     setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
-
-  // Utiliser le hook useFrembedSources pour obtenir les sources Frembed
-  const { sources: frembedSources, loading: frembedLoading } = useFrembedSources(
-    tmdbId || 0, 
-    mediaType, 
-    seasonNumber, 
-    episodeNumber
-  );
-
-  // Ajouter les sources Frembed aux sources existantes
-  useEffect(() => {
-    if (!frembedLoading && frembedSources.length > 0) {
-      const frembedSource: VideoSource = {
-        id: 'frembed-auto',
-        name: 'Frembed (Auto)',
-        url: frembedSources[0].url,
-        type: 'embed'
-      };
-      
-      // Vérifier si la source Frembed existe déjà
-      setVideoSources(prevSources => {
-        const existingFrembedIndex = prevSources.findIndex(source => source.id === 'frembed-auto');
-        
-        if (existingFrembedIndex === -1) {
-          // Ajouter la source Frembed si elle n'existe pas
-          return [...prevSources, frembedSource];
-        } else {
-          // Mettre à jour la source Frembed existante
-          const newSources = [...prevSources];
-          newSources[existingFrembedIndex] = frembedSource;
-          return newSources;
-        }
-      });
-    }
-  }, [frembedSources, frembedLoading]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
