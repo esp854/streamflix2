@@ -1,81 +1,78 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect, useRef } from "react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, RotateCcw, SkipBack, SkipForward, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useToast } from "@/components/ui/use-toast";
+import { isMobile } from "react-device-detect";
+import { useFrembedMovieSources, useFrembedEpisodeSources } from "@/hooks/useFrembedSources";
 
 interface VideoSource {
   id: string;
   name: string;
   url: string;
-  type: 'embed' | 'direct';
+  type: 'direct' | 'embed';
 }
 
 interface ZuploadVideoPlayerProps {
-  videoUrl: string;
-  title: string;
-  onVideoEnd?: () => void;
-  onVideoError?: (error: string) => void;
+  tmdbId?: number;
+  mediaType?: 'movie' | 'tv';
+  seasonNumber?: number;
+  episodeNumber?: number;
+  videoUrl?: string;
+  title?: string;
+  onEnded?: () => void;
   onNextEpisode?: () => void;
-  onSkipIntro?: () => void;
-  currentSeason?: number;
-  currentEpisode?: number;
-  totalSeasons?: number;
-  totalEpisodes?: number;
-  onSeasonChange?: (season: number) => void;
-  onEpisodeChange?: (episode: number) => void;
   onPreviousEpisode?: () => void;
-  tmdbId?: number; // Pour générer les URLs de différentes sources
-  mediaType?: 'movie' | 'tv'; // Pour différencier films et séries
-  seasonNumber?: number; // Pour les séries
-  episodeNumber?: number; // Pour les séries
+  className?: string;
 }
 
-const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
+export function ZuploadVideoPlayer({
+  tmdbId,
+  mediaType,
+  seasonNumber,
+  episodeNumber,
   videoUrl,
   title,
-  onVideoEnd,
-  onVideoError,
+  onEnded,
   onNextEpisode,
-  onSkipIntro,
-  currentSeason = 1,
-  currentEpisode = 1,
-  totalSeasons = 1,
-  totalEpisodes = 10,
-  onSeasonChange,
-  onEpisodeChange,
   onPreviousEpisode,
-  tmdbId,
-  mediaType = 'movie',
-  seasonNumber = 1,
-  episodeNumber = 1,
-}) => {
-  const { isAuthenticated } = useAuth();
-  const adVideoRef = useRef<HTMLVideoElement>(null);
+  className = ""
+}: ZuploadVideoPlayerProps) {
+  const { toast } = useToast();
   const mainVideoRef = useRef<HTMLVideoElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showAd, setShowAd] = useState(false); // Toujours false - pas de pubs
-  const [adSkipped, setAdSkipped] = useState(true); // Toujours true - pubs désactivées
-  const [showControls, setShowControls] = useState(false);
-  const [isAdPlaying, setIsAdPlaying] = useState(false);
-  const [showSkipButton, setShowSkipButton] = useState(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
-  const currentAdIndexRef = useRef(0); // Index de la pub actuelle
-  const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
-  const userPausedRef = useRef(false); // Pour détecter les interruptions
-
-  // Nouvel état pour la gestion des sources
-  const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
-  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(80);
+  const [volume, setVolume] = useState([100]);
+  const [progress, setProgress] = useState([0]);
+  const [buffered, setBuffered] = useState([0]);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showControls, setShowControls] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [quality, setQuality] = useState("auto");
+  const [showSettings, setShowSettings] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [adProgress, setAdProgress] = useState([0]);
+  const [showAd, setShowAd] = useState(false);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
-  // Fonction utilitaire pour détecter les appareils mobiles
+  // Frembed sources
+  const { data: frembedMovieSources, isLoading: frembedMovieLoading } = useFrembedMovieSources(
+    mediaType === 'movie' && tmdbId ? tmdbId : null
+  );
+  
+  const { data: frembedEpisodeSources, isLoading: frembedEpisodeLoading } = useFrembedEpisodeSources(
+    mediaType === 'tv' && tmdbId ? tmdbId : null,
+    seasonNumber || null,
+    episodeNumber || null
+  );
+
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   // Détecter la connexion lente
@@ -120,6 +117,27 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
+      // Add Frembed sources if available
+      if (frembedMovieSources && frembedMovieSources.length > 0) {
+        // Add the first available source from Frembed
+        sources.push({
+          id: 'frembed-api',
+          name: 'Frembed (API)',
+          url: frembedMovieSources[0].url,
+          type: 'embed'
+        });
+      }
+      
+      if (frembedEpisodeSources && frembedEpisodeSources.length > 0) {
+        // Add the first available source from Frembed
+        sources.push({
+          id: 'frembed-api',
+          name: 'Frembed (API)',
+          url: frembedEpisodeSources[0].url,
+          type: 'embed'
+        });
+      }
+      
       // Source VidSrc
       if (mediaType === 'movie') {
         sources.push({
@@ -143,28 +161,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           id: 'zupload',
           name: 'Zupload',
           url: videoUrl,
-          type: videoUrl.includes('embed') ? 'embed' : 'direct'
+          type: videoUrl.includes('.mp4') || videoUrl.includes('.webm') || videoUrl.includes('.ogg') ? 'direct' : 'embed'
         });
       }
       
-      // Source SuperEmbed (fonctionne bien)
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=1&e=1`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
-      // Source 2Embed (fonctionne moyennement)
+      // Source 2Embed
       if (mediaType === 'movie') {
         sources.push({
           id: '2embed',
@@ -176,25 +177,58 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         sources.push({
           id: '2embed',
           name: '2Embed',
-          url: `https://www.2embed.cc/embedtv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          url: `https://www.2embed.cc/embedtv/${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
           type: 'embed'
         });
       }
       
-      // Nouveaux services de streaming ajoutés
-      // Source MoviesAPI.Club
+      // Source SuperEmbed
       if (mediaType === 'movie') {
         sources.push({
-          id: 'moviesapi',
-          name: 'MoviesAPI',
-          url: `https://moviesapi.club/movie/${tmdbId}`,
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://superembed.stream/e/?imdb=&tmdb=${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
-          id: 'moviesapi',
-          name: 'MoviesAPI',
-          url: `https://moviesapi.club/tv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://superembed.stream/e/?imdb=&tmdb=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source FStream
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'fstream',
+          name: 'FStream',
+          url: `https://fstream.pro/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'fstream',
+          name: 'FStream',
+          url: `https://fstream.pro/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source GoDrivePlayer
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'godrive',
+          name: 'GoDrivePlayer',
+          url: `https://godriveplayer.com/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'godrive',
+          name: 'GoDrivePlayer',
+          url: `https://godriveplayer.com/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -236,7 +270,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       setVideoSources(sources);
       setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Frembed si disponible)
     }
-  }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
+  }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl, frembedMovieSources, frembedEpisodeSources]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
@@ -262,523 +296,347 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       return;
     }
     
-    if (videoPreloadStartedRef.current || !mainVideoRef.current) return;
-    
-    videoPreloadStartedRef.current = true;
-    console.log('Préchargement de la vidéo principale:', currentSource.url);
-    
-    // Créer un objet vidéo temporaire pour le préchargement
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'auto';
-    tempVideo.src = currentSource.url;
-    
-    // Écouter les événements de chargement
-    tempVideo.addEventListener('loadeddata', () => {
-      console.log('Vidéo principale préchargée avec succès');
-    });
-    
-    tempVideo.addEventListener('error', (e) => {
-      console.error('Erreur de préchargement de la vidéo:', e);
-    });
-    
-    // Nettoyer après 30 secondes si la vidéo n'est pas utilisée
-    setTimeout(() => {
-      tempVideo.remove();
-    }, 30000);
+    // Pour les vidéos directes, on peut précharger
+    const preloadVideo = document.createElement('video');
+    preloadVideo.preload = 'metadata';
+    preloadVideo.src = currentSource.url;
+    preloadVideo.load();
+    console.log('Préchargement démarré pour:', currentSource.url);
   };
 
-  // Fonction vide pour charger la pub VAST - désactivée
-  async function loadVastAd() {
-    // Ne rien faire - les pubs sont désactivées
-    console.log('Publicités désactivées - accès direct au contenu');
-    setShowAd(false);
-    setAdSkipped(true);
-  };
+  // Gestion du chargement de la vidéo
+  useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
 
-  // Handle video load
-  const handleVideoLoad = () => {
-    if (!isAdPlaying) {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle video playing - for better loading indication
-  const handleVideoPlaying = () => {
-    if (!isAdPlaying) {
-      setIsLoading(false);
+    const handleLoadStart = () => {
+      setIsLoading(true);
       setError(null);
-      setIsPlaying(true);
-    }
-  };
+    };
 
-  // Handle video error
-  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error('Erreur de chargement de la vidéo:', e);
-    setIsLoading(false);
-    setIsPlaying(false);
-    // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
-    if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
-      setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
-    } else {
-      setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
-    }
-    onVideoError?.('Failed to load video content');
-  };
-
-  // Reset loading state when videoUrl changes
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
-    
-    // Pour les URLs d'iframe, réduire le temps d'affichage du loader
-    // Sur mobile, masquer encore plus rapidement
-    const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
-    
-    // Ajustement pour s'assurer que le loader s'affiche correctement
-    const currentSource = videoSources[currentSourceIndex];
-    if (currentSource && currentSource.type === 'embed') {
-      const loaderTimeout = setTimeout(() => {
-        setIsLoading(false);
-      }, loaderDelay);
-      
-      return () => clearTimeout(loaderTimeout);
-    } else {
-      // Pour les vidéos directes, masquer le loader après un court délai
-      const loaderTimeout = setTimeout(() => {
-        setIsLoading(false);
-      }, isMobileDevice ? 500 : 1000);
-      
-      return () => clearTimeout(loaderTimeout);
-    }
-  }, [videoSources, currentSourceIndex]);
-
-  // Handle ad for non-authenticated users - désactivé
-  useEffect(() => {
-    // Toujours désactiver les pubs
-    setShowAd(false);
-    setAdSkipped(true);
-    
-    // S'assurer que l'état de chargement est réinitialisé
-    setIsLoading(true);
-    
-    // Précharger la vidéo immédiatement
-    setTimeout(() => {
-      preloadMainVideo();
-    }, 100);
-    
-    // Pour les URLs d'iframe, masquer rapidement le loader
-    const currentSource = videoSources[currentSourceIndex];
-    if (currentSource && currentSource.type === 'embed') {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-    }
-    // Sur mobile, on masque le loader immédiatement
-    else if (isMobileDevice) {
+    const handleCanPlay = () => {
       setIsLoading(false);
-    }
-  }, [videoSources, currentSourceIndex]);
+      setDuration(video.duration || 0);
+    };
 
-  const skipAd = () => {
-    // Ne rien faire - les pubs sont déjà désactivées
-    console.log('Passage des publicités - fonction désactivée');
-  };
+    const handleError = () => {
+      console.error('Erreur de chargement de la vidéo:', video.error);
+      setIsLoading(false);
+      setError(`Erreur de chargement: ${video.error?.message || 'Erreur inconnue'}`);
+      
+      // Essayer la source suivante si disponible
+      if (retryCount < 2 && videoSources.length > currentSourceIndex + 1) {
+        toast({
+          title: "Erreur de lecture",
+          description: `Impossible de lire la vidéo. Tentative avec la source suivante...`,
+          variant: "destructive"
+        });
+        setTimeout(() => {
+          changeVideoSource(currentSourceIndex + 1);
+          setRetryCount(prev => prev + 1);
+        }, 2000);
+      } else {
+        toast({
+          title: "Erreur de lecture",
+          description: "Impossible de lire la vidéo avec toutes les sources disponibles.",
+          variant: "destructive"
+        });
+      }
+    };
 
-  // Handle touch events for mobile devices
-  const handleTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    setShowControls(true);
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration || 0);
+    };
 
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
+    const handleProgress = () => {
+      if (video.buffered.length > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+        const duration = video.duration;
+        if (duration > 0) {
+          setBuffered([Math.min(100, (bufferedEnd / duration) * 100)]);
+        }
+      }
+    };
 
-    // Sur mobile, garder les contrôles visibles plus longtemps
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 5000); // 5 secondes sur mobile au lieu de 3
+    video.addEventListener('loadstart', handleLoadStart);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('error', handleError);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('progress', handleProgress);
 
-    // Marquer l'interaction utilisateur pour les pubs
-    if (isMobileDevice && !hasUserInteracted) {
-      setHasUserInteracted(true);
-    }
-  };
+    return () => {
+      video.removeEventListener('loadstart', handleLoadStart);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('progress', handleProgress);
+    };
+  }, [currentSourceIndex, videoSources, retryCount, toast]);
 
-  // Show controls on mouse move (desktop) or touch (mobile)
-  const handleMouseMove = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setShowControls(true);
-    
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    
-    // Sur desktop, masquer plus rapidement
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000); // 3 secondes sur desktop
-  };
-
-  // Handle touch end event
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
-    // Ne pas masquer immédiatement les contrôles après un touch
-  };
-
-  // Cleanup timeouts on unmount
+  // Gestion de la lecture/ pause
   useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("Erreur de lecture automatique:", error);
+          setIsPlaying(false);
+        });
+      }
+    } else {
+      video.pause();
+    }
+  }, [isPlaying]);
+
+  // Gestion du volume
+  useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
+
+    video.volume = volume[0] / 100;
+    video.muted = isMuted;
+  }, [volume, isMuted]);
+
+  // Gestion de la progression
+  useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
+
+    const updateTime = () => {
+      if (video.duration) {
+        const progressPercent = (video.currentTime / video.duration) * 100;
+        setProgress([progressPercent]);
+      }
+    };
+
+    video.addEventListener('timeupdate', updateTime);
+    return () => {
+      video.removeEventListener('timeupdate', updateTime);
+    };
+  }, []);
+
+  // Gestion de la fin de la vidéo
+  useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (onEnded) onEnded();
+    };
+
+    video.addEventListener('ended', handleEnded);
+    return () => {
+      video.removeEventListener('ended', handleEnded);
+    };
+  }, [onEnded]);
+
+  // Auto-hide controls after 3 seconds (or 5 seconds on mobile)
+  useEffect(() => {
+    if (!isMountedRef.current) return;
+    
+    if (showControls && isPlaying) {
+      const timeoutDuration = isMobile ? 5000 : 3000; // 5s for mobile, 3s for desktop
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      controlsTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          setShowControls(false);
+        }
+      }, timeoutDuration);
+    }
+    
     return () => {
       if (controlsTimeoutRef.current) {
         clearTimeout(controlsTimeoutRef.current);
       }
-      if (skipButtonTimeoutRef.current) {
-        clearTimeout(skipButtonTimeoutRef.current);
+    };
+  }, [showControls, isPlaying, isMobile]);
+
+  // Cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
       }
     };
   }, []);
 
-  // Reset user interaction state when ad changes
-  useEffect(() => {
-    if (!showAd) {
-      setHasUserInteracted(false);
-      userPausedRef.current = false;
-    }
-  }, [showAd]);
-
-  // Gestion de la lecture/pause
-  const togglePlayPause = () => {
-    if (!mainVideoRef.current) return;
-    
-    if (isPlaying) {
-      mainVideoRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      mainVideoRef.current.play().catch(error => {
-        console.error('Erreur de lecture:', error);
-      });
-      setIsPlaying(true);
-    }
+  // Toggle play/pause
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+    setShowControls(true);
   };
 
-  // Gestion du son
+  // Toggle mute
   const toggleMute = () => {
-    if (!mainVideoRef.current) return;
-    
-    mainVideoRef.current.muted = !mainVideoRef.current.muted;
-    setIsMuted(mainVideoRef.current.muted);
+    setIsMuted(!isMuted);
+    setShowControls(true);
   };
 
-  // Gestion du volume
-  const handleVolumeChange = (newVolume: number) => {
-    if (!mainVideoRef.current) return;
+  // Handle volume change
+  const handleVolumeChange = (value: number[]) => {
+    setVolume(value);
+    setIsMuted(value[0] === 0);
+    setShowControls(true);
+  };
+
+  // Handle progress change (seek)
+  const handleProgressChange = (value: number[]) => {
+    const video = mainVideoRef.current;
+    if (!video) return;
     
-    mainVideoRef.current.volume = newVolume / 100;
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
+    const newTime = (value[0] / 100) * duration;
+    video.currentTime = newTime;
+    setProgress(value);
+    setShowControls(true);
+  };
+
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+    setShowControls(true);
+  };
+
+  // Format time (seconds to MM:SS)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Retry loading the current source
+  const retryLoad = () => {
+    setIsLoading(true);
+    setError(null);
+    setRetryCount(0);
+    
+    // Force reload by changing the key
+    const video = mainVideoRef.current;
+    if (video) {
+      video.load();
+    }
+  };
+
+  // Handle key events
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isMountedRef.current) return;
+      
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (mainVideoRef.current) {
+            mainVideoRef.current.currentTime += 10;
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (mainVideoRef.current) {
+            mainVideoRef.current.currentTime -= 10;
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          handleVolumeChange([Math.min(100, volume[0] + 10)]);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          handleVolumeChange([Math.max(0, volume[0] - 10)]);
+          break;
+        case 'm':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [volume, isPlaying]);
+
+  // Show controls on mouse move
+  const handleMouseMove = () => {
+    setShowControls(true);
+  };
+
+  // Skip forward/backward
+  const skipForward = () => {
+    if (mainVideoRef.current) {
+      mainVideoRef.current.currentTime += 10;
+    }
+  };
+
+  const skipBackward = () => {
+    if (mainVideoRef.current) {
+      mainVideoRef.current.currentTime -= 10;
+    }
   };
 
   const currentSource = videoSources[currentSourceIndex];
 
   return (
-    <div
-      className="relative w-full h-screen bg-black"
+    <div 
+      className={`relative w-full h-full bg-black ${className}`}
       onMouseMove={handleMouseMove}
-      onTouchStart={handleTouch}
-      onTouchMove={handleTouch}
-      onTouchEnd={handleTouchEnd}
-      onMouseLeave={() => {
-        if (controlsTimeoutRef.current) {
-          clearTimeout(controlsTimeoutRef.current);
-          controlsTimeoutRef.current = setTimeout(() => {
-            setShowControls(false);
-          }, 500);
-        }
-      }}
     >
-      {/* Ad for non-authenticated users - HilltopAds VAST integration */}
-      {showAd && (
-        <div className="absolute inset-0 z-30 bg-black flex items-center justify-center">
-          <div className="relative w-full h-full">
-            {/* HilltopAds VAST integration */}
-            <div className="w-full h-full flex items-center justify-center">
-              <video
-                ref={adVideoRef}
-                controls
-                width="100%"
-                height="100%"
-                preload="auto"
-                className="w-full h-full touch-manipulation"
-                onLoad={handleVideoLoad}
-                onPlaying={handleVideoPlaying}
-                onError={handleVideoError}
-                onEnded={() => {
-                  if (isAdPlaying) {
-                    // Pub terminée, passer directement à la vidéo principale
-                    // Ne rien faire - les pubs sont désactivées
-                  }
-                }}
-                playsInline
-                muted
-                // Ajout d'attributs supplémentaires pour améliorer la compatibilité mobile
-                autoPlay
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  backgroundColor: 'black'
-                }}
-                // Sur mobile, s'assurer que la vidéo est visible
-                {...(isMobileDevice && {
-                  playsInline: true,
-                  muted: true,
-                  autoPlay: true,
-                  controls: true
-                })}
-              />
-            </div>
-
-            {/* Overlay "Tap to Play" pour iOS Safari */}
-            {isMobileDevice && autoplayStrategy === 'user-gesture-required' && !hasUserInteracted && (
-              <div className="absolute inset-0 z-40 bg-black/90 flex items-center justify-center">
-                <div className="text-center p-8 max-w-sm">
-                  <div className="text-white text-4xl mb-6">📱</div>
-                  <h3 className="text-white text-xl font-bold mb-4">Touchez pour commencer</h3>
-                  <p className="text-gray-300 mb-6 text-sm">
-                    Les publicités vont démarrer après votre interaction
-                  </p>
-                  <button
-                    onClick={() => {
-                      setHasUserInteracted(true);
-                      // Ne rien faire - les pubs sont désactivées
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors"
-                  >
-                    Commencer la lecture
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Bouton skip amélioré pour mobile */}
-            {showSkipButton && (
-              <button
-                onClick={skipAd}
-                className={`${
-                  isMobileDevice
-                    ? "absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/90 text-white px-8 py-4 rounded-lg text-xl font-bold z-40 border-2 border-white/20"
-                    : "absolute top-4 right-4 bg-black/80 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors z-40 text-base sm:text-lg sm:px-5 sm:py-3 md:px-6 md:py-4 font-medium"
-                }`}
-              >
-                {isMobileDevice ? "⏭️ Passer la pub" : "Passer la pub"}
-              </button>
-            )}
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
+            <p className="text-white">Chargement de la vidéo...</p>
           </div>
         </div>
       )}
 
-      {/* Loading indicator - Optimized for mobile */}
-      {isLoading && !showAd && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
-          <div className="text-center p-6 max-w-xs">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6 sm:mb-8"></div>
-            <p className="text-white text-lg sm:text-xl px-4 font-medium">Chargement de la vidéo...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error display - Optimized for mobile */}
-      {error && !showAd && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10 p-4">
-          <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
-            <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
-            <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
-            <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
-            >
+      {/* Error display */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 z-10">
+          <div className="text-center max-w-md p-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-white text-xl font-bold mb-2">Erreur de lecture</h3>
+            <p className="text-gray-300 mb-4">{error}</p>
+            <Button onClick={retryLoad} variant="default" className="mr-2">
               Réessayer
-            </button>
+            </Button>
+            {videoSources.length > currentSourceIndex + 1 && (
+              <Button 
+                onClick={() => changeVideoSource(currentSourceIndex + 1)} 
+                variant="secondary"
+              >
+                Source suivante
+              </Button>
+            )}
           </div>
         </div>
       )}
-
-      {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
-      <div className="absolute inset-0 z-20 pointer-events-none">
-        {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onSeasonChange && (
-              <Select 
-                value={currentSeason.toString()} 
-                onValueChange={(value) => onSeasonChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="S" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                      S{seasonNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {onEpisodeChange && (
-              <Select 
-                value={currentEpisode.toString()} 
-                onValueChange={(value) => onEpisodeChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="E" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                      E{episodeNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          
-          <div className="flex space-x-1">
-            {/* Bouton Source - Nouveau bouton pour changer de source */}
-            {videoSources.length > 1 && (
-              <Select 
-                value={currentSourceIndex.toString()} 
-                onValueChange={(value) => changeVideoSource(parseInt(value))}
-              >
-                <SelectTrigger 
-                  className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <Server className="w-4 h-4 mr-1" />
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  {videoSources.map((source, index) => (
-                    <SelectItem 
-                      key={source.id} 
-                      value={index.toString()}
-                      // Ajout d'attributs pour améliorer la compatibilité mobile
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      {source.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {onSkipIntro && (
-              <button
-                onClick={onSkipIntro}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-              >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Passer l'intro</span>
-              </button>
-            )}
-            
-            {onNextEpisode && (
-              <button
-                onClick={onNextEpisode}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-              >
-                <SkipForward className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Épisode suivant</span>
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center">
-            {onPreviousEpisode && (
-              <Button
-                onClick={onPreviousEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
-                disabled={currentEpisode <= 1}
-              >
-                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
-              </Button>
-            )}
-          </div>
-          
-          <div className="flex items-center">
-            {onNextEpisode && (
-              <Button
-                onClick={onNextEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
-                disabled={currentEpisode >= totalEpisodes}
-              >
-                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
-              </Button>
-            )}
-          </div>
-        </div>
-        
-        {/* Bottom Controls - Play/Pause, Volume, etc. */}
-        {showControls && (
-          <div className="absolute bottom-4 left-4 right-4 flex justify-center items-center space-x-4 pointer-events-auto">
-            <Button
-              onClick={togglePlayPause}
-              variant="ghost"
-              size="icon"
-              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6" />
-              ) : (
-                <Play className="w-6 h-6" />
-              )}
-            </Button>
-            
-            <Button
-              onClick={toggleMute}
-              variant="ghost"
-              size="icon"
-              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
-            >
-              <Volume2 className="w-6 h-6" />
-            </Button>
-            
-            <div className="flex items-center w-24 sm:w-32">
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={volume}
-                onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* Main video player - Handle both direct video URLs and iframe embeds */}
       {!showAd && (
@@ -789,92 +647,247 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               <iframe
                 src={currentSource.url}
                 className="w-full h-full touch-manipulation"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
-                title={`${title} - ${currentSource.name}`}
-                loading="lazy"
-                onLoad={() => {
-                  console.log('Iframe chargée:', currentSource.url);
-                  setIsLoading(false);
-                  setError(null);
-                }}
-                onError={(e) => {
-                  console.error('Erreur de chargement de l\'iframe:', e);
-                  setIsLoading(false);
-                  // Sur mobile, on affiche un message plus spécifique
-                  if (isMobileDevice) {
-                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
-                  } else {
-                    setError('Impossible de charger la vidéo');
-                  }
-                  onVideoError?.('Impossible de charger la vidéo');
-                }}
-                // Ajout de propriétés pour améliorer la compatibilité mobile
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  minHeight: isMobileDevice ? '200px' : 'auto'
-                }}
+                title={`${title || 'Video'} - ${currentSource.name}`}
               />
-              {/* Overlay to prevent download button action - targeted at download button area */}
-              <div
-                className="absolute bottom-5 right-5 w-10 h-10 bg-transparent z-50 pointer-events-auto cursor-not-allowed"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return false;
-                }}
-                aria-label="Téléchargement désactivé"
-                title="Téléchargement désactivé"
-                style={{
-                  position: 'absolute',
-                  bottom: '2.5rem',
-                  right: '2.5rem',
-                  width: '2.5rem',
-                  height: '2.5rem',
-                  backgroundColor: 'transparent',
-                  zIndex: 50,
-                  pointerEvents: 'auto',
-                  cursor: 'not-allowed'
-                }}
-              />
+              
+              {/* Custom controls overlay for iframe (limited functionality) */}
+              <div 
+                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+                  showControls ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={togglePlay}
+                      variant="ghost"
+                      size="icon"
+                      className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </Button>
+                    
+                    <Button
+                      onClick={toggleMute}
+                      variant="ghost"
+                      size="icon"
+                      className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+                    >
+                      {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    </Button>
+                    
+                    <div className="flex items-center text-white text-sm">
+                      <span>{formatTime((progress[0] / 100) * duration)}</span>
+                      <span className="mx-1">/</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={toggleFullscreen}
+                      variant="ghost"
+                      size="icon"
+                      className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+                    >
+                      <Maximize className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Progress bar */}
+                <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-red-600 transition-all duration-100"
+                    style={{ width: `${progress[0]}%` }}
+                  />
+                  <div 
+                    className="h-full bg-white/30 -mt-2 transition-all duration-100"
+                    style={{ width: `${buffered[0]}%` }}
+                  />
+                </div>
+              </div>
             </>
-          ) : (
-            // For direct video files
+          ) : currentSource && currentSource.type === 'direct' ? (
+            // For direct video URLs (MP4, WebM, etc.)
             <video
               ref={mainVideoRef}
-              controls
-              width="100%"
-              height="100%"
-              preload="auto"
-              className="w-full h-full touch-manipulation"
-              onLoad={handleVideoLoad}
-              onPlaying={handleVideoPlaying}
-              onError={handleVideoError}
-              onEnded={onVideoEnd}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onVolumeChange={(e) => {
-                const video = e.target as HTMLVideoElement;
-                setVolume(video.volume * 100);
-                setIsMuted(video.muted);
-              }}
+              className="w-full h-full"
+              preload="metadata"
               playsInline
-              // Ajout de propriétés pour améliorer la compatibilité mobile
-              style={{ 
-                width: '100%', 
-                height: '100%',
-                objectFit: 'cover'
-              }}
-              // Sur mobile, on tente de forcer le chargement
-              {...(isMobileDevice && { autoPlay: true, muted: true })}
-            />
+            >
+              <source src={currentSource.url} type={`video/${currentSource.url.split('.').pop()}`} />
+              Votre navigateur ne supporte pas la lecture vidéo.
+            </video>
+          ) : (
+            // No source available
+            <div className="w-full h-full flex items-center justify-center bg-black text-white">
+              <div className="text-center">
+                <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-500" />
+                <p className="text-xl">Aucune source vidéo disponible</p>
+                <p className="text-gray-400 mt-2">Veuillez vérifier la configuration ou ajouter une URL vidéo</p>
+              </div>
+            </div>
           )}
         </>
       )}
+
+      {/* Controls for direct video URLs */}
+      {currentSource && currentSource.type === 'direct' && !showAd && (
+        <div 
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
+            showControls ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          {/* Progress bar */}
+          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-4 cursor-pointer">
+            <Slider
+              value={progress}
+              onValueChange={handleProgressChange}
+              max={100}
+              step={0.1}
+              className="w-full"
+            />
+            <div 
+              className="h-full bg-white/30 -mt-2 transition-all duration-100"
+              style={{ width: `${buffered[0]}%` }}
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={togglePlay}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+              >
+                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+              </Button>
+              
+              <Button
+                onClick={skipBackward}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+              >
+                <SkipBack className="w-5 h-5" />
+              </Button>
+              
+              <Button
+                onClick={skipForward}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
+              >
+                <SkipForward className="w-5 h-5" />
+              </Button>
+              
+              <Button
+                onClick={toggleMute}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+              >
+                {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+              </Button>
+              
+              <div className="flex items-center w-24 sm:w-32">
+                <Slider
+                  value={volume}
+                  onValueChange={handleVolumeChange}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="text-white text-sm hidden sm:block">
+                <span>{formatTime((progress[0] / 100) * duration)}</span>
+                <span className="mx-1">/</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setShowSettings(!showSettings)}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full relative"
+              >
+                <Settings className="w-5 h-5" />
+                {showSettings && (
+                  <div className="absolute bottom-full right-0 mb-2 w-48 bg-black/90 rounded-lg p-3 text-white text-sm z-20">
+                    <div className="mb-2">
+                      <label className="block mb-1">Vitesse</label>
+                      <select 
+                        value={playbackSpeed}
+                        onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                        className="w-full bg-gray-800 rounded p-1"
+                      >
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1">Normal</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-1">Qualité</label>
+                      <select 
+                        value={quality}
+                        onChange={(e) => setQuality(e.target.value)}
+                        className="w-full bg-gray-800 rounded p-1"
+                      >
+                        <option value="auto">Auto</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="480">480p</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </Button>
+              
+              {videoSources.length > 1 && (
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    className="bg-black/70 text-white hover:bg-black/90 rounded-full"
+                  >
+                    {currentSource?.name || 'Source'}
+                  </Button>
+                  <div className="absolute bottom-full right-0 mb-2 w-48 bg-black/90 rounded-lg p-2 z-20">
+                    {videoSources.map((source, index) => (
+                      <Button
+                        key={source.id}
+                        variant={index === currentSourceIndex ? "default" : "ghost"}
+                        className="w-full justify-start mb-1 text-white hover:bg-white/20"
+                        onClick={() => changeVideoSource(index)}
+                      >
+                        {source.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <Button
+                onClick={toggleFullscreen}
+                variant="ghost"
+                size="icon"
+                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+              >
+                <Maximize className="w-6 h-6" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default ZuploadVideoPlayer;
+}

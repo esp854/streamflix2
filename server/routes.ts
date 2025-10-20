@@ -1958,7 +1958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (!foundEpisode) {
-        console.log(`[DEBUG] Episode not found: Content ${content.id}, Season ${seasonNum}, Episode ${episodeNum}`);
+        console.log(`[DEBUG] Episode not found: Content ${content.id}, Season ${Num}, Episode ${episodeNum}`);
         return res.status(404).json({ error: "Episode not found" });
       }
       
@@ -1970,6 +1970,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching episode by TMDB ID, season, and episode:", error);
       res.status(500).json({ error: "Failed to fetch episode" });
+    }
+  });
+
+  // Get Frembed movie sources by TMDB ID
+  app.get("/api/frembed/movie/:tmdbId", async (req: any, res: any) => {
+    try {
+      const { tmdbId } = req.params;
+      const tmdbIdNum = parseInt(tmdbId);
+      
+      if (isNaN(tmdbIdNum)) {
+        return res.status(400).json({ error: "Invalid TMDB ID" });
+      }
+
+      // Check if Frembed service is configured
+      if (!frembedService.isConfigured()) {
+        return res.status(500).json({ error: "Frembed service not configured" });
+      }
+
+      const sources = await frembedService.getMovieSources(tmdbIdNum);
+      
+      if (!sources) {
+        return res.status(404).json({ error: "No sources found for this movie" });
+      }
+      
+      res.json({ sources });
+    } catch (error: any) {
+      console.error("Error fetching Frembed movie sources:", error);
+      res.status(500).json({ error: "Failed to fetch Frembed movie sources", details: error.message || 'Unknown error' });
+    }
+  });
+
+  // Get Frembed episode sources by TMDB ID, season, and episode
+  app.get("/api/frembed/tv/:tmdbId/:season/:episode", async (req: any, res: any) => {
+    try {
+      const { tmdbId, season, episode } = req.params;
+      const tmdbIdNum = parseInt(tmdbId);
+      const seasonNum = parseInt(season);
+      const episodeNum = parseInt(episode);
+      
+      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
+        return res.status(400).json({ error: "Invalid parameters" });
+      }
+
+      // Check if Frembed service is configured
+      if (!frembedService.isConfigured()) {
+        return res.status(500).json({ error: "Frembed service not configured" });
+      }
+
+      const sources = await frembedService.getEpisodeSources(tmdbIdNum, seasonNum, episodeNum);
+      
+      if (!sources) {
+        return res.status(404).json({ error: "No sources found for this episode" });
+      }
+      
+      res.json({ sources });
+    } catch (error: any) {
+      console.error("Error fetching Frembed episode sources:", error);
+      res.status(500).json({ error: "Failed to fetch Frembed episode sources", details: error.message || 'Unknown error' });
     }
   });
 
