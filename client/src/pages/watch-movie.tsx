@@ -901,6 +901,7 @@ export default function WatchMovie() {
                     variant="ghost"
                     size="icon"
                     className="text-white hover:bg-white/20 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12"
+                    title="Utilisez le bouton plein écran natif de Frembed"
                   >
                     {isFullscreen ? <Minimize className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" /> : <Maximize className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
                   </Button>
@@ -913,7 +914,7 @@ export default function WatchMovie() {
         {/* Keyboard Shortcuts Help - only show for non-Odysee and non-Zupload videos on desktop */}
         {!isOdyseeVideo && !isZuploadVideo && !isMobile && (
           <div className="absolute bottom-20 left-4 text-white text-xs opacity-50">
-            <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Plein écran)</p>
+            <p>Raccourcis: Espace/K (Play/Pause) • ← → (Navigation) • ↑ ↓ (Volume) • M (Muet) • F (Utilisez le bouton plein écran natif de Frembed)</p>
           </div>
         )}
 
