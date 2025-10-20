@@ -175,16 +175,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Sources avec API en français
+      // Services de streaming alternatifs
       if (mediaType === 'movie') {
-        // G2Stream API pour films français
-        sources.push({
-          id: 'g2stream',
-          name: 'G2Stream',
-          url: `https://api.g2stream.com/embed/movie/${tmdbId}`,
-          type: 'embed'
-        });
-        
         // French Stream
         sources.push({
           id: 'frenchstream',
@@ -193,30 +185,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
         
-        // Wiflix
+        // Alternatives fonctionnelles
         sources.push({
-          id: 'wiflix',
-          name: 'Wiflix',
-          url: `https://www.wiflix.me/film-${tmdbId}.html`,
+          id: 'voirseries',
+          name: 'VoirSeries',
+          url: `https://www.voirseries.co/film-${tmdbId}.html`,
           type: 'embed'
         });
         
-        // Alternative : Movizland
         sources.push({
-          id: 'movizland',
-          name: 'Movizland',
-          url: `https://www.movizland.com/watch-${tmdbId}-film.html`,
+          id: 'skstream',
+          name: 'SkStream',
+          url: `https://www.skstream.co/film-${tmdbId}.html`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        // G2Stream API pour séries françaises
-        sources.push({
-          id: 'g2stream-tv',
-          name: 'G2Stream',
-          url: `https://api.g2stream.com/embed/series/${tmdbId}/${seasonNumber}/${episodeNumber}`,
-          type: 'embed'
-        });
-        
         // French Stream pour séries
         sources.push({
           id: 'frenchstream-tv',
@@ -225,19 +208,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
         
-        // Wiflix pour séries
+        // Alternatives fonctionnelles pour séries
         sources.push({
-          id: 'wiflix-tv',
-          name: 'Wiflix',
-          url: `https://www.wiflix.me/serie-${tmdbId}-saison-${seasonNumber}.html`,
+          id: 'voirseries-tv',
+          name: 'VoirSeries',
+          url: `https://www.voirseries.co/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
           type: 'embed'
         });
         
-        // Alternative : Movizland pour séries
         sources.push({
-          id: 'movizland-tv',
-          name: 'Movizland',
-          url: `https://www.movizland.com/watch-${tmdbId}-saison-${seasonNumber}-episode-${episodeNumber}.html`,
+          id: 'skstream-tv',
+          name: 'SkStream',
+          url: `https://www.skstream.co/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
           type: 'embed'
         });
       }
