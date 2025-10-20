@@ -804,8 +804,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 }}
                 // Pour Frembed, utiliser les contrôles natifs - ne pas interférer
                 {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;",
-                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms"
+                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;"
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
