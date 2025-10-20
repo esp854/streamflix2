@@ -25,7 +25,7 @@ import { useState, useEffect } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 import TrendingPage from "./pages/trending";
 import Favorites from "./pages/favorites";
-import NowPlayingMovies from "./pages/now-playing-movies";
+import MoviesPage from "./pages/movies";
 
 const routes = [
   { path: "/", component: Home },
@@ -37,7 +37,7 @@ const routes = [
   { path: "/profile", component: Profile },
   { path: "/admin", component: AdminDashboard },
   // Routes manquantes
-  { path: "/films", component: NowPlayingMovies },
+  { path: "/films", component: MoviesPage },
   { path: "/tendances", component: TrendingPage },
   { path: "/ma-liste", component: Favorites },
   { path: "/*", component: NotFound },
@@ -99,7 +99,7 @@ function Router() {
       <Route path="/search" component={Search} />
       <Route path="/profile" component={Profile} />
       {/* Routes manquantes */}
-      <Route path="/films" component={NowPlayingMovies} />
+      <Route path="/films" component={MoviesPage} />
       <Route path="/tendances" component={TrendingPage} />
       <Route path="/ma-liste" component={Favorites} />
       <Route component={NotFound} />
