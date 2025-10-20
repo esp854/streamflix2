@@ -69,13 +69,6 @@ export default function MoviesPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Documentary movies (genre 99)
-  const { data: documentaryMovies, isLoading: documentaryLoading, isError: documentaryError } = useQuery({
-    queryKey: ['documentary-movies'],
-    queryFn: () => tmdbService.getMoviesByGenre(99),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
   // Drama movies (genre 18)
   const { data: dramaMovies, isLoading: dramaLoading, isError: dramaError } = useQuery({
     queryKey: ['drama-movies'],
@@ -139,13 +132,6 @@ export default function MoviesPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // TV Movie movies (genre 10770)
-  const { data: tvMovieMovies, isLoading: tvMovieLoading, isError: tvMovieError } = useQuery({
-    queryKey: ['tv-movie-movies'],
-    queryFn: () => tmdbService.getMoviesByGenre(10770),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
   // Thriller movies (genre 53)
   const { data: thrillerMovies, isLoading: thrillerLoading, isError: thrillerError } = useQuery({
     queryKey: ['thriller-movies'],
@@ -169,16 +155,16 @@ export default function MoviesPage() {
 
   const isLoading = popularLoading || nowPlayingLoading || upcomingLoading || topRatedLoading || 
                    actionLoading || adventureLoading || animationLoading || comedyLoading || 
-                   crimeLoading || documentaryLoading || dramaLoading || familyLoading || 
+                   crimeLoading || dramaLoading || familyLoading || 
                    fantasyLoading || historyLoading || horrorLoading || musicLoading || 
-                   mysteryLoading || romanceLoading || scienceFictionLoading || tvMovieLoading || 
+                   mysteryLoading || romanceLoading || scienceFictionLoading || 
                    thrillerLoading || warLoading || westernLoading;
 
   const hasError = popularError || nowPlayingError || upcomingError || topRatedError || 
                    actionError || adventureError || animationError || comedyError || 
-                   crimeError || documentaryError || dramaError || familyError || 
+                   crimeError || dramaError || familyError || 
                    fantasyError || historyError || horrorError || musicError || 
-                   mysteryError || romanceError || scienceFictionError || tvMovieError || 
+                   mysteryError || romanceError || scienceFictionError || 
                    thrillerError || warError || westernError;
 
   if (isLoading) {
@@ -196,7 +182,7 @@ export default function MoviesPage() {
           </div>
           
           <div className="space-y-8">
-            {[...Array(20)].map((_, index) => (
+            {[...Array(18)].map((_, index) => (
               <div key={index} className="space-y-4">
                 <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -304,14 +290,6 @@ export default function MoviesPage() {
             />
           )}
           
-          {documentaryMovies && documentaryMovies.length > 0 && (
-            <MovieRow 
-              title="Documentaire" 
-              movies={documentaryMovies} 
-              isLoading={documentaryLoading}
-            />
-          )}
-          
           {dramaMovies && dramaMovies.length > 0 && (
             <MovieRow 
               title="Drame" 
@@ -381,14 +359,6 @@ export default function MoviesPage() {
               title="Science-Fiction" 
               movies={scienceFictionMovies} 
               isLoading={scienceFictionLoading}
-            />
-          )}
-          
-          {tvMovieMovies && tvMovieMovies.length > 0 && (
-            <MovieRow 
-              title="Téléfilm" 
-              movies={tvMovieMovies} 
-              isLoading={tvMovieLoading}
             />
           )}
           
