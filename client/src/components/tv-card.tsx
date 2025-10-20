@@ -43,7 +43,7 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
    const { shareContent } = useShare();
    const { shouldRedirectToPayment } = useSubscriptionCheck();
 
-   // Fonction utilitaire pour extraire l'ID numérique
+   // Fonction utilitaire pour extraire l'ID numérique de manière plus robuste
    const getSeriesId = (): number => {
      if ('tmdbId' in series && series.tmdbId) {
        return series.tmdbId;
@@ -57,11 +57,12 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
        const parsed = parseInt(series.id, 10);
        return isNaN(parsed) ? 0 : parsed;
      }
+     if ('id' in series && typeof series.id === 'number') {
+       return series.id;
+     }
      return 0;
    };
 
-   // Check if series is favorite
-   const seriesId = getSeriesId();
    // Amélioration de la gestion de l'identifiant pour la navigation
    const stringSeriesId = (() => {
      if ('tmdbId' in series && series.tmdbId) {
@@ -76,8 +77,13 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
        // Sinon, on utilise l'ID tel quel
        return series.id;
      }
+     if ('id' in series && typeof series.id === 'number') {
+       return series.id.toString();
+     }
      return "0";
    })();
+   
+   const seriesId = getSeriesId();
    const { data: favoriteStatus } = checkFavorite(seriesId);
    const isFavorite = favoriteStatus?.isFavorite || false;
 

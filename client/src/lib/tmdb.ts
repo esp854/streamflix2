@@ -85,6 +85,8 @@ class TMDBService {
 
         // If successful or not a rate limit error, return the response
         if (response.ok || response.status !== 429) {
+          // Log API usage for monitoring
+          console.log(`TMDB API call to ${url}: ${response.status} ${response.statusText}`);
           return response;
         }
 
@@ -125,6 +127,7 @@ class TMDBService {
       const response = await this.fetchWithRetry(`${this.baseUrl}/trending`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
+        // Return empty array as fallback instead of throwing error
         return [];
       }
       const data: TMDBResponse = await response.json();
@@ -135,6 +138,7 @@ class TMDBService {
       return result;
     } catch (error) {
       console.error("Error fetching trending movies:", error);
+      // Return empty array as fallback instead of throwing error
       return [];
     }
   }
@@ -151,6 +155,7 @@ class TMDBService {
       const response = await this.fetchWithRetry(`${this.baseUrl}/popular`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
+        // Return empty array as fallback instead of throwing error
         return [];
       }
       const data: TMDBResponse = await response.json();
@@ -161,6 +166,7 @@ class TMDBService {
       return result;
     } catch (error) {
       console.error("Error fetching popular movies:", error);
+      // Return empty array as fallback instead of throwing error
       return [];
     }
   }
@@ -177,6 +183,7 @@ class TMDBService {
       const response = await this.fetchWithRetry(`${this.baseUrl}/genre/${genreId}`);
       if (!response.ok) {
         console.error("TMDB API error:", response.status, response.statusText);
+        // Return empty array as fallback instead of throwing error
         return [];
       }
       const data: TMDBResponse = await response.json();
@@ -187,6 +194,7 @@ class TMDBService {
       return result;
     } catch (error) {
       console.error("Error fetching movies by genre:", error);
+      // Return empty array as fallback instead of throwing error
       return [];
     }
   }
@@ -471,6 +479,12 @@ class TMDBService {
   }
 
   async getTVShowDetails(id: number): Promise<TVDetails | any> {
+    // Vérifier que l'ID est valide
+    if (!id || id <= 0) {
+      console.error("Invalid TV show ID:", id);
+      return {};
+    }
+    
     const cacheKey = `tv-${id}`;
     const cached = this.cache.get(cacheKey);
     if (cached) {
@@ -480,13 +494,23 @@ class TMDBService {
 
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/tv/${id}`);
+      console.log(`[DEBUG] TMDB TV show response status: ${response.status}, content-type: ${response.headers.get('content-type')}`);
+      
       if (!response.ok) {
-        console.error(`Failed to fetch TV show details for ID ${id}:`, response.status, response.statusText);
+        console.log(`[DEBUG] TMDB TV show response not ok, status: ${response.status}`);
         // Return empty object instead of throwing error to prevent complete failure
         return {};
       }
-      const data = await response.json();
       
+      const data = await response.json();
+      console.log(`[DEBUG] TMDB TV show data received:`, data);
+
+      // Vérifier que les données sont valides
+      if (!data || !data.id) {
+        console.error("Invalid TV show data received:", data);
+        return {};
+      }
+
       // Cache the result
       this.cache.set(cacheKey, data);
       return data;

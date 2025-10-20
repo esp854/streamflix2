@@ -13,7 +13,22 @@ import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
-  const tvId = parseInt(id || "0");
+  
+  // Amélioration de la gestion de l'identifiant pour gérer les différents formats
+  const tvId = (() => {
+    if (!id) return 0;
+    
+    // Si l'ID est au format "tmdb-12345", on extrait le numéro
+    if (id.startsWith('tmdb-')) {
+      const parsed = parseInt(id.substring(5), 10);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // Sinon, on tente une conversion normale
+    const parsed = parseInt(id, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  })();
+  
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set([1])); // First season expanded by default
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
@@ -22,7 +37,7 @@ export default function TVDetail() {
   const { data: tvDetails, isLoading, error } = useQuery({
     queryKey: [`/api/tmdb/tv/${tvId}`],
     queryFn: () => tmdbService.getTVShowDetails(tvId),
-    enabled: !!tvId,
+    enabled: !!tvId && tvId > 0,
   });
 
   // Check if series is favorite
