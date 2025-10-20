@@ -670,19 +670,16 @@ export default function WatchTV() {
     // Ne pas interférer avec les contrôles natifs de Frembed
     console.log('Utilisation du plein écran natif de Frembed');
   
-    // Pour Frembed, permettre l'accès au bouton plein écran natif
-    // On peut essayer d'accéder à l'iframe et déclencher son plein écran
-    const iframe = document.querySelector('iframe[src*="frembed"]') as HTMLIFrameElement;
-    if (iframe && iframe.contentWindow) {
-      // Tenter d'envoyer un message à l'iframe pour activer le plein écran
-      try {
-        iframe.contentWindow.postMessage('requestFullscreen', '*');
-      } catch (e) {
-        console.log('Impossible d\'accéder directement au plein écran Frembed');
-      }
+    // Vérifier si c'est une source Frembed
+    if (isZuploadVideo && videoUrl && (videoUrl.includes('frembed') || videoUrl.includes('frembed.fun'))) {
+      // Afficher un message à l'utilisateur pour utiliser le bouton plein écran natif
+      console.log('Veuillez utiliser le bouton plein écran natif de l\'iframe Frembed');
+      // Optionnellement, afficher une notification à l'utilisateur
+      alert('Veuillez utiliser le bouton plein écran natif de l\'iframe Frembed');
+      return;
     }
   
-    // Fallback: utiliser le conteneur si l'iframe ne répond pas
+    // Pour les autres sources, utiliser le plein écran du conteneur
     const videoContainer = document.querySelector('.relative.w-full.h-screen');
     if (videoContainer) {
       if (!document.fullscreenElement) {
