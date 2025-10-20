@@ -41,17 +41,10 @@ export default function MoviesPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Comedy movies (genre 35)
-  const { data: comedyMovies, isLoading: comedyLoading, isError: comedyError } = useQuery({
-    queryKey: ['comedy-movies'],
-    queryFn: () => tmdbService.getMoviesByGenre(35),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Horror movies (genre 27)
-  const { data: horrorMovies, isLoading: horrorLoading, isError: horrorError } = useQuery({
-    queryKey: ['horror-movies'],
-    queryFn: () => tmdbService.getMoviesByGenre(27),
+  // Adventure movies (genre 12)
+  const { data: adventureMovies, isLoading: adventureLoading, isError: adventureError } = useQuery({
+    queryKey: ['adventure-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(12),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -62,11 +55,131 @@ export default function MoviesPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Comedy movies (genre 35)
+  const { data: comedyMovies, isLoading: comedyLoading, isError: comedyError } = useQuery({
+    queryKey: ['comedy-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(35),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Crime movies (genre 80)
+  const { data: crimeMovies, isLoading: crimeLoading, isError: crimeError } = useQuery({
+    queryKey: ['crime-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(80),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Documentary movies (genre 99)
+  const { data: documentaryMovies, isLoading: documentaryLoading, isError: documentaryError } = useQuery({
+    queryKey: ['documentary-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(99),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Drama movies (genre 18)
+  const { data: dramaMovies, isLoading: dramaLoading, isError: dramaError } = useQuery({
+    queryKey: ['drama-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(18),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Family movies (genre 10751)
+  const { data: familyMovies, isLoading: familyLoading, isError: familyError } = useQuery({
+    queryKey: ['family-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(10751),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fantasy movies (genre 14)
+  const { data: fantasyMovies, isLoading: fantasyLoading, isError: fantasyError } = useQuery({
+    queryKey: ['fantasy-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(14),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // History movies (genre 36)
+  const { data: historyMovies, isLoading: historyLoading, isError: historyError } = useQuery({
+    queryKey: ['history-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(36),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Horror movies (genre 27)
+  const { data: horrorMovies, isLoading: horrorLoading, isError: horrorError } = useQuery({
+    queryKey: ['horror-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(27),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Music movies (genre 10402)
+  const { data: musicMovies, isLoading: musicLoading, isError: musicError } = useQuery({
+    queryKey: ['music-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(10402),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Mystery movies (genre 9648)
+  const { data: mysteryMovies, isLoading: mysteryLoading, isError: mysteryError } = useQuery({
+    queryKey: ['mystery-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(9648),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Romance movies (genre 10749)
+  const { data: romanceMovies, isLoading: romanceLoading, isError: romanceError } = useQuery({
+    queryKey: ['romance-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(10749),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Science Fiction movies (genre 878)
+  const { data: scienceFictionMovies, isLoading: scienceFictionLoading, isError: scienceFictionError } = useQuery({
+    queryKey: ['science-fiction-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(878),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // TV Movie movies (genre 10770)
+  const { data: tvMovieMovies, isLoading: tvMovieLoading, isError: tvMovieError } = useQuery({
+    queryKey: ['tv-movie-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(10770),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Thriller movies (genre 53)
+  const { data: thrillerMovies, isLoading: thrillerLoading, isError: thrillerError } = useQuery({
+    queryKey: ['thriller-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(53),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // War movies (genre 10752)
+  const { data: warMovies, isLoading: warLoading, isError: warError } = useQuery({
+    queryKey: ['war-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(10752),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Western movies (genre 37)
+  const { data: westernMovies, isLoading: westernLoading, isError: westernError } = useQuery({
+    queryKey: ['western-movies'],
+    queryFn: () => tmdbService.getMoviesByGenre(37),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   const isLoading = popularLoading || nowPlayingLoading || upcomingLoading || topRatedLoading || 
-                   actionLoading || comedyLoading || horrorLoading || animationLoading;
+                   actionLoading || adventureLoading || animationLoading || comedyLoading || 
+                   crimeLoading || documentaryLoading || dramaLoading || familyLoading || 
+                   fantasyLoading || historyLoading || horrorLoading || musicLoading || 
+                   mysteryLoading || romanceLoading || scienceFictionLoading || tvMovieLoading || 
+                   thrillerLoading || warLoading || westernLoading;
 
   const hasError = popularError || nowPlayingError || upcomingError || topRatedError || 
-                   actionError || comedyError || horrorError || animationError;
+                   actionError || adventureError || animationError || comedyError || 
+                   crimeError || documentaryError || dramaError || familyError || 
+                   fantasyError || historyError || horrorError || musicError || 
+                   mysteryError || romanceError || scienceFictionError || tvMovieError || 
+                   thrillerError || warError || westernError;
 
   if (isLoading) {
     return (
@@ -83,7 +196,7 @@ export default function MoviesPage() {
           </div>
           
           <div className="space-y-8">
-            {[...Array(6)].map((_, index) => (
+            {[...Array(20)].map((_, index) => (
               <div key={index} className="space-y-4">
                 <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -159,11 +272,75 @@ export default function MoviesPage() {
             />
           )}
           
+          {adventureMovies && adventureMovies.length > 0 && (
+            <MovieRow 
+              title="Aventure" 
+              movies={adventureMovies} 
+              isLoading={adventureLoading}
+            />
+          )}
+          
+          {animationMovies && animationMovies.length > 0 && (
+            <MovieRow 
+              title="Animation" 
+              movies={animationMovies} 
+              isLoading={animationLoading}
+            />
+          )}
+          
           {comedyMovies && comedyMovies.length > 0 && (
             <MovieRow 
               title="Comédie" 
               movies={comedyMovies} 
               isLoading={comedyLoading}
+            />
+          )}
+          
+          {crimeMovies && crimeMovies.length > 0 && (
+            <MovieRow 
+              title="Crime" 
+              movies={crimeMovies} 
+              isLoading={crimeLoading}
+            />
+          )}
+          
+          {documentaryMovies && documentaryMovies.length > 0 && (
+            <MovieRow 
+              title="Documentaire" 
+              movies={documentaryMovies} 
+              isLoading={documentaryLoading}
+            />
+          )}
+          
+          {dramaMovies && dramaMovies.length > 0 && (
+            <MovieRow 
+              title="Drame" 
+              movies={dramaMovies} 
+              isLoading={dramaLoading}
+            />
+          )}
+          
+          {familyMovies && familyMovies.length > 0 && (
+            <MovieRow 
+              title="Familial" 
+              movies={familyMovies} 
+              isLoading={familyLoading}
+            />
+          )}
+          
+          {fantasyMovies && fantasyMovies.length > 0 && (
+            <MovieRow 
+              title="Fantastique" 
+              movies={fantasyMovies} 
+              isLoading={fantasyLoading}
+            />
+          )}
+          
+          {historyMovies && historyMovies.length > 0 && (
+            <MovieRow 
+              title="Histoire" 
+              movies={historyMovies} 
+              isLoading={historyLoading}
             />
           )}
           
@@ -175,11 +352,67 @@ export default function MoviesPage() {
             />
           )}
           
-          {animationMovies && animationMovies.length > 0 && (
+          {musicMovies && musicMovies.length > 0 && (
             <MovieRow 
-              title="Animation" 
-              movies={animationMovies} 
-              isLoading={animationLoading}
+              title="Musique" 
+              movies={musicMovies} 
+              isLoading={musicLoading}
+            />
+          )}
+          
+          {mysteryMovies && mysteryMovies.length > 0 && (
+            <MovieRow 
+              title="Mystère" 
+              movies={mysteryMovies} 
+              isLoading={mysteryLoading}
+            />
+          )}
+          
+          {romanceMovies && romanceMovies.length > 0 && (
+            <MovieRow 
+              title="Romance" 
+              movies={romanceMovies} 
+              isLoading={romanceLoading}
+            />
+          )}
+          
+          {scienceFictionMovies && scienceFictionMovies.length > 0 && (
+            <MovieRow 
+              title="Science-Fiction" 
+              movies={scienceFictionMovies} 
+              isLoading={scienceFictionLoading}
+            />
+          )}
+          
+          {tvMovieMovies && tvMovieMovies.length > 0 && (
+            <MovieRow 
+              title="Téléfilm" 
+              movies={tvMovieMovies} 
+              isLoading={tvMovieLoading}
+            />
+          )}
+          
+          {thrillerMovies && thrillerMovies.length > 0 && (
+            <MovieRow 
+              title="Thriller" 
+              movies={thrillerMovies} 
+              isLoading={thrillerLoading}
+            />
+          )}
+          
+          {warMovies && warMovies.length > 0 && (
+            <MovieRow 
+              title="Guerre" 
+              movies={warMovies} 
+              isLoading={warLoading}
+            />
+          )}
+          
+          {westernMovies && westernMovies.length > 0 && (
+            <MovieRow 
+              title="Western" 
+              movies={westernMovies} 
+              isLoading={westernLoading}
             />
           )}
         </div>

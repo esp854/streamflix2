@@ -70,7 +70,11 @@ class SecurityLogger {
     const logLine = JSON.stringify(logEntry) + '\n';
     
     // Write to file
-    fs.appendFileSync(this.logFilePath, logLine);
+    try {
+      fs.appendFileSync(this.logFilePath, logLine);
+    } catch (error) {
+      console.error('Failed to write to security log file:', error);
+    }
     
     // Also log to console for immediate visibility
     console.log(`[SECURITY] ${logEntry.timestamp} - ${event.eventType} - ${event.ipAddress} - ${event.details || ''}`);
@@ -167,7 +171,7 @@ class SecurityLogger {
       eventType: 'UNAUTHORIZED_ACCESS',
       userId,
       ipAddress,
-      details: `Unauthorized access attempt to endpoint: ${endpoint}`,
+      details: `Unauthorized access attempt to endpoint: ${endpoint}${userId ? ` by user: ${userId}` : ''}`,
       severity: 'HIGH'
     });
   }

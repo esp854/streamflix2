@@ -35,22 +35,48 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-here-change-in-pro
 // Admin middleware
 async function requireAdmin(req: any, res: any, next: any) {
   try {
+    // Check if user is authenticated
     if (!req.user) {
       securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
       return res.status(401).json({ error: "Non authentifié" });
     }
     
+    // Validate user ID format
+    if (!req.user.userId || typeof req.user.userId !== 'string') {
+      securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, 'invalid_user_id');
+      return res.status(401).json({ error: "Token utilisateur invalide" });
+    }
+    
     // Check if user is admin by fetching from database
     const user = await storage.getUserById(req.user.userId);
-    if (!user || user.role !== "admin") {
+    if (!user) {
+      securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, req.user.userId);
+      return res.status(401).json({ error: "Utilisateur non trouvé" });
+    }
+    
+    if (user.role !== "admin") {
       securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, req.user.userId);
       return res.status(403).json({ error: "Accès administrateur requis" });
+    }
+    
+    // Additional security check: verify user is not banned
+    if (user.banned) {
+      securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, req.user.userId);
+      return res.status(403).json({ error: "Compte utilisateur suspendu" });
     }
     
     securityLogger.logAdminAccess(req.user.userId, req.ip || 'unknown', `Accessed ${req.path}`);
     next();
   } catch (error) {
     console.error("Error checking admin status:", error);
+    securityLogger.logEvent({
+      timestamp: new Date(),
+      eventType: 'ADMIN_ACCESS',
+      userId: req.user?.userId,
+      ipAddress: req.ip || 'unknown',
+      details: `Admin access error: ${(error as Error).message}`,
+      severity: 'HIGH'
+    });
     res.status(500).json({ error: "Erreur serveur" });
   }
 }
