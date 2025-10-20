@@ -92,13 +92,9 @@ export default function Series() {
       try {
         const response = await fetch("/api/admin/content");
         if (!response.ok) {
-          // Si l'utilisateur n'est pas authentifié ou n'a pas les droits
-          if (response.status === 401 || response.status === 403) {
-            console.log("Accès refusé - l'utilisateur n'est pas administrateur");
-            // Retourner un tableau vide au lieu de lancer une erreur
-            return [];
-          }
-          // Pour d'autres erreurs, retourner un tableau vide
+          // Pour toutes les erreurs (y compris 401/403), retourner un tableau vide
+          // Le serveur renverra maintenant le contenu actif même pour les utilisateurs non-admin
+          console.log("Erreur lors de la récupération du contenu local, statut:", response.status);
           return [];
         }
         const data = await response.json();
