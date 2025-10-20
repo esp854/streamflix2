@@ -1,45 +1,27 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { plans } from "./plans";
-console.log('Plans imported:', plans); // Debug log
 
-import { paymentService, type CustomerInfo } from "./payment-service";
-// Notification service will be implemented directly using storage
 import { db } from "./db";
 import { eq } from "drizzle-orm";
-import {
-  insertFavoriteSchema,
-  insertWatchHistorySchema,
-  insertWatchProgressSchema,
-  insertUserPreferencesSchema,
-  insertContactMessageSchema,
+import { 
+  insertFavoriteSchema, 
+  insertWatchHistorySchema, 
+  insertUserPreferencesSchema, 
+  insertContactMessageSchema, 
   insertUserSchema,
-  insertSubscriptionSchema,
-  insertPaymentSchema,
   insertBannerSchema,
   insertCollectionSchema,
   insertContentSchema,
   insertNotificationSchema,
   insertUserSessionSchema,
   insertViewTrackingSchema,
-  insertCommentSchema,
   users,
-  payments,
   notifications,
   userSessions,
   viewTracking,
   favorites,
-  watchHistory,
-  watchProgress,
-  userPreferences,
-  contactMessages,
-  subscriptions,
-  banners,
-  collections,
-  content,
-  episodes,
-  comments
+  watchHistory
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -271,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", authLimiter, /*bruteForceProtection,*/ async (req: any, res: any) => {
+  app.post("/api/auth/login", authLimiter, bruteForceProtection, async (req: any, res: any) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
@@ -289,8 +271,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Email ou mot de passe incorrect" });
       }
       
-      // Reset brute force protection on successful login - désactivé
-      // resetLoginAttempts(req, res, () => {});
+      // Reset brute force protection on successful login
+      resetLoginAttempts(req, res, () => {});
       
       // Generate JWT token
       const token = jwt.sign(
@@ -428,75 +410,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to add to watch history" });
       }
-    }
-  });
-
-  // Get watch progress
-  app.get("/api/watch-progress/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const progress = await storage.getWatchProgress(userId);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error fetching watch progress:", error);
-      res.status(500).json({ error: "Failed to fetch watch progress" });
-    }
-  });
-
-  // Create or update watch progress
-  app.post("/api/watch-progress", async (req, res) => {
-    try {
-      const progressData = insertWatchProgressSchema.parse(req.body);
-      const existingProgress = await storage.getWatchProgressByContent(
-        progressData.userId,
-        progressData.contentId || undefined,
-        progressData.episodeId || undefined
-      );
-
-      let progress;
-      if (existingProgress) {
-        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
-      } else {
-        progress = await storage.createWatchProgress(progressData);
-      }
-
-      res.json(progress);
-    } catch (error) {
-      console.error("Error creating/updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to save watch progress" });
-      }
-    }
-  });
-
-  // Update watch progress
-  app.put("/api/watch-progress/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const progressData = insertWatchProgressSchema.partial().parse(req.body);
-      const progress = await storage.updateWatchProgress(id, progressData);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update watch progress" });
-      }
-    }
-  });
-
-  // Delete watch progress
-  app.delete("/api/watch-progress/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteWatchProgress(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting watch progress:", error);
-      res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });
 
@@ -702,28 +615,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all payment information (admin only)
-  app.get("/api/admin/payments", requireAdmin, async (req, res) => {
-    try {
-      const payments = await storage.getPayments();
-      res.json(payments);
-    } catch (error) {
-      console.error("Error fetching all payments:", error);
-      res.status(500).json({ error: "Failed to fetch all payments" });
-    }
-  });
-
-  // Get all subscriptions (admin only)
-  app.get("/api/admin/subscriptions", requireAdmin, async (req, res) => {
-    try {
-      const subscriptions = await storage.getSubscriptions();
-      res.json(subscriptions);
-    } catch (error) {
-      console.error("Error fetching all subscriptions:", error);
-      res.status(500).json({ error: "Failed to fetch all subscriptions" });
-    }
-  });
-
   // Get all banners (admin only)
   app.get("/api/admin/banners", requireAdmin, async (req, res) => {
     try {
@@ -771,8 +662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all user sessions (admin only)
   app.get("/api/admin/user-sessions", requireAdmin, async (req, res) => {
     try {
-      const userSessions = await storage.getActiveSessions();
-      res.json(userSessions);
+      // Since there's no getAllUserSessions method, we'll need to implement this differently
+      // For now, return empty array
+      res.json([]);
     } catch (error) {
       console.error("Error fetching all user sessions:", error);
       res.status(500).json({ error: "Failed to fetch all user sessions" });
@@ -782,76 +674,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all view tracking (admin only)
   app.get("/api/admin/view-tracking", requireAdmin, async (req, res) => {
     try {
-      // Since there's no getAllViewTracking method, we'll implement this using existing methods
-      const allUsers = await storage.getAllUsers();
-      const allViewTracking = [];
-      
-      // Collect view tracking for all users
-      for (const user of allUsers) {
-        const userTracking = await storage.getViewTrackingByUserId(user.id);
-        allViewTracking.push(...userTracking);
-      }
-      
-      res.json(allViewTracking);
+      // Since there's no getAllViewTracking method, we'll need to implement this differently
+      // For now, return empty array
+      res.json([]);
     } catch (error) {
       console.error("Error fetching all view tracking:", error);
       res.status(500).json({ error: "Failed to fetch all view tracking" });
-    }
-  });
-
-  // Get analytics data (admin only)
-  app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
-    try {
-      // Get real analytics data from database
-      const users = await storage.getAllUsers();
-      const content = await storage.getAllContent();
-      const subscriptions = await storage.getSubscriptions();
-      const payments = await storage.getPayments();
-      const viewStats = await storage.getViewStats();
-      
-      const analytics = {
-        totalUsers: users.length,
-        activeUsers: users.filter(u => !u.banned).length,
-        newUsersThisWeek: users.filter(u => {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-          return new Date(u.createdAt) >= oneWeekAgo;
-        }).length,
-        totalMovies: content.filter(c => c.mediaType === 'movie').length,
-        totalSeries: content.filter(c => c.mediaType === 'tv').length,
-        dailyViews: viewStats.dailyViews,
-        weeklyViews: viewStats.weeklyViews,
-        activeSubscriptionsCount: subscriptions.filter(s => s.status === 'active').length,
-        activeSessions: (await storage.getActiveSessions()).length,
-        revenue: {
-          monthly: payments
-            .filter(p => p.status === 'success')
-            .reduce((sum, p) => sum + (p.amount || 0), 0),
-          growth: 12.5, // This would need to be calculated properly
-          totalPayments: payments.filter(p => p.status === 'success').length
-        },
-        subscriptions: {
-          basic: subscriptions.filter(s => s.planId === 'basic').length,
-          standard: subscriptions.filter(s => s.planId === 'standard').length,
-          premium: subscriptions.filter(s => s.planId === 'premium').length
-        },
-        recentActivity: {
-          newMoviesAdded: content.filter(c => {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            return new Date(c.createdAt) >= oneWeekAgo;
-          }).length,
-          newUsersToday: users.filter(u => {
-            const today = new Date();
-            return new Date(u.createdAt).toDateString() === today.toDateString();
-          }).length
-        }
-      };
-      
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 
@@ -916,38 +744,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid user data", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to create user" });
-      }
-    }
-  });
-
-  // Create subscription (admin only)
-  app.post("/api/admin/subscriptions", requireAdmin, async (req, res) => {
-    try {
-      const subscriptionData = insertSubscriptionSchema.parse(req.body);
-      const subscription = await storage.createSubscription(subscriptionData);
-      res.json(subscription);
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid subscription data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to create subscription" });
-      }
-    }
-  });
-
-  // Create payment (admin only)
-  app.post("/api/admin/payments", requireAdmin, async (req, res) => {
-    try {
-      const paymentData = insertPaymentSchema.parse(req.body);
-      const payment = await storage.createPayment(paymentData);
-      res.json(payment);
-    } catch (error) {
-      console.error("Error creating payment:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid payment data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to create payment" });
       }
     }
   });
@@ -1118,41 +914,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update subscription (admin only)
-  app.put("/api/admin/subscriptions/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const subscriptionData = insertSubscriptionSchema.parse(req.body);
-      const subscription = await storage.updateSubscription(id, subscriptionData);
-      res.json(subscription);
-    } catch (error) {
-      console.error("Error updating subscription:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid subscription data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update subscription" });
-      }
-    }
-  });
-
-  // Update payment (admin only)
-  app.put("/api/admin/payments/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const paymentData = insertPaymentSchema.parse(req.body);
-      // updatePayment doesn't exist, using a custom update approach
-      const [payment] = await db.update(payments).set(paymentData as any).where(eq(payments.id, id)).returning();
-      res.json(payment);
-    } catch (error) {
-      console.error("Error updating payment:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid payment data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update payment" });
-      }
-    }
-  });
-
   // Update banner (admin only)
   app.put("/api/admin/banners/:id", requireAdmin, async (req, res) => {
     try {
@@ -1308,30 +1069,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete subscription (admin only)
-  app.delete("/api/admin/subscriptions/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteSubscription(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting subscription:", error);
-      res.status(500).json({ error: "Failed to delete subscription" });
-    }
-  });
-
-  // Delete payment (admin only)
-  app.delete("/api/admin/payments/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deletePayment(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting payment:", error);
-      res.status(500).json({ error: "Failed to delete payment" });
-    }
-  });
-
   // Delete banner (admin only)
   app.delete("/api/admin/banners/:id", requireAdmin, async (req, res) => {
     try {
@@ -1401,613 +1138,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting view tracking:", error);
       res.status(500).json({ error: "Failed to delete view tracking" });
-    }
-  });
-
-
-
-  // Get subscription plans
-  app.get("/api/subscription/plans", async (req: any, res: any) => {
-    try {
-      res.json(plans);
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-      res.status(500).json({ error: "Failed to fetch plans" });
-    }
-  });
-
-  // Get available payment providers
-  app.get("/api/subscription/payment-providers", async (req: any, res: any) => {
-    try {
-      const providers = {
-        paypal: paymentService.isPayPalConfigured()
-      };
-      res.json(providers);
-    } catch (error) {
-      console.error("Error fetching payment providers:", error);
-      res.status(500).json({ error: "Failed to fetch payment providers" });
-    }
-  });
-
-  // Get PayPal client ID for frontend
-  app.get("/api/paypal/client-id", async (req: any, res: any) => {
-    try {
-      const clientId = paymentService.getPayPalClientId();
-      res.json({ clientId });
-    } catch (error) {
-      console.error("Error fetching PayPal client ID:", error);
-      res.status(500).json({ error: "Failed to fetch PayPal client ID" });
-    }
-  });
-
-  // Create a subscription
-  app.post("/api/subscription/create", async (req: any, res: any) => {
-    try {
-      const { paymentMethod, planId, paymentData } = req.body;
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      // Create subscription directly without payment service
-      const selectedPlan = plans[planId as keyof typeof plans];
-      if (!selectedPlan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      // For free plans, activate immediately
-      if (selectedPlan.amount === 0) {
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-        const subscription = await storage.createSubscription({
-          userId: userId,
-          planId: planId,
-          amount: selectedPlan.amount,
-          paymentMethod: paymentMethod,
-          status: 'active',
-          startDate: startDate,
-          endDate: endDate
-        });
-
-        return res.json({ subscriptionId: subscription.id, planDetails: selectedPlan });
-      }
-    } catch (error) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ error: "Failed to create subscription" });
-    }
-  });
-
-  // Get user subscriptions
-  app.get("/api/subscription/user", async (req: any, res: any) => {
-    try {
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      const subscriptions = await storage.getSubscriptionByUserId(userId);
-
-      res.json(subscriptions);
-    } catch (error) {
-      console.error("Error fetching user subscriptions:", error);
-      res.status(500).json({ error: "Failed to fetch user subscriptions" });
-    }
-  });
-
-  // Cancel a subscription
-  app.post("/api/subscription/cancel", async (req: any, res: any) => {
-    try {
-      const { subscriptionId } = req.body;
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      // Cancel subscription directly
-      const subscription = await storage.getSubscriptionByUserId(userId);
-      if (!subscription || subscription.id !== subscriptionId) {
-        return res.status(404).json({ error: "Abonnement non trouvé" });
-      }
-      await storage.cancelSubscription(subscriptionId);
-
-      res.json({ message: "Subscription cancelled successfully" });
-    } catch (error) {
-      console.error("Error cancelling subscription:", error);
-      res.status(500).json({ error: "Failed to cancel subscription" });
-    }
-  });
-
-  // Renew a subscription
-  app.post("/api/subscription/renew", async (req: any, res: any) => {
-    try {
-      const { subscriptionId } = req.body;
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      // Renew subscription directly
-      const subscription = await storage.getSubscriptionByUserId(userId);
-      if (!subscription || subscription.id !== subscriptionId) {
-        return res.status(404).json({ error: "Abonnement non trouvé" });
-      }
-      
-      const selectedPlan = plans[subscription.planId as keyof typeof plans];
-      if (!selectedPlan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-      
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
-      
-      await storage.updateSubscription(subscriptionId, { startDate, endDate });
-
-      res.json({ message: "Subscription renewed successfully" });
-    } catch (error) {
-      console.error("Error renewing subscription:", error);
-      res.status(500).json({ error: "Failed to renew subscription" });
-    }
-  });
-
-  // Get subscription details
-  app.get("/api/subscription/details/:subscriptionId", async (req: any, res: any) => {
-    try {
-      const { subscriptionId } = req.params;
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      const subscription = await storage.getSubscriptionByUserId(userId);
-      if (!subscription || subscription.id !== subscriptionId) {
-        return res.status(404).json({ error: "Abonnement non trouvé" });
-      }
-      
-      const selectedPlan = plans[subscription.planId as keyof typeof plans];
-      const details = { subscription, plan: selectedPlan };
-
-      res.json(details);
-    } catch (error) {
-      console.error("Error fetching subscription details:", error);
-      res.status(500).json({ error: "Failed to fetch subscription details" });
-    }
-  });
-
-  // Get payment history
-  app.get("/api/payment/history", async (req: any, res: any) => {
-    try {
-      const userId = req.userId;
-
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-
-      const payments = await storage.getUserPayments(userId);
-
-      res.json(payments);
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      res.status(500).json({ error: "Failed to fetch payment history" });
-    }
-  });
-
-  // Handle PayPal webhook
-  app.post("/api/webhook/paypal", async (req: any, res: any) => {
-    try {
-      console.log("PayPal webhook received:", req.body);
-      
-      // Verify webhook signature for security
-      const isValid = await paymentService.verifyPayPalWebhook(req);
-      if (!isValid) {
-        console.error("Invalid PayPal webhook signature");
-        return res.status(400).json({ error: "Invalid webhook signature" });
-      }
-      
-      // Process the webhook event
-      const event = req.body;
-      const eventType = event.event_type;
-      
-      console.log(`Processing PayPal event: ${eventType}`);
-      
-      switch (eventType) {
-        case 'PAYMENT.CAPTURE.COMPLETED':
-          // Payment completed successfully
-          await handlePayPalPaymentCompleted(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.DENIED':
-          // Payment was denied
-          await handlePayPalPaymentDenied(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.REFUNDED':
-          // Payment was refunded
-          await handlePayPalPaymentRefunded(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CREATED':
-          // Subscription created
-          await handlePayPalSubscriptionCreated(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CANCELLED':
-          // Subscription cancelled
-          await handlePayPalSubscriptionCancelled(event);
-          break;
-          
-        default:
-          console.log(`Unhandled PayPal event type: ${eventType}`);
-      }
-      
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error("Error processing PayPal webhook:", error);
-      res.status(500).json({ error: "Failed to process webhook" });
-    }
-  });
-
-  // Handle PayPal payment completed
-  async function handlePayPalPaymentCompleted(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId, planId } = customData;
-      
-      if (!userId || !planId) {
-        console.error("Missing userId or planId in custom data:", customData);
-        return;
-      }
-      
-      // Get plan information
-      const selectedPlan = plans[planId as keyof typeof plans];
-      if (!selectedPlan) {
-        console.error("Invalid plan ID:", planId);
-        return;
-      }
-      
-      // Calculate end date
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
-      
-      // Create subscription
-      const newSubscription = await storage.createSubscription({
-        userId: userId,
-        planId: planId,
-        amount: selectedPlan.amount,
-        paymentMethod: 'paypal',
-        status: 'active',
-        startDate,
-        endDate
-      });
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'success');
-      }
-      
-      console.log("Subscription activated for user:", userId);
-      
-      // Send confirmation email to user
-      try {
-        const user = await storage.getUserById(userId);
-        if (user && user.email) {
-          const subject = "Confirmation d'abonnement StreamFlix";
-          const html = `
-            <h2>Votre abonnement StreamFlix est maintenant actif !</h2>
-            <p>Bonjour ${user.username},</p>
-            <p>Nous vous confirmons que votre abonnement au plan ${selectedPlan.name} a été activé avec succès.</p>
-            <p>Vous pouvez maintenant profiter de tous les contenus disponibles sur StreamFlix.</p>
-            <p>Merci pour votre confiance !</p>
-            <p>Cordialement,<br>L'équipe StreamFlix</p>
-          `;
-          
-          // Note: We would need to implement the sendEmail function here
-          // await sendEmail(user.email, subject, html);
-          console.log(`Confirmation email would be sent to ${user.email}`);
-        }
-      } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
-      }
-    } catch (error) {
-      console.error("Error handling PayPal payment completed:", error);
-    }
-  }
-
-  // Handle PayPal payment denied
-  async function handlePayPalPaymentDenied(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom data:", customData);
-        return;
-      }
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'pending');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'failed');
-      }
-      
-      console.log("PayPal payment denied for user:", userId);
-    } catch (error) {
-      console.error("Error handling PayPal payment denied:", error);
-    }
-  }
-
-  // Handle PayPal payment refunded
-  async function handlePayPalPaymentRefunded(event: any) {
-    try {
-      const resource = event.resource;
-      const customId = resource.custom_id;
-      
-      if (!customId) {
-        console.error("No custom_id found in PayPal event");
-        return;
-      }
-      
-      // Parse custom_id to get user info
-      let customData;
-      try {
-        customData = JSON.parse(customId);
-      } catch (e) {
-        console.error("Failed to parse custom_id:", customId);
-        return;
-      }
-      
-      const { userId } = customData;
-      
-      if (!userId) {
-        console.error("Missing userId in custom data:", customData);
-        return;
-      }
-      
-      // Update payment status
-      const payments = await storage.getPayments();
-      const payment = payments.find(p => p.userId === userId && p.status === 'success');
-      if (payment) {
-        await storage.updatePaymentStatus(payment.id, 'refunded');
-      }
-      
-      console.log("PayPal payment refunded for user:", userId);
-    } catch (error) {
-      console.error("Error handling PayPal payment refunded:", error);
-    }
-  }
-
-  // Handle PayPal subscription created
-  async function handlePayPalSubscriptionCreated(event: any) {
-    try {
-      console.log("PayPal subscription created:", event);
-      // Handle subscription creation logic here if needed
-    } catch (error) {
-      console.error("Error handling PayPal subscription created:", error);
-    }
-  }
-
-  // Handle PayPal subscription cancelled
-  async function handlePayPalSubscriptionCancelled(event: any) {
-    try {
-      console.log("PayPal subscription cancelled:", event);
-      // Handle subscription cancellation logic here if needed
-    } catch (error) {
-      console.error("Error handling PayPal subscription cancelled:", error);
-    }
-  }
-
-  // Get PayPal client ID for frontend
-  app.get("/api/paypal/client-id", async (req: any, res: any) => {
-    try {
-      const clientId = paymentService.getPayPalClientId();
-      res.json({ clientId });
-    } catch (error) {
-      console.error("Error fetching PayPal client ID:", error);
-      res.status(500).json({ error: "Failed to fetch PayPal client ID" });
-    }
-  });
-
-  // Test PayPal configuration
-  app.get("/api/paypal/test", async (req: any, res: any) => {
-    try {
-      const result = await paymentService.testPayPalConfiguration();
-      res.json(result);
-    } catch (error: any) {
-      console.error("PayPal test error:", error);
-      res.status(500).json({ configured: false, error: error.message });
-    }
-  });
-
-  // Capture PayPal payment
-  app.post("/api/subscription/capture-paypal/:paymentId", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { paymentId } = req.params;
-      const { orderId } = req.body;
-
-      // Capture the PayPal order
-      const captureResult = await paymentService.capturePayPalPayment(orderId);
-
-      if (captureResult.success) {
-        // Update payment status in database
-        await storage.updatePaymentStatus(paymentId, 'success');
-
-        // Activate subscription
-        const payment = await storage.getPaymentById(paymentId);
-        if (payment && (payment.paymentData as any)?.planId) {
-          const planId = (payment.paymentData as any).planId;
-          const selectedPlan = plans[planId as keyof typeof plans];
-          if (selectedPlan) {
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-            await storage.createSubscription({
-              userId: req.user.userId,
-              planId,
-              amount: selectedPlan.amount,
-              paymentMethod: 'paypal',
-              status: 'active',
-              startDate,
-              endDate
-            });
-          }
-        }
-
-        res.json({ status: 'COMPLETED', paymentId });
-      } else {
-        res.status(400).json({ error: captureResult.error });
-      }
-    } catch (error: any) {
-      console.error("Error capturing PayPal payment:", error);
-      res.status(500).json({ error: error.message || "Erreur lors de la capture du paiement PayPal" });
-    }
-  });
-
-  // Create payment invoice for subscription
-  app.post("/api/subscription/create-payment", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createPayment(planId, info, user.id);
-      // Retourner le résultat tel quel (paymentLink, approval_url, paymentId, qrCode, ...)
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement" });
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      if (!paymentId) {
-        return res.status(400).json({ error: "Payment ID requis" });
-      }
-
-      const status = await paymentService.checkPaymentStatus(paymentId);
-      return res.json(status);
-    } catch (error: any) {
-      console.error("Erreur lors de la vérification du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la vérification du paiement" });
-    }
-  });
-
-  // Get user subscription
-  app.get("/api/subscription/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const subscription = await storage.getUserSubscription(userId);
-      res.json(subscription);
-    } catch (error) {
-      console.error("Error fetching user subscription:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'abonnement" });
-    }
-  });
-
-  // Cancel user subscription
-  app.post("/api/subscription/:userId/cancel", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path, req.user.userId);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const subscription = await storage.getUserSubscription(userId);
-      if (!subscription) {
-        return res.status(404).json({ error: "Aucun abonnement trouvé pour cet utilisateur" });
-      }
-      
-      // Cancel subscription
-      await storage.updateSubscription(subscription.id, { status: 'cancelled' });
-      
-      res.json({ 
-        success: true, 
-        message: "Abonnement annulé avec succès" 
-      });
-    } catch (error) {
-      console.error("Error cancelling subscription:", error);
-      res.status(500).json({ error: "Erreur lors de l'annulation de l'abonnement" });
     }
   });
 
@@ -2308,185 +1438,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== NOTIFICATIONS SYSTEM =====
-  
-  // Get user notifications
-  app.get("/api/notifications", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const notifications = await storage.getUserNotifications(req.user.userId);
-      res.json(notifications);
-    } catch (error) {
-      console.error("Error fetching user notifications:", error);
-      res.status(500).json({ error: "Failed to fetch notifications" });
-    }
-  });
-
-  // Get notification count for user
-  app.get("/api/notifications/count", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const notifications = await storage.getUserNotifications(req.user.userId);
-      const unreadCount = notifications.filter(n => !n.read).length;
-      
-      res.json({ 
-        total: notifications.length,
-        unread: unreadCount,
-        read: notifications.length - unreadCount
-      });
-    } catch (error) {
-      console.error("Error getting notification count:", error);
-      res.status(500).json({ error: "Failed to get notification count" });
-    }
-  });
-
-  // Mark notification as read
-  app.put("/api/notifications/:id/read", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const { id } = req.params;
-      
-      // Use the notification service for real-time updates
-      const notification = await storage.markNotificationAsRead(id);
-      res.json({ success: true, notification });
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-      res.status(500).json({ error: "Failed to mark notification as read" });
-    }
-  });
-
-  // Mark all notifications as read for user
-  app.put("/api/notifications/read-all", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const notifications = await storage.getUserNotifications(req.user.userId);
-      const unreadNotifications = notifications.filter(n => !n.read);
-      
-      // Mark all as read
-      const updatePromises = unreadNotifications.map(notification => 
-        storage.markNotificationAsRead(notification.id)
-      );
-      
-      await Promise.all(updatePromises);
-      
-      res.json({ 
-        success: true, 
-        message: `Marked ${unreadNotifications.length} notifications as read` 
-      });
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      res.status(500).json({ error: "Failed to mark all notifications as read" });
-    }
-  });
-
-  // Delete notification
-  app.delete("/api/notifications/:id", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const { id } = req.params;
-      
-      // First verify that the notification belongs to the user
-      const notifications = await storage.getUserNotifications(req.user.userId);
-      const notification = notifications.find(n => n.id === id);
-      
-      if (!notification) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
-      
-      await storage.deleteNotification(id);
-      res.json({ success: true, message: "Notification deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting notification:", error);
-      res.status(500).json({ error: "Failed to delete notification" });
-    }
-  });
-
-  // ===== ADMIN NOTIFICATIONS =====
-  
-  // Get all notifications (admin only)
-  app.get("/api/admin/notifications", requireAdmin, async (req, res) => {
-    try {
-      const notifications = await storage.getAllNotifications();
-      res.json(notifications);
-    } catch (error) {
-      console.error("Error fetching all notifications:", error);
-      res.status(500).json({ error: "Failed to fetch notifications" });
-    }
-  });
-
-  // Send notification to specific user (admin only)
+  // Send notification (admin only)
   app.post("/api/admin/notifications/send", requireAdmin, async (req, res) => {
     try {
-      const { userId, title, message, type } = req.body;
-      
-      if (!userId || !title || !message) {
-        return res.status(400).json({ error: "Missing required fields: userId, title, message" });
-      }
-      
-      const notification = await storage.createNotification({
-        userId,
-        title,
-        message,
-        type: type || 'info',
-        read: false
-      });
-      
-      res.status(201).json({ 
-        success: true, 
-        message: "Notification sent successfully",
-        notification 
-      });
+      const notificationData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(notificationData);
+      res.json(notification);
     } catch (error) {
       console.error("Error sending notification:", error);
-      res.status(500).json({ error: "Failed to send notification" });
-    }
-  });
-
-  // Send announcement to all users (admin only)
-  app.post("/api/admin/notifications/announcement", requireAdmin, async (req, res) => {
-    try {
-      const { subject, message } = req.body;
-      
-      if (!subject || !message) {
-        return res.status(400).json({ error: "Missing required fields: subject, message" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid notification data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to send notification" });
       }
-      
-      // Get all users and send notification to each
-      const allUsers = await storage.getAllUsers();
-      const notificationPromises = allUsers.map(user => 
-        storage.createNotification({
-          userId: user.id,
-          title: subject,
-          message,
-          type: 'announcement',
-          read: false
-        })
-      );
-      const notifications = await Promise.all(notificationPromises);
-      
-      res.status(201).json({ 
-        success: true, 
-        message: "Announcement sent to all users successfully",
-        notificationsCount: notifications.length
-      });
-    } catch (error) {
-      console.error("Error sending announcement:", error);
-      res.status(500).json({ error: "Failed to send announcement" });
     }
   });
 
@@ -2517,76 +1481,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all user sessions (admin only)
-  app.get("/api/admin/user-sessions", requireAdmin, async (req, res) => {
-    try {
-      const userSessions = await storage.getActiveSessions();
-      res.json(userSessions);
-    } catch (error) {
-      console.error("Error fetching all user sessions:", error);
-      res.status(500).json({ error: "Failed to fetch all user sessions" });
-    }
-  });
-
-  // Get all view tracking (admin only)
-  app.get("/api/admin/view-tracking", requireAdmin, async (req, res) => {
-    try {
-      // Since there's no getAllViewTracking method, we'll implement this using existing methods
-      const viewTrackingData = await storage.getViewTrackingByUserId('all');
-      res.json(viewTrackingData);
-    } catch (error) {
-      console.error("Error fetching all view tracking:", error);
-      res.status(500).json({ error: "Failed to fetch all view tracking" });
-    }
-  });
-
-  // Get analytics data (admin only)
+  // Get analytics (admin only)
   app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
     try {
-      // Get real analytics data from database
+      // We'll implement this by getting data from various sources
       const users = await storage.getAllUsers();
-      const content = await storage.getAllContent();
       const subscriptions = await storage.getSubscriptions();
       const payments = await storage.getPayments();
       const viewStats = await storage.getViewStats();
       
       const analytics = {
-        totalUsers: users.length,
-        activeUsers: users.filter(u => !u.banned).length,
-        newUsersThisWeek: users.filter(u => {
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-          return new Date(u.createdAt) >= oneWeekAgo;
-        }).length,
-        totalMovies: content.filter(c => c.mediaType === 'movie').length,
-        totalSeries: content.filter(c => c.mediaType === 'tv').length,
-        dailyViews: viewStats.dailyViews,
-        weeklyViews: viewStats.weeklyViews,
-        activeSubscriptionsCount: subscriptions.filter(s => s.status === 'active').length,
-        activeSessions: (await storage.getActiveSessions()).length,
-        revenue: {
-          monthly: payments
-            .filter(p => p.status === 'success')
-            .reduce((sum, p) => sum + (p.amount || 0), 0),
-          growth: 12.5, // This would need to be calculated properly
-          totalPayments: payments.filter(p => p.status === 'success').length
-        },
-        subscriptions: {
-          basic: subscriptions.filter(s => s.planId === 'basic').length,
-          standard: subscriptions.filter(s => s.planId === 'standard').length,
-          premium: subscriptions.filter(s => s.planId === 'premium').length
-        },
-        recentActivity: {
-          newMoviesAdded: content.filter(c => {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            return new Date(c.createdAt) >= oneWeekAgo;
-          }).length,
-          newUsersToday: users.filter(u => {
-            const today = new Date();
-            return new Date(u.createdAt).toDateString() === today.toDateString();
-          }).length
-        }
+        users: users.length,
+        subscriptions: subscriptions.length,
+        payments: payments.length,
+        viewStats
       };
       
       res.json(analytics);
@@ -2598,17 +1506,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get banners (admin only)
   app.get("/api/admin/banners", requireAdmin, async (req, res) => {
-    try {
-      const banners = await storage.getBanners();
-      res.json(banners);
-    } catch (error) {
-      console.error("Error fetching banners:", error);
-      res.status(500).json({ error: "Failed to fetch banners" });
-    }
-  });
-
-  // Get public banners (no authentication required)
-  app.get("/api/banners", async (req, res) => {
     try {
       const banners = await storage.getBanners();
       res.json(banners);
@@ -2647,7 +1544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get content (admin only)
-  app.get("/api/admin/content", requireAdmin, async (req: any, res: any) => {
+  app.get("/api/admin/content", requireAdmin, async (req, res) => {
     try {
       const content = await storage.getContent();
       res.json(content);
@@ -2766,10 +1663,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'vimeo.com',
         'mux.com',
         'player.mux.com',
-        'zupload.cc',
-        'frembed.cfd', // Ajout du support pour frembed.cfd
-        'vidsrc.me', // Ajout du support pour vidsrc
-        'superembed.stream', // Ajout du support pour superembed
         '.mp4',
         '.webm',
         '.ogg',
@@ -2787,9 +1680,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (!isSupported) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           error: "URL is not from a recognized video platform",
-          supported_platforms: "Odysee, YouTube, Vimeo, Mux, Zupload.cc, Frembed.cfd, VidSrc, SuperEmbed, and direct video files"
+          supported_platforms: "Odysee, YouTube, Vimeo, Mux, and direct video files"
         });
       }
       
@@ -2909,22 +1802,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Données d'épisode incomplètes" });
       }
       
-      // Decode HTML entities in the URL if present
-      if (episodeData.odyseeUrl) {
-        try {
-          // Simple HTML entity decoding
-          episodeData.odyseeUrl = episodeData.odyseeUrl
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#x2F;/g, '/')
-            .replace(/&#39;/g, "'");
-        } catch (e) {
-          // If we can't decode, just use the original URL
-        }
-      }
-      
       const episode = await storage.createEpisode(episodeData);
       res.json(episode);
     } catch (error) {
@@ -2940,22 +1817,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!episodeId) {
         return res.status(400).json({ error: "ID de l'épisode requis" });
-      }
-      
-      // Decode HTML entities in the URL if present
-      if (updateData.odyseeUrl) {
-        try {
-          // Simple HTML entity decoding
-          updateData.odyseeUrl = updateData.odyseeUrl
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#x2F;/g, '/')
-            .replace(/&#39;/g, "'");
-        } catch (e) {
-          // If we can't decode, just use the original URL
-        }
       }
       
       const episode = await storage.updateEpisode(episodeId, updateData);
@@ -2982,42 +1843,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public endpoint: get episode by TMDB ID + season + episode
-  app.get("/api/episodes/tv/:tmdbId/:season/:episode", async (req: any, res: any) => {
-    try {
-      const tmdbIdNum = parseInt(req.params.tmdbId);
-      const seasonNum = parseInt(req.params.season);
-      const episodeNum = parseInt(req.params.episode);
-
-      console.log(`[DEBUG] Episode request: TMDB ${tmdbIdNum}, Season ${seasonNum}, Episode ${episodeNum}`);
-
-      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
-        console.log(`[DEBUG] Invalid parameters: tmdbId=${req.params.tmdbId}, season=${req.params.season}, episode=${req.params.episode}`);
-        return res.status(400).json({ error: "Paramètres invalides" });
-      }
-
-      // Get content by TMDB (any status to allow inactive items still being setup)
-      const content = await storage.getContentByTmdbIdAnyStatus(tmdbIdNum) || await storage.getContentByTmdbId(tmdbIdNum);
-      console.log(`[DEBUG] Content found:`, content ? { id: content.id, title: content.title, mediaType: content.mediaType } : 'null');
-
-      if (!content) {
-        console.log(`[DEBUG] Content not found for TMDB ID ${tmdbIdNum}`);
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-
-      const allEpisodes = await storage.getEpisodesByContentId(content.id);
-      console.log(`[DEBUG] Episodes found for content ${content.id}: ${allEpisodes.length} episodes`);
-
-      const ep = allEpisodes.find((e: any) => Number(e.seasonNumber) === seasonNum && Number(e.episodeNumber) === episodeNum);
-      console.log(`[DEBUG] Episode found:`, ep ? { id: ep.id, title: ep.title, odyseeUrl: ep.odyseeUrl } : 'null');
-
-      return res.json({ episode: ep || null });
-    } catch (error) {
-      console.error("Error fetching episode by TMDB/season/episode:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'épisode" });
-    }
-  });
-
   // Test endpoint to check content
   app.get("/api/test-content", async (req: any, res: any) => {
     try {
@@ -3029,224 +1854,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Import episodes for all TV shows that don't have them
-  app.post("/api/admin/import-all-episodes", requireAdmin, async (req: any, res: any) => {
-    try {
-      // Verify that user is authenticated as admin
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Verify that user is admin
-      const user = await storage.getUserById(req.user.userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ error: "Accès administrateur requis" });
-      }
-
-      console.log("Starting bulk episode import for all TV shows...");
-
-      // Get all TV shows
-      const allContent = await storage.getAllContent();
-      const tvShows = allContent.filter(c => c.mediaType === 'tv');
-
-      console.log(`Found ${tvShows.length} TV shows to process`);
-
-      let totalEpisodesImported = 0;
-      let showsProcessed = 0;
-      const results = [];
-
-      const apiKey = process.env.TMDB_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      // Process each TV show
-      for (const show of tvShows.slice(0, 10)) { // Limit to first 10 shows for testing
-        try {
-          console.log(`Processing show: ${show.title} (TMDB ID: ${show.tmdbId})`);
-
-          // Check if show already has episodes
-          const existingEpisodes = await storage.getEpisodesByContentId(show.id);
-          if (existingEpisodes.length > 0) {
-            console.log(`Show "${show.title}" already has ${existingEpisodes.length} episodes, skipping...`);
-            results.push({
-              showId: show.id,
-              title: show.title,
-              status: 'skipped',
-              reason: 'already has episodes',
-              existingEpisodes: existingEpisodes.length
-            });
-            continue;
-          }
-
-          // Fetch TV show details from TMDB
-          const showResponse = await fetch(
-            `https://api.themoviedb.org/3/tv/${show.tmdbId}?api_key=${apiKey}&language=fr-FR`
-          );
-
-          if (!showResponse.ok) {
-            console.error(`Failed to fetch show ${show.title}: ${showResponse.status}`);
-            results.push({
-              showId: show.id,
-              title: show.title,
-              status: 'error',
-              reason: 'failed to fetch from TMDB'
-            });
-            continue;
-          }
-
-          const showData = await showResponse.json();
-          const seasons = showData.seasons || [];
-
-          let showEpisodesImported = 0;
-
-          // Import episodes for each season (limit to first 3 seasons for testing)
-          for (const season of seasons.slice(0, 3)) {
-            if (season.season_number === 0) continue; // Skip specials
-
-            try {
-              // Fetch season details
-              const seasonResponse = await fetch(
-                `https://api.themoviedb.org/3/tv/${show.tmdbId}/season/${season.season_number}?api_key=${apiKey}&language=fr-FR`
-              );
-
-              if (!seasonResponse.ok) {
-                console.error(`Failed to fetch season ${season.season_number} for ${show.title}: ${seasonResponse.status}`);
-                continue;
-              }
-
-              const seasonData = await seasonResponse.json();
-              const episodes = seasonData.episodes || [];
-
-              // Import each episode
-              for (const episode of episodes) {
-                try {
-                  // Check if episode already exists (double check)
-                  const checkEpisodes = await storage.getEpisodesByContentId(show.id);
-                  const episodeExists = checkEpisodes.some(
-                    ep => ep.seasonNumber === season.season_number && ep.episodeNumber === episode.episode_number
-                  );
-
-                  if (episodeExists) continue;
-
-                  // Prepare episode data
-                  const episodeData = {
-                    contentId: show.id,
-                    seasonNumber: season.season_number,
-                    episodeNumber: episode.episode_number,
-                    title: episode.name || `Épisode ${episode.episode_number}`,
-                    description: episode.overview || '',
-                    odyseeUrl: '', // Empty by default
-                    muxPlaybackId: '',
-                    muxUrl: '',
-                    duration: episode.runtime ? episode.runtime * 60 : null,
-                    releaseDate: episode.air_date || '',
-                    active: true
-                  };
-
-                  // Add to database
-                  await storage.createEpisode(episodeData);
-                  showEpisodesImported++;
-                  totalEpisodesImported++;
-
-                } catch (episodeError) {
-                  console.error(`Error adding episode S${season.season_number}E${episode.episode_number} for ${show.title}:`, episodeError);
-                }
-              }
-            } catch (seasonError) {
-              console.error(`Error processing season ${season.season_number} for ${show.title}:`, seasonError);
-            }
-          }
-
-          results.push({
-            showId: show.id,
-            title: show.title,
-            status: 'success',
-            episodesImported: showEpisodesImported,
-            seasonsProcessed: Math.min(seasons.length, 3)
-          });
-
-          showsProcessed++;
-
-          // Add delay between shows to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-        } catch (showError: any) {
-          console.error(`Error processing show ${show.title}:`, showError);
-          results.push({
-            showId: show.id,
-            title: show.title,
-            status: 'error',
-            reason: showError.message || 'Unknown error'
-          });
-        }
-      }
-
-      console.log(`Bulk episode import completed. Total episodes imported: ${totalEpisodesImported}`);
-
-      res.json({
-        success: true,
-        message: `Bulk episode import completed`,
-        showsProcessed,
-        totalEpisodesImported,
-        results
-      });
-    } catch (error) {
-      console.error("Error in bulk episode import:", error);
-      res.status(500).json({ error: "Failed to import episodes: " + (error as Error).message });
-    }
-  });
-
-  // Debug endpoint to check episodes in database
-  app.get("/api/debug/episodes", async (req: any, res: any) => {
-    try {
-      console.log("[DEBUG] Checking episodes in database...");
-      const allContent = await storage.getAllContent();
-      const tvShows = allContent.filter(c => c.mediaType === 'tv');
-      console.log(`[DEBUG] Found ${tvShows.length} TV shows in database`);
-
-      let totalEpisodes = 0;
-      const episodesByShow = [];
-
-      for (const show of tvShows.slice(0, 5)) { // Check first 5 shows
-        const episodes = await storage.getEpisodesByContentId(show.id);
-        totalEpisodes += episodes.length;
-        episodesByShow.push({
-          showId: show.id,
-          showTitle: show.title,
-          episodeCount: episodes.length,
-          episodes: episodes.slice(0, 3) // Show first 3 episodes
-        });
-        console.log(`[DEBUG] Show "${show.title}" has ${episodes.length} episodes`);
-      }
-
-      res.json({
-        totalTVShows: tvShows.length,
-        totalEpisodes,
-        episodesByShow,
-        message: totalEpisodes === 0 ? "NO EPISODES FOUND IN DATABASE - This explains the problem!" : "Episodes found in database"
-      });
-    } catch (error) {
-      console.error("Error checking episodes:", error);
-      res.status(500).json({ error: "Failed to check episodes" });
-    }
-  });
-
   // Get content by TMDB ID (for frontend player)
   app.get("/api/contents/tmdb/:tmdbId", async (req: any, res: any) => {
     try {
       const { tmdbId } = req.params;
-
+      
       // Validate input
       if (!tmdbId) {
         return res.status(400).json({ error: "tmdbId is required" });
       }
-
+      
       const tmdbIdNum = parseInt(tmdbId);
       if (isNaN(tmdbIdNum)) {
         return res.status(400).json({ error: "Invalid tmdbId format" });
       }
-
+      
       // Get content by TMDB ID
       const content = await storage.getContentByTmdbId(tmdbIdNum);
       
@@ -3527,139 +2149,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error searching content:", error);
       res.status(500).json({ error: "Failed to search content: " + (error as Error).message });
-    }
-  });
-
-  // Import episodes for a specific TV show by TMDB ID
-  app.post("/api/admin/import-episodes", requireAdmin, async (req: any, res: any) => {
-    try {
-      // Verify that user is authenticated as admin
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Verify that user is admin
-      const user = await storage.getUserById(req.user.userId);
-      if (!user || user.role !== "admin") {
-        return res.status(403).json({ error: "Accès administrateur requis" });
-      }
-
-      const { tmdbId, contentId } = req.body;
-
-      if (!tmdbId || !contentId) {
-        return res.status(400).json({ error: "tmdbId and contentId parameters are required" });
-      }
-
-      console.log(`Importing episodes for TMDB ID: ${tmdbId}, Content ID: ${contentId}`);
-
-      // Check if content exists and is a TV series
-      const existingContent = await storage.getContentById(contentId);
-      if (!existingContent) {
-        return res.status(404).json({ error: "Content not found" });
-      }
-
-      if (existingContent.mediaType !== 'tv') {
-        return res.status(400).json({ error: "Content must be a TV series" });
-      }
-
-      // Fetch TV show details from TMDB to get seasons
-      const apiKey = process.env.TMDB_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      const showResponse = await fetch(
-        `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${apiKey}&language=fr-FR`
-      );
-
-      if (!showResponse.ok) {
-        console.error(`TMDB API error: ${showResponse.status} ${showResponse.statusText}`);
-        return res.status(500).json({ error: "Failed to fetch TV show details" });
-      }
-
-      const showData = await showResponse.json();
-      const seasons = showData.seasons || [];
-
-      console.log(`Found ${seasons.length} seasons for TV show "${showData.name}"`);
-
-      let totalEpisodesImported = 0;
-
-      // Import episodes for each season
-      for (const season of seasons) {
-        if (season.season_number === 0) continue; // Skip specials
-
-        console.log(`Importing season ${season.season_number} with ${season.episode_count} episodes...`);
-
-        try {
-          // Fetch season details
-          const seasonResponse = await fetch(
-            `https://api.themoviedb.org/3/tv/${tmdbId}/season/${season.season_number}?api_key=${apiKey}&language=fr-FR`
-          );
-
-          if (!seasonResponse.ok) {
-            console.error(`Failed to fetch season ${season.season_number}: ${seasonResponse.status}`);
-            continue;
-          }
-
-          const seasonData = await seasonResponse.json();
-          const episodes = seasonData.episodes || [];
-
-          // Import each episode
-          for (const episode of episodes) {
-            try {
-              // Check if episode already exists
-              const existingEpisodes = await storage.getEpisodesByContentId(contentId);
-              const episodeExists = existingEpisodes.some(
-                ep => ep.seasonNumber === season.season_number && ep.episodeNumber === episode.episode_number
-              );
-
-              if (episodeExists) {
-                console.log(`Episode S${season.season_number}E${episode.episode_number} already exists, skipping...`);
-                continue;
-              }
-
-              // Prepare episode data
-              const episodeData = {
-                contentId,
-                seasonNumber: season.season_number,
-                episodeNumber: episode.episode_number,
-                title: episode.name || `Épisode ${episode.episode_number}`,
-                description: episode.overview || '',
-                odyseeUrl: '', // Empty by default, will be filled when video link is added
-                muxPlaybackId: '',
-                muxUrl: '',
-                duration: episode.runtime ? episode.runtime * 60 : null, // Convert minutes to seconds
-                releaseDate: episode.air_date || '',
-                active: true
-              };
-
-              // Add to database
-              const newEpisode = await storage.createEpisode(episodeData);
-              console.log(`Added episode "${episode.name}" (S${season.season_number}E${episode.episode_number}) to database`);
-              totalEpisodesImported++;
-
-              // Add a small delay to avoid rate limiting
-              await new Promise(resolve => setTimeout(resolve, 100));
-            } catch (episodeError) {
-              console.error(`Error adding episode S${season.season_number}E${episode.episode_number}:`, episodeError);
-            }
-          }
-        } catch (seasonError) {
-          console.error(`Error processing season ${season.season_number}:`, seasonError);
-        }
-      }
-
-      console.log(`Episode import completed. Total episodes imported: ${totalEpisodesImported}`);
-
-      res.json({
-        success: true,
-        message: `Episodes import completed successfully`,
-        episodesImported: totalEpisodesImported,
-        seasonsProcessed: seasons.length
-      });
-    } catch (error) {
-      console.error("Error importing episodes:", error);
-      res.status(500).json({ error: "Failed to import episodes: " + (error as Error).message });
     }
   });
 
@@ -4075,19 +2564,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/movie/popular?api_key=${apiKey}&language=fr-FR&page=1`
       );
-
+      
       if (!response.ok) {
         console.error(`TMDB API error: ${response.status} ${response.statusText}`);
         // Handle rate limiting specifically
         if (response.status === 429) {
-          return res.status(429).json({
+          return res.status(429).json({ 
             error: "Rate limit exceeded. Please try again later.",
-            status: 429
+            status: 429 
           });
         }
-        return res.status(response.status).json({
+        return res.status(response.status).json({ 
           error: `TMDB API error: ${response.statusText}`,
-          status: response.status
+          status: response.status 
         });
       }
 
@@ -4111,19 +2600,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(
         `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=fr-FR&with_genres=${genreId}&page=1`
       );
-
+      
       if (!response.ok) {
         console.error(`TMDB API error: ${response.status} ${response.statusText}`);
         // Handle rate limiting specifically
         if (response.status === 429) {
-          return res.status(429).json({
+          return res.status(429).json({ 
             error: "Rate limit exceeded. Please try again later.",
-            status: 429
+            status: 429 
           });
         }
-        return res.status(response.status).json({
+        return res.status(response.status).json({ 
           error: `TMDB API error: ${response.statusText}`,
-          status: response.status
+          status: response.status 
         });
       }
 
@@ -4170,9 +2659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query } = req.query;
       const apiKey = process.env.TMDB_API_KEY;
-
+      
       if (!apiKey) {
-        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4180,52 +2668,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB Movie Search URL:", url);
-      
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const response = await fetch(
+        `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
+      );
       
       if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       res.json(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error searching movies:", error);
-      // Handle timeout errors specifically
-      if (error.name === 'AbortError') {
-        return res.status(408).json({ 
-          error: "Request timeout - the server took too long to respond",
-          possible_cause: "Network issue or TMDB API not responding"
-        });
-      }
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search movies",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search movies" });
-      }
+      res.status(500).json({ error: "Failed to search movies" });
     }
   });
 
@@ -4234,9 +2689,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query } = req.query;
       const apiKey = process.env.TMDB_API_KEY;
-
+      
       if (!apiKey) {
-        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4244,83 +2698,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB Multi Search URL:", url);
-      
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
+      const response = await fetch(
+        `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
+      );
       
       if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       res.json(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error searching multi content:", error);
-      // Handle timeout errors specifically
-      if (error.name === 'AbortError') {
-        return res.status(408).json({ 
-          error: "Request timeout - the server took too long to respond",
-          possible_cause: "Network issue or TMDB API not responding"
-        });
-      }
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search content",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search content" });
-      }
+      res.status(500).json({ error: "Failed to search content" });
     }
   });
 
   // TV Series endpoints
   app.get("/api/tmdb/tv/popular", async (req: any, res: any) => {
     try {
-      console.log("Fetching popular TV shows from TMDB...");
       const apiKey = process.env.TMDB_API_KEY;
       if (!apiKey) {
-        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
-      const url = `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`;
-      console.log("TMDB API URL:", url);
-      
-      const response = await fetch(url);
-      console.log("TMDB API response status:", response.status);
+      const response = await fetch(
+        `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`
+      );
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("TMDB API error response:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("TMDB API data fetched, number of results:", data.results ? data.results.length : 0);
       res.json(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error fetching popular TV shows:", error);
-      res.status(500).json({ error: "Failed to fetch popular TV shows", details: error.message });
+      res.status(500).json({ error: "Failed to fetch popular TV shows" });
     }
   });
 
@@ -4447,7 +2861,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
       
       if (!apiKey) {
-        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -4455,362 +2868,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB TV Search URL:", url);
-      
-      const response = await fetch(url);
+      const response = await fetch(
+        `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
+      );
       
       if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search TV shows",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search TV shows" });
-      }
-    }
-  });
-  
-  // Create payment invoice for subscription with PayPal
-  app.post("/api/subscription/create-payment-paypal", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createPayPalPayment(planId, info, user.id);
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement PayPal:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement PayPal" });
-    }
-  });
-
-  // Create payment invoice for subscription
-  app.post("/api/subscription/create-payment", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        securityLogger.logUnauthorizedAccess(req.ip || 'unknown', req.path);
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body || {};
-      if (!planId) {
-        return res.status(400).json({ error: "Plan ID requis" });
-      }
-
-      const plan = plans[planId as keyof typeof plans];
-      if (!plan) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const user = await storage.getUserById(req.user.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const info: CustomerInfo = {
-        name: customerInfo?.name || user.username,
-        email: customerInfo?.email || user.email,
-        phone: customerInfo?.phone || "",
-      };
-
-      const result = await paymentService.createPayment(planId, info, user.id);
-      // Retourner le résultat tel quel (paymentLink, approval_url, paymentId, qrCode, ...)
-      return res.json(result);
-    } catch (error: any) {
-      console.error("Erreur lors de la création du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la création du paiement" });
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      if (!paymentId) {
-        return res.status(400).json({ error: "Payment ID requis" });
-      }
-
-      const status = await paymentService.checkPaymentStatus(paymentId);
-      return res.json(status);
-    } catch (error: any) {
-      console.error("Erreur lors de la vérification du paiement:", error);
-      return res.status(500).json({ error: error?.message || "Erreur lors de la vérification du paiement" });
-    }
-  });
-  
-  // Handle PayPal webhook
-  app.post("/api/webhook/paypal", async (req: any, res: any) => {
-    try {
-      console.log("PayPal webhook received:", req.body);
-      
-      // Verify webhook signature for security
-      const isValid = await paymentService.verifyPayPalWebhook(req);
-      if (!isValid) {
-        console.error("Invalid PayPal webhook signature");
-        return res.status(400).json({ error: "Invalid webhook signature" });
-      }
-      
-      // Process the webhook event
-      const event = req.body;
-      const eventType = event.event_type;
-      
-      console.log(`Processing PayPal event: ${eventType}`);
-      
-      switch (eventType) {
-        case 'PAYMENT.CAPTURE.COMPLETED':
-          // Payment completed successfully
-          await handlePayPalPaymentCompleted(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.DENIED':
-          // Payment was denied
-          await handlePayPalPaymentDenied(event);
-          break;
-          
-        case 'PAYMENT.CAPTURE.REFUNDED':
-          // Payment was refunded
-          await handlePayPalPaymentRefunded(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CREATED':
-          // Subscription created
-          await handlePayPalSubscriptionCreated(event);
-          break;
-          
-        case 'BILLING.SUBSCRIPTION.CANCELLED':
-          // Subscription cancelled
-          await handlePayPalSubscriptionCancelled(event);
-          break;
-          
-        default:
-          console.log(`Unhandled PayPal event type: ${eventType}`);
-      }
-      
-      res.status(200).json({ success: true });
-    } catch (error) {
-      console.error("Error processing PayPal webhook:", error);
-      res.status(500).json({ error: "Failed to process webhook" });
-    }
-  });
-
-  // Create free subscription - completely separate from Lygos
-  app.post("/api/subscription/create-free", authenticateToken, async (req: any, res: any) => {
-    try {
-      const { planId, customerInfo } = req.body;
-      
-      // Validate input
-      if (!planId || !customerInfo) {
-        return res.status(400).json({ error: "Plan ID and customer info are required" });
-      }
-      
-      // Validate plan
-      if (!plans[planId as keyof typeof plans]) {
-        return res.status(400).json({ error: "Invalid plan" });
-      }
-
-      // Ensure user is authenticated
-      if (!req.user || !req.user.userId) {
-        return res.status(401).json({ error: "User must be authenticated" });
-      }
-
-      const userId = req.user.userId;
-      
-      // Get plan information
-      const selectedPlan = plans[planId as keyof typeof plans];
-      
-      // Only allow free plans (amount = 0)
-      if (selectedPlan.amount !== 0) {
-        return res.status(400).json({ error: "This endpoint is only for free plans" });
-      }
-      
-      // Check if user already has an active subscription
-      const existingSubscription = await storage.getUserSubscription(userId);
-      if (existingSubscription && existingSubscription.status === 'active') {
-        return res.status(400).json({ error: "User already has an active subscription" });
-      }
-      
-      // Cancel existing subscription if any
-      if (existingSubscription) {
-        await storage.updateSubscription(existingSubscription.id, { status: 'cancelled' });
-      }
-
-      // Create new subscription with fixed dates
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-      const newSubscription = await storage.createSubscription({
-        userId: userId,
-        planId: planId,
-        amount: selectedPlan.amount,
-        paymentMethod: 'free',
-        status: 'active',
-        startDate: startDate,
-        endDate: endDate
-      });
-
-      // Create payment record for tracking
-      await storage.createPayment({
-        userId: userId,
-        amount: selectedPlan.amount,
-        method: 'free',
-        status: 'success',
-        transactionId: `free_${Date.now()}`,
-        paymentData: JSON.stringify({ planId, customerInfo })
-      });
-
-      res.json({
-        success: true,
-        subscription: newSubscription,
-        message: 'Free subscription activated successfully'
-      });
-    } catch (error: any) {
-      console.error("Error processing free subscription:", error);
-      res.status(500).json({ error: "Failed to process subscription", details: error.message });
-    }
-  });
-
-  // Get user's current subscription
-  app.get("/api/subscription/current", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.json({ subscription: null, message: "No active subscription - user not authenticated" });
-      }
-      
-      const subscription = await storage.getUserSubscription(req.user.userId);
-      
-      if (!subscription) {
-        return res.json({ subscription: null, message: "No active subscription" });
-      }
-      
-      res.json({ subscription });
-    } catch (error) {
-      console.error("Error fetching user subscription:", error);
-      res.status(500).json({ error: "Failed to fetch subscription" });
-    }
-  });
-  
-  // Get user's payment history
-  app.get("/api/subscription/payment-history", authenticateToken, async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.json({ payments: [], message: "No payment history - user not authenticated" });
-      }
-      
-      const payments = await storage.getUserPayments(req.user.userId);
-      
-      res.json({ payments });
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      res.status(500).json({ error: "Failed to fetch payment history" });
-    }
-  });
-
-  // Test route to check if routes are working
-  app.get("/api/test", async (req: any, res: any) => {
-    console.log('Test route called');
-    res.json({ message: "Test route working" });
-  });
-  
-  // Get subscription plans
-  app.get("/api/subscription/plans", async (req: any, res: any) => {
-    try {
-      res.json(plans);
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-      res.status(500).json({ error: "Failed to fetch plans" });
-    }
-  });
-  
-  console.log('Subscription plans route registered'); // Debug log
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      
-      // Use our payment service to check the payment status
-      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
-      res.json(paymentStatus);
-    } catch (error: any) {
-      console.error("Error checking payment status:", error);
-      
-      // Send a more user-friendly error message
-      const errorMessage = error.message || 'Erreur inconnue lors de la vérification du paiement';
-      const errorDetails = process.env.NODE_ENV === 'development' ? error.stack : undefined;
-      
-      res.status(500).json({ 
-        error: "Impossible de vérifier le statut du paiement", 
-        details: errorMessage,
-        ...(errorDetails ? { stack: errorDetails } : {})
-      });
-    }
-  });
-  
-  // Test payment service configuration
-  app.get("/api/test/payment-service", async (req: any, res: any) => {
-    try {
-      // Check if payment service is configured
-      const isPayPalConfigured = paymentService.isPayPalConfigured();
-      
-      res.json({
-        status: 'Payment Service Configuration',
-        serviceInfo: {
-          currentService: isPayPalConfigured ? 'paypal' : 'none',
-          paypalAvailable: isPayPalConfigured,
-          usingPaymentLink: isPayPalConfigured
-        },
-        ready: isPayPalConfigured
-      });
-    } catch (error) {
-      console.error('Payment service test error:', error);
-      res.status(500).json({ error: 'Configuration test failed' });
+      res.status(500).json({ error: "Failed to search TV shows" });
     }
   });
 
@@ -4832,34 +2902,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching security logs:", error);
       // Provide more detailed error information
-      res.status(500).json({
+      res.status(500).json({ 
         error: "Failed to fetch security logs",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Get activity logs (admin only) - returns security logs formatted as activity events
-  app.get("/api/admin/activity-logs", requireAdmin, (req, res) => {
-    try {
-      const logs = securityLogger.getRecentEvents(100);
-      // Format security logs as activity events for the admin dashboard
-      const activityEvents = logs.map(log => ({
-        id: `activity-${log.timestamp}-${Math.random()}`,
-        timestamp: log.timestamp,
-        eventType: log.eventType,
-        userId: log.userId,
-        ipAddress: log.ipAddress,
-        userAgent: log.userAgent,
-        details: log.details,
-        severity: log.severity,
-        description: log.details || `${log.eventType} event`
-      }));
-      res.json(activityEvents);
-    } catch (error) {
-      console.error("Error fetching activity logs:", error);
-      res.status(500).json({
-        error: "Failed to fetch activity logs",
         details: error instanceof Error ? error.message : String(error)
       });
     }
@@ -4952,22 +2996,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Cet épisode existe déjà pour cette saison" });
       }
       
-      // Decode HTML entities in the URL
-      let cleanOdyseeUrl = odyseeUrl || '';
-      try {
-        // Simple HTML entity decoding
-        cleanOdyseeUrl = odyseeUrl
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#x2F;/g, '/')
-          .replace(/&#39;/g, "'");
-      } catch (e) {
-        // If we can't decode, just use the original URL
-        cleanOdyseeUrl = odyseeUrl || '';
-      }
-      
       // Create episode
       const episodeData = {
         contentId,
@@ -4975,7 +3003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         episodeNumber,
         title,
         description: description || '',
-        odyseeUrl: cleanOdyseeUrl,
+        odyseeUrl: odyseeUrl || '',
         releaseDate: releaseDate || '',
         active: true
       };
@@ -5162,78 +3190,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching trending movies:", error);
       res.status(500).json({ error: "Failed to fetch trending movies", details: error.message || 'Unknown error' });
-    }
-  });
-
-  // New endpoint for upcoming movies
-  app.get("/api/tmdb/movie/upcoming", async (req: any, res: any) => {
-    try {
-      const apiKey = process.env.TMDB_API_KEY;
-      if (!apiKey) {
-        console.error("TMDB_API_KEY is not configured in environment variables");
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      const response = await fetch(
-        `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=fr-FR&page=1`
-      );
-      
-      if (!response.ok) {
-        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
-        // Handle rate limiting specifically
-        if (response.status === 429) {
-          return res.status(429).json({ 
-            error: "Rate limit exceeded. Please try again later.",
-            status: 429 
-          });
-        }
-        return res.status(response.status).json({ 
-          error: `TMDB API error: ${response.statusText}`,
-          status: response.status 
-        });
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("Error fetching upcoming movies:", error);
-      res.status(500).json({ error: "Failed to fetch upcoming movies", details: error.message || 'Unknown error' });
-    }
-  });
-
-  // New endpoint for now playing movies
-  app.get("/api/tmdb/movie/now_playing", async (req: any, res: any) => {
-    try {
-      const apiKey = process.env.TMDB_API_KEY;
-      if (!apiKey) {
-        console.error("TMDB_API_KEY is not configured in environment variables");
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      const response = await fetch(
-        `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=fr-FR&page=1`
-      );
-      
-      if (!response.ok) {
-        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
-        // Handle rate limiting specifically
-        if (response.status === 429) {
-          return res.status(429).json({ 
-            error: "Rate limit exceeded. Please try again later.",
-            status: 429 
-          });
-        }
-        return res.status(response.status).json({ 
-          error: `TMDB API error: ${response.statusText}`,
-          status: response.status 
-        });
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("Error fetching now playing movies:", error);
-      res.status(500).json({ error: "Failed to fetch now playing movies", details: error.message || 'Unknown error' });
     }
   });
 
@@ -5545,7 +3501,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiKey = process.env.TMDB_API_KEY;
       
       if (!apiKey) {
-        console.error("TMDB API key not configured");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -5553,797 +3508,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB TV Search URL:", url);
-      
-      const response = await fetch(url);
+      const response = await fetch(
+        `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
+      );
       
       if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();
       res.json(data);
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search TV shows",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search TV shows" });
-      }
-    }
-  });
-
-  app.get("/api/tmdb/search", async (req: any, res: any) => {
-    try {
-      const { query } = req.query;
-      const apiKey = process.env.TMDB_API_KEY;
-
-      if (!apiKey) {
-        console.error("TMDB API key not configured");
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      if (!query) {
-        return res.status(400).json({ error: "Search query is required" });
-      }
-
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB Movie Search URL:", url);
-      
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("Error searching movies:", error);
-      // Handle timeout errors specifically
-      if (error.name === 'AbortError') {
-        return res.status(408).json({ 
-          error: "Request timeout - the server took too long to respond",
-          possible_cause: "Network issue or TMDB API not responding"
-        });
-      }
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search movies",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search movies" });
-      }
-    }
-  });
-
-  // Multi-search endpoint for both movies and TV shows
-  app.get("/api/tmdb/multi-search", async (req: any, res: any) => {
-    try {
-      const { query } = req.query;
-      const apiKey = process.env.TMDB_API_KEY;
-
-      if (!apiKey) {
-        console.error("TMDB API key not configured");
-        return res.status(500).json({ error: "TMDB API key not configured" });
-      }
-
-      if (!query) {
-        return res.status(400).json({ error: "Search query is required" });
-      }
-
-      // Validate query parameter
-      const searchQuery = query as string;
-      if (!searchQuery.trim()) {
-        return res.status(400).json({ error: "Search query cannot be empty" });
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery.trim());
-      const url = `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&language=fr-FR&query=${encodedQuery}&page=1`;
-      
-      console.log("TMDB Multi Search URL:", url);
-      
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.error("TMDB API error:", response.status, response.statusText);
-        // Log response body for debugging
-        const errorText = await response.text();
-        console.error("TMDB API error body:", errorText);
-        throw new Error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      res.json(data);
-    } catch (error: any) {
-      console.error("Error searching multi content:", error);
-      // Handle timeout errors specifically
-      if (error.name === 'AbortError') {
-        return res.status(408).json({ 
-          error: "Request timeout - the server took too long to respond",
-          possible_cause: "Network issue or TMDB API not responding"
-        });
-      }
-      // Send more detailed error information in development
-      if (process.env.NODE_ENV === 'development') {
-        res.status(500).json({ 
-          error: "Failed to search content",
-          details: error instanceof Error ? error.message : String(error)
-        });
-      } else {
-        res.status(500).json({ error: "Failed to search content" });
-      }
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:paymentId", async (req: any, res: any) => {
-    try {
-      const { paymentId } = req.params;
-      
-      // Use our payment service to check the payment status
-      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
-      res.json(paymentStatus);
-    } catch (error: any) {
-      console.error("Error checking payment status:", error);
-      
-      // Send a more user-friendly error message
-      const errorMessage = error.message || 'Erreur inconnue lors de la vérification du paiement';
-      const errorDetails = process.env.NODE_ENV === 'development' ? error.stack : undefined;
-      
-      res.status(500).json({ 
-        error: "Impossible de vérifier le statut du paiement", 
-        details: errorMessage,
-        ...(errorDetails ? { stack: errorDetails } : {})
-      });
+      res.status(500).json({ error: "Failed to search TV shows" });
     }
   });
   
-  // Test payment service configuration
-  app.get("/api/test/payment-service", async (req: any, res: any) => {
-    try {
-      // Check if payment service is configured
-      const isPayPalConfigured = paymentService.isPayPalConfigured();
-      
-      res.json({
-        status: 'Payment Service Configuration',
-        serviceInfo: {
-          currentService: 'paypal',
-          paypalAvailable: isPayPalConfigured,
-          usingPaymentLink: isPayPalConfigured
-        },
-        ready: isPayPalConfigured
-      });
-    } catch (error) {
-      console.error('Payment service test error:', error);
-      res.status(500).json({ error: 'Configuration test failed' });
-    }
-  });
-
-  // Get CSRF token
-  app.get("/api/csrf-token", async (req: any, res: any) => {
-    try {
-      if (!req.user || !req.user.userId) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-      
-      const userAgent = req.headers['user-agent'] || '';
-      const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-      const csrfToken = generateCSRFToken(req.user.userId, userAgent, ipAddress);
-      res.json({ csrfToken });
-    } catch (error) {
-      console.error("Error generating CSRF token:", error);
-      res.status(500).json({ error: "Erreur lors de la génération du jeton CSRF" });
-    }
-  });
-
-  // Get security logs (admin only)
-  app.get("/api/admin/security-logs", requireAdmin, (req, res) => {
-    try {
-      const logs = securityLogger.getRecentEvents(100);
-      res.json(logs);
-    } catch (error) {
-      console.error("Error fetching security logs:", error);
-      // Provide more detailed error information
-      res.status(500).json({ 
-        error: "Failed to fetch security logs",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Test video link accessibility
-  app.post("/api/admin/test-video-link", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { url } = req.body;
-      
-      if (!url) {
-        return res.status(400).json({ error: "URL is required" });
-      }
-      
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch (urlError) {
-        return res.status(400).json({ error: "Invalid URL format" });
-      }
-      
-      // Test the URL accessibility
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      try {
-        const response = await fetch(url, { 
-          method: 'HEAD',
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        res.json({
-          success: true,
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        
-        // Check if it's a CORS error
-        if (fetchError.name === 'AbortError') {
-          return res.status(408).json({ 
-            error: "Request timeout - the server took too long to respond",
-            possible_cause: "Network issue or server not responding"
-          });
-        }
-        
-        // Generic error
-        res.status(500).json({ 
-          error: "Failed to test video link",
-          details: fetchError.message,
-          possible_cause: "CORS restriction, network issue, or invalid URL"
-        });
-      }
-    } catch (error) {
-      console.error("Error testing video link:", error);
-      res.status(500).json({ error: "Failed to test video link" });
-    }
-  });
-
-  // Admin routes for episode management
-  app.post("/api/admin/episodes", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { contentId, seasonNumber, episodeNumber, title, description, odyseeUrl, releaseDate } = req.body;
-      
-      // Validate required fields
-      if (!contentId || !seasonNumber || !episodeNumber || !title) {
-        return res.status(400).json({ error: "Les champs contentId, seasonNumber, episodeNumber et title sont requis" });
-      }
-      
-      // Check if content exists and is a TV series
-      const existingContent = await storage.getContentById(contentId);
-      if (!existingContent) {
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-      
-      if (existingContent.mediaType !== 'tv') {
-        return res.status(400).json({ error: "Le contenu doit être une série TV" });
-      }
-      
-      // Check if episode already exists
-      const existingEpisodes = await storage.getEpisodesByContentId(contentId);
-      const episodeExists = existingEpisodes.some(
-        ep => ep.seasonNumber === seasonNumber && ep.episodeNumber === episodeNumber
-      );
-      
-      if (episodeExists) {
-        return res.status(400).json({ error: "Cet épisode existe déjà pour cette saison" });
-      }
-      
-      // Create episode
-      const episodeData = {
-        contentId,
-        seasonNumber,
-        episodeNumber,
-        title,
-        description: description || '',
-        odyseeUrl: odyseeUrl || '',
-        releaseDate: releaseDate || '',
-        active: true
-      };
-      
-      const newEpisode = await storage.createEpisode(episodeData);
-      
-      res.status(201).json({ 
-        success: true, 
-        message: "Épisode créé avec succès",
-        episode: newEpisode
-      });
-    } catch (error) {
-      console.error("Error creating episode:", error);
-      res.status(500).json({ error: "Erreur lors de la création de l'épisode" });
-    }
-  });
-
-  app.get("/api/admin/episodes/:contentId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { contentId } = req.params;
-      
-      // Validate input
-      if (!contentId) {
-        return res.status(400).json({ error: "contentId est requis" });
-      }
-      
-      const episodes = await storage.getEpisodesByContentId(contentId);
-      res.json(episodes);
-    } catch (error) {
-      console.error("Error fetching episodes:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération des épisodes" });
-    }
-  });
-
-  app.put("/api/admin/episodes/:episodeId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { episodeId } = req.params;
-      const updateData = req.body;
-      
-      // Validate input
-      if (!episodeId) {
-        return res.status(400).json({ error: "episodeId est requis" });
-      }
-      
-      const updatedEpisode = await storage.updateEpisode(episodeId, updateData);
-      res.json({ 
-        success: true, 
-        message: "Épisode mis à jour avec succès",
-        episode: updatedEpisode
-      });
-    } catch (error) {
-      console.error("Error updating episode:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour de l'épisode" });
-    }
-  });
-
-  app.delete("/api/admin/episodes/:episodeId", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { episodeId } = req.params;
-      
-      // Validate input
-      if (!episodeId) {
-        return res.status(400).json({ error: "episodeId est requis" });
-      }
-      
-      await storage.deleteEpisode(episodeId);
-      res.json({ success: true, message: "Épisode supprimé avec succès" });
-    } catch (error) {
-      console.error("Error deleting episode:", error);
-      res.status(500).json({ error: "Erreur lors de la suppression de l'épisode" });
-    }
-  });
-
-  // Subscription routes
-  // Get current user's subscription
-  app.get("/api/subscription/current", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Get user's current active subscription
-      const subscription = await storage.getUserSubscription(req.user.userId);
-      
-      if (!subscription) {
-        // Return free plan as default if no subscription exists
-        return res.json({
-          subscription: {
-            id: null,
-            userId: req.user.userId,
-            planId: "free",
-            amount: 0,
-            paymentMethod: "free",
-            status: "active",
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-            createdAt: new Date()
-          }
-        });
-      }
-
-      res.json({ subscription });
-    } catch (error) {
-      console.error("Error fetching current subscription:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'abonnement" });
-    }
-  });
-
-  // Get user's payment history
-  app.get("/api/subscription/payment-history", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Get user's payment history
-      const payments = await storage.getUserPayments(req.user.userId);
-      
-      res.json({ payments });
-    } catch (error) {
-      console.error("Error fetching payment history:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération de l'historique des paiements" });
-    }
-  });
-
-  // Create a new subscription/payment
-  app.post("/api/subscribe", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { planId, customerInfo } = req.body;
-
-      // Validate plan
-      if (!plans[planId as keyof typeof plans]) {
-        return res.status(400).json({ error: "Plan invalide" });
-      }
-
-      const selectedPlan = plans[planId as keyof typeof plans];
-
-      // For free plans, activate immediately
-      if (selectedPlan.amount === 0) {
-        // Calculate subscription dates
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + selectedPlan.duration);
-
-        // Create subscription in database
-        const subscription = await storage.createSubscription({
-          userId: req.user.userId,
-          planId: planId,
-          amount: selectedPlan.amount,
-          paymentMethod: "free",
-          status: "active",
-          startDate: startDate,
-          endDate: endDate
-        });
-
-        // Create payment record for tracking
-        await storage.createPayment({
-          userId: req.user.userId,
-          amount: selectedPlan.amount,
-          method: "free",
-          status: "success",
-          transactionId: `free_${Date.now()}`,
-          paymentData: JSON.stringify({ planId, customerInfo })
-        });
-
-        return res.json({
-          success: true,
-          message: "Abonnement gratuit activé avec succès",
-          subscription
-        });
-      }
-
-      // For paid plans, create payment with PayPal
-      const paymentResult = await paymentService.createPayment(
-        planId,
-        customerInfo,
-        req.user.userId
-      );
-
-      if (paymentResult.success) {
-        // Store payment record in database
-        const paymentRecord = await storage.createPayment({
-          userId: req.user.userId,
-          amount: selectedPlan.amount,
-          method: "paypal",
-          status: "pending",
-          paymentData: JSON.stringify(paymentResult)
-        });
-
-        return res.json({
-          ...paymentResult,
-          paymentId: paymentRecord.id
-        });
-      } else {
-        return res.status(400).json({
-          error: paymentResult.error || "Erreur lors de la création du paiement",
-          message: paymentResult.message
-        });
-      }
-    } catch (error: any) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ 
-        error: "Erreur lors de la création de l'abonnement",
-        details: error.message
-      });
-    }
-  });
-
-  // Check payment status
-  app.get("/api/subscription/check-payment/:id", async (req: any, res: any) => {
-    try {
-      const { id: paymentId } = req.params;
-
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      // Check payment status with payment provider
-      const paymentStatus = await paymentService.checkPaymentStatus(paymentId);
-      
-      // Update payment record in database
-      await storage.updatePaymentStatus(paymentId, paymentStatus.status);
-      
-      // If payment is completed, activate subscription
-      if (paymentStatus.status === "completed") {
-        // Get payment record to get user and plan info
-        const paymentRecord = await storage.getPaymentById(paymentId);
-        if (paymentRecord) {
-          // Extract plan info from payment data
-          // This would need to be stored when creating the payment
-          // For now, we'll need to get this information another way
-          
-          // Create or update subscription
-          // This is a simplified implementation - in reality, you'd need to store
-          // the plan information with the payment
-        }
-      }
-
-      res.json(paymentStatus);
-    } catch (error: any) {
-      console.error("Error checking payment status:", error);
-      res.status(500).json({ 
-        error: "Erreur lors de la vérification du paiement",
-        details: error.message
-      });
-    }
-  });
-
-  // Webhook endpoint for PayPal payment notifications
-  app.post("/api/webhook/paypal", async (req: any, res: any) => {
-    try {
-      // Process webhook from PayPal
-      console.log("PayPal webhook received:", req.body);
-      
-      // For now, just send a success response
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error processing PayPal webhook:", error);
-      res.status(500).json({ error: "Erreur lors du traitement du webhook" });
-    }
-  });
-
-  // Comments routes
-  // Get comments for a specific content
-  app.get("/api/comments/:contentId", async (req: any, res: any) => {
-    try {
-      const { contentId } = req.params;
-
-      // Validate input
-      if (!contentId) {
-        return res.status(400).json({ error: "contentId est requis" });
-      }
-
-      // Get all approved comments for this content
-      const contentComments = await storage.getCommentsByContentId(contentId);
-
-      res.json({ comments: contentComments });
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-      res.status(500).json({ error: "Erreur lors de la récupération des commentaires" });
-    }
-  });
-
-  // Create a new comment
-  app.post("/api/comments", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const commentData = insertCommentSchema.parse(req.body);
-
-      // Ensure the user can only comment on behalf of themselves
-      if (commentData.userId !== req.user.userId) {
-        return res.status(403).json({ error: "Vous ne pouvez commenter qu'en votre nom" });
-      }
-
-      // Check if content exists
-      const existingContent = await storage.getContentById(commentData.contentId);
-      if (!existingContent) {
-        return res.status(404).json({ error: "Contenu non trouvé" });
-      }
-
-      // Create comment
-      const newComment = await storage.createComment(commentData);
-
-      res.status(201).json({
-        success: true,
-        message: "Commentaire ajouté avec succès",
-        comment: newComment
-      });
-    } catch (error) {
-      console.error("Error creating comment:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Données invalides", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Erreur lors de la création du commentaire" });
-      }
-    }
-  });
-
-  // Update a comment (only by the author)
-  app.put("/api/comments/:commentId", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { commentId } = req.params;
-      const updateData = req.body;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Check if comment exists and belongs to the user
-      const existingComment = await storage.getCommentById(commentId);
-      if (!existingComment) {
-        return res.status(404).json({ error: "Commentaire non trouvé" });
-      }
-
-      if (existingComment.userId !== req.user.userId) {
-        return res.status(403).json({ error: "Vous ne pouvez modifier que vos propres commentaires" });
-      }
-
-      // Update comment
-      const updatedComment = await storage.updateComment(commentId, updateData);
-
-      res.json({
-        success: true,
-        message: "Commentaire mis à jour avec succès",
-        comment: updatedComment
-      });
-    } catch (error) {
-      console.error("Error updating comment:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour du commentaire" });
-    }
-  });
-
-  // Delete a comment (by author or admin)
-  app.delete("/api/comments/:commentId", async (req: any, res: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: "Non authentifié" });
-      }
-
-      const { commentId } = req.params;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Check if comment exists
-      const existingComment = await storage.getCommentById(commentId);
-      if (!existingComment) {
-        return res.status(404).json({ error: "Commentaire non trouvé" });
-      }
-
-      // Check if user is the author or an admin
-      const user = await storage.getUserById(req.user.userId);
-      const isAuthor = existingComment.userId === req.user.userId;
-      const isAdmin = user && user.role === "admin";
-
-      if (!isAuthor && !isAdmin) {
-        return res.status(403).json({ error: "Vous ne pouvez supprimer que vos propres commentaires" });
-      }
-
-      // Delete comment
-      await storage.deleteComment(commentId);
-
-      res.json({
-        success: true,
-        message: "Commentaire supprimé avec succès"
-      });
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      res.status(500).json({ error: "Erreur lors de la suppression du commentaire" });
-    }
-  });
-
-  // Get content by TMDB ID
-  app.get("/api/content/tmdb/:tmdbId", async (req, res) => {
-    try {
-      const { tmdbId } = req.params;
-      const content = await storage.getContentByTmdbId(parseInt(tmdbId));
-      if (!content) {
-        return res.status(404).json({ error: "Content not found" });
-      }
-      res.json(content);
-    } catch (error) {
-      console.error("Error fetching content by TMDB ID:", error);
-      res.status(500).json({ error: "Failed to fetch content" });
-    }
-  });
-
-  // Get all comments (admin only)
-  app.get("/api/admin/comments", requireAdmin, async (req, res) => {
-    try {
-      const allComments = await storage.getAllComments();
-      res.json(allComments);
-    } catch (error) {
-      console.error("Error fetching all comments:", error);
-      res.status(500).json({ error: "Failed to fetch all comments" });
-    }
-  });
-
-  // Approve/reject comment (admin only)
-  app.put("/api/admin/comments/:commentId/approve", requireAdmin, async (req: any, res: any) => {
-    try {
-      const { commentId } = req.params;
-      const { approved } = req.body;
-
-      // Validate input
-      if (!commentId) {
-        return res.status(400).json({ error: "commentId est requis" });
-      }
-
-      // Update comment approval status
-      const updatedComment = await storage.updateCommentApproval(commentId, approved);
-
-      res.json({
-        success: true,
-        message: `Commentaire ${approved ? 'approuvé' : 'rejeté'} avec succès`,
-        comment: updatedComment
-      });
-    } catch (error) {
-      console.error("Error updating comment approval:", error);
-      res.status(500).json({ error: "Erreur lors de la mise à jour du statut du commentaire" });
-    }
-  });
-
   return server;
 }
+
