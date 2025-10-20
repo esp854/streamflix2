@@ -10,7 +10,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useAuth } from "@/contexts/auth-context";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
-import { ZuploadVideoPlayer } from "@/components/zupload-video-player";
+import { useFavorites } from "@/hooks/use-favorites";
+import ZuploadVideoPlayer from "@/components/zupload-video-player"; // Import ZuploadVideoPlayer
 import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
 

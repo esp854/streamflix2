@@ -13,7 +13,6 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
 - 🔍 Recherche et filtrage de contenu
 - 🛡️ Sécurité avancée (CSRF, rate limiting, etc.)
 - 📈 SEO optimisé (balises meta, sitemap, robots.txt)
-- 🌐 Intégration de multiples sources de streaming (Frembed, VidSrc, Zupload, etc.)
 
 ## Configuration requise
 
@@ -35,40 +34,6 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
    ```bash
    npx drizzle-kit push
    ```
-
-## Configuration des sources de streaming
-
-StreamFlix prend en charge plusieurs sources de streaming pour maximiser la disponibilité du contenu :
-
-### Frembed (API)
-
-Pour utiliser l'API Frembed pour récupérer automatiquement les liens de streaming :
-
-1. Obtenez une clé API Frembed (si disponible)
-2. Configurez la variable d'environnement :
-   ```
-   FREMbed_API_KEY=votre_cle_api_frembed
-   ```
-3. Les liens seront automatiquement récupérés via les endpoints API Frembed lors de la lecture
-
-Les endpoints API utilisés sont :
-- `https://frembed.cfd/api/movie?tmdb={tmdbId}&api_key={apiKey}` - Détails du film
-- `https://frembed.cfd/api/movie/sources?tmdb={tmdbId}&api_key={apiKey}` - Sources du film
-- `https://frembed.cfd/api/tv?tmdb={tmdbId}&api_key={apiKey}` - Détails de la série
-- `https://frembed.cfd/api/tv?tmdb={tmdbId}&season={season}&episode={episode}&api_key={apiKey}` - Sources de l'épisode
-
-### Autres sources supportées
-
-- VidSrc
-- Zupload
-- 2Embed
-- SuperEmbed
-- FStream
-- GoDrivePlayer
-- Embed.su
-- SmashyStream
-
-L'ordre de priorité des sources est configurable dans le lecteur vidéo.
 
 ## Configuration PayPal
 
@@ -108,7 +73,6 @@ Pour que les utilisateurs reçoivent des emails de bienvenue lors de l'inscripti
 - `npx tsx server/test-email.ts` - Envoie un email de test complet
 - `npx tsx server/advanced-diagnostics.ts` - Tests approfondis de diagnostic
 - `npx tsx server/final-diagnostic.ts` - Diagnostic final avec logs détaillés
-- `npx tsx server/test-frembed.ts` - Teste la configuration de l'API Frembed
 
 ## Optimisation SEO
 
@@ -153,8 +117,6 @@ npm run dev:client
 
 - `client/` - Application frontend React
 - `server/` - Serveur Express avec API
-  - `server/services/` - Services externes (Frembed, etc.)
-  - `server/hooks/` - Hooks personnalisés pour le frontend
 - `shared/` - Schémas partagés entre client et serveur
 - `drizzle/` - Migrations de base de données
 
