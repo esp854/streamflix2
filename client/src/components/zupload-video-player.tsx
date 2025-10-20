@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/auth-context';
-import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
+import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -55,8 +55,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const mainVideoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAd, setShowAd] = useState(false); // Toujours false - pas de pubs
-  const [adSkipped, setAdSkipped] = useState(true); // Toujours true - pubs désactivées
+  const [showAd, setShowAd] = useState(!isAuthenticated);
+  const [adSkipped, setAdSkipped] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
@@ -74,9 +74,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(80);
-  
-  // État pour suivre si la source initiale a été chargée
-  const [initialSourceLoaded, setInitialSourceLoaded] = useState(false);
 
   // Fonction utilitaire pour détecter les appareils mobiles
   const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -104,39 +101,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   const autoplayStrategy = getAutoplayStrategy();
 
-  // URL VAST de HilltopAds - non utilisée
-  const vastTag = '';
+  // URL VAST de HilltopAds
+  const vastTag = 'https://silkyspite.com/dum.Flzod/GONlvhZdGIUd/Iebmf9UuFZqUllZktPNTWYx2jNhjiYNwbN/TqkethN/jbY/2pNWj-AN2aMaAc';
 
   // Générer les sources vidéo à partir du TMDB ID
   useEffect(() => {
-    const sources: VideoSource[] = [];
-    
-    // Source Zupload (prioritaire) - toujours inclure la source fournie
-    if (videoUrl) {
-      sources.push({
-        id: 'zupload',
-        name: 'Zupload',
-        url: videoUrl,
-        type: videoUrl.includes('embed') ? 'embed' : 'direct'
-      });
-    }
-    
-    // Ajouter les sources alternatives seulement si tmdbId est disponible
     if (tmdbId) {
-      // Source SuperEmbed (fonctionne bien)
-      if (mediaType === 'movie') {
+      const sources: VideoSource[] = [];
+      
+      // Source Zupload (actuelle)
+      if (videoUrl) {
         sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=1&e=1`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
-          type: 'embed'
+          id: 'zupload',
+          name: 'Zupload',
+          url: videoUrl,
+          type: videoUrl.includes('embed') ? 'embed' : 'direct'
         });
       }
       
@@ -157,25 +136,26 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Source 2Embed (fonctionne moyennement)
+      // Source SuperEmbed
       if (mediaType === 'movie') {
         sources.push({
-          id: '2embed',
-          name: '2Embed',
-          url: `https://www.2embed.cc/embed/${tmdbId}`,
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://v2.superembed.stream/movie?tmdb=${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
         sources.push({
-          id: '2embed',
-          name: '2Embed',
-          url: `https://www.2embed.cc/embedtv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          id: 'superembed',
+          name: 'SuperEmbed',
+          url: `https://v2.superembed.stream/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
           type: 'embed'
         });
       }
       
-      // Source Frembed (uniquement si URL fournie)
-      if (videoUrl && (videoUrl.includes('frembed') || videoUrl.includes('frembed.fun'))) {
+      // Source Frembed (si applicable)
+      // Note: Frembed nécessite une API key ou un compte, donc on vérifie si l'URL est déjà fournie
+      if (videoUrl && videoUrl.includes('frembed')) {
         sources.push({
           id: 'frembed',
           name: 'Frembed',
@@ -183,16 +163,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
       }
+      
+      setVideoSources(sources);
+      setCurrentSourceIndex(0); // Par défaut, utiliser la première source
     }
-    
-    console.log('Sources vidéo générées:', sources);
-    setVideoSources(sources);
-    setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
-    console.log(`Changement de source: ${index} (${videoSources[index]?.name})`);
     setCurrentSourceIndex(index);
     setIsLoading(true);
     setError(null);
@@ -202,12 +180,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (mainVideoRef.current) {
       mainVideoRef.current.pause();
     }
-    
-    // Réinitialiser le flag de préchargement pour la nouvelle source
-    videoPreloadStartedRef.current = false;
-    
-    // Réinitialiser l'état de chargement initial
-    setInitialSourceLoaded(false);
   };
 
   // Précharger la vidéo principale pour accélérer le chargement
@@ -246,13 +218,381 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     }, 30000);
   };
 
-  // Fonction vide pour charger la pub VAST - désactivée
+  // Fonction pour charger la pub VAST via IMA
   async function loadVastAd() {
-    // Ne rien faire - les pubs sont désactivées
-    console.log('Publicités désactivées - accès direct au contenu');
-    setShowAd(false);
-    setAdSkipped(true);
-    setInitialSourceLoaded(true);
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+
+    try {
+      console.log('Chargement du tag VAST:', vastTag);
+      // Ajout d'options pour améliorer la compatibilité mobile
+      const response = await fetch(vastTag, {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'User-Agent': navigator.userAgent,
+        }
+      });
+      
+      // Vérifier si la réponse est OK
+      if (!response.ok) {
+        console.warn('Erreur HTTP lors du chargement du VAST:', response.status, response.statusText);
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Erreur VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const xmlText = await response.text();
+      console.log('Réponse VAST reçue:', xmlText.substring(0, 200) + '...'); // Afficher les 200 premiers caractères
+      
+      // Vérifier si la réponse est vide ou invalide
+      if (!xmlText || xmlText.trim().length === 0) {
+        console.warn('Réponse VAST vide');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Réponse VAST vide sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
+        throw new Error('Réponse VAST vide');
+      }
+      
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlText, "text/xml");
+      
+      // Vérifier les erreurs de parsing XML
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) {
+        console.warn('Erreur de parsing XML VAST:', parserError.textContent);
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Erreur de parsing XML VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
+        throw new Error('Erreur de parsing XML VAST');
+      }
+
+      // Récupère tous les Ad du VAST
+      const ads = xml.querySelectorAll('Ad');
+      console.log('Nombre de balises Ad trouvées:', ads.length);
+      
+      if (!ads.length) {
+        // Vérifier s'il y a d'autres éléments qui pourraient indiquer une erreur
+        const errorElements = xml.querySelectorAll('Error');
+        if (errorElements.length > 0) {
+          console.warn('Éléments Error trouvés dans le VAST:', errorElements.length);
+          errorElements.forEach((errorEl, index) => {
+            console.warn(`Error ${index + 1}:`, errorEl.textContent);
+          });
+        }
+        
+        console.warn('Pas de Ad dans le VAST');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Pas de Ad dans le VAST sur mobile, passage à la vidéo principale');
+          // Afficher un message plus clair à l'utilisateur
+          setError('Aucune publicité disponible pour le moment. La lecture va commencer.');
+          setTimeout(() => {
+            if (mainVideoRef.current) {
+              mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+              setIsLoading(false);
+              setIsAdPlaying(false);
+              setShowAd(false);
+              setAdSkipped(true);
+            }
+          }, 2000); // Attendre 2 secondes pour que l'utilisateur puisse lire le message
+          return;
+        }
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || ''; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Récupère tous les MediaFile des pubs
+      const adUrls: string[] = [];
+      ads.forEach((ad, index) => {
+        console.log(`Traitement de l'Ad ${index + 1}:`, ad);
+        const mediaFile = ad.querySelector('MediaFile');
+        if (mediaFile) {
+          const adUrl = mediaFile.textContent?.trim();
+          if (adUrl) {
+            console.log(`MediaFile trouvé pour Ad ${index + 1}:`, adUrl);
+            adUrls.push(adUrl);
+          } else {
+            console.warn(`MediaFile vide pour Ad ${index + 1}`);
+          }
+        } else {
+          console.warn(`Aucun MediaFile trouvé pour Ad ${index + 1}`);
+        }
+      });
+
+      if (!adUrls.length) {
+        console.warn('Pas de MediaFile dans le VAST');
+        // Sur mobile, on continue vers la vidéo principale en cas d'erreur
+        if (isMobileDevice) {
+          console.log('Pas de MediaFile dans le VAST sur mobile, passage à la vidéo principale');
+          if (mainVideoRef.current) {
+            mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+            setIsLoading(false);
+            setIsAdPlaying(false);
+            setShowAd(false);
+            setAdSkipped(true);
+          }
+          return;
+        }
+        if (mainVideoRef.current) {
+          mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || ''; // pas de pub, lance la vidéo normale
+        }
+        setIsLoading(false);
+        setIsAdPlaying(false);
+        return;
+      }
+
+      // Initialiser la file d'attente des pubs
+      adQueueRef.current = adUrls;
+      currentAdIndexRef.current = 0;
+      console.log('File d\'attente des pubs initialisée:', adUrls);
+
+      // Lecture de la première pub
+      playNextAd();
+    } catch (err) {
+      console.error('Erreur chargement VAST:', err);
+      // En cas d'erreur, passer directement à la vidéo principale
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+        // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type !== 'embed') {
+          mainVideoRef.current.play().catch(playError => {
+            console.error('Erreur de lecture automatique de la vidéo:', playError);
+            // Sur mobile, on ignore cette erreur
+            if (isMobileDevice) {
+              console.log('Erreur de lecture automatique ignorée sur mobile');
+            }
+          });
+        }
+      }
+      setIsAdPlaying(false);
+      setIsLoading(false);
+      setShowAd(false);
+      setAdSkipped(true);
+      // Sur mobile, on affiche un message d'erreur plus spécifique si nécessaire
+      if (isMobileDevice) {
+        setError('Aucune publicité disponible. La lecture va commencer.');
+        // Masquer l'erreur après 2 secondes et continuer vers la vidéo
+        setTimeout(() => {
+          setError(null);
+          setIsLoading(false);
+        }, 2000);
+      }
+    }
+  };
+
+  // Fonction pour essayer le format suivant si le premier échoue
+  const tryNextFormat = (adIndex: number) => {
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+    const ad = adQueueRef.current[adIndex];
+
+    if (!ad) {
+      skipAd();
+      return;
+    }
+
+    // Sur mobile, essayer MP4 d'abord (plus compatible)
+    let formatUrl = ad;
+    if (isMobileDevice) {
+      // Préférer MP4 sur mobile
+      formatUrl = ad.replace('.webm', '.mp4').replace('.flv', '.mp4');
+    }
+
+    // Pour connexion lente, utiliser qualité inférieure
+    if (isMobileDevice && isSlowConnection()) {
+      formatUrl = formatUrl.replace('720', '480');
+    }
+
+    console.log('Tentative de lecture avec format:', formatUrl);
+    videoEl.src = formatUrl;
+    setIsAdPlaying(true);
+    videoEl.muted = true;
+
+    videoEl.onerror = () => {
+      console.log('Format actuel échoué, tentative avec format alternatif');
+
+      // Essayer le format alternatif
+      let altFormat = ad;
+      if (formatUrl.includes('.mp4')) {
+        altFormat = ad.replace('.mp4', '.webm');
+      } else if (formatUrl.includes('.webm')) {
+        altFormat = ad.replace('.webm', '.mp4');
+      }
+
+      if (altFormat !== formatUrl) {
+        videoEl.src = altFormat;
+        videoEl.onerror = () => {
+          console.log('Format alternatif échoué, passage à la pub suivante');
+          currentAdIndexRef.current++;
+          playNextAd();
+        };
+      } else {
+        // Pas de format alternatif, passer à la suivante
+        currentAdIndexRef.current++;
+        playNextAd();
+      }
+    };
+  };
+
+  // Fonction pour jouer la pub suivante
+  const playNextAd = () => {
+    if (!adVideoRef.current) return;
+
+    const videoEl = adVideoRef.current;
+
+    // Vérifier s'il y a une pub suivante
+    if (currentAdIndexRef.current < adQueueRef.current.length) {
+      const adUrl = adQueueRef.current[currentAdIndexRef.current];
+      console.log('Lecture de la publicité:', currentAdIndexRef.current + 1, '/', adQueueRef.current.length, adUrl);
+
+      // Utiliser la fonction améliorée pour les formats
+      tryNextFormat(currentAdIndexRef.current);
+      
+      // Ajouter un gestionnaire d'erreurs pour la lecture
+      videoEl.oncanplay = () => {
+        console.log('La publicité peut être lue');
+      };
+      
+      videoEl.onerror = (e) => {
+        console.error('Erreur de chargement de la publicité:', e);
+        // Sur mobile, on continue quand même vers la vidéo principale
+        if (isMobileDevice) {
+          console.log('Erreur de publicité sur mobile, passage à la vidéo principale');
+          skipAd();
+          return;
+        }
+        // Passer à la pub suivante ou à la vidéo principale
+        currentAdIndexRef.current++;
+        playNextAd();
+      };
+      
+      // Gestion améliorée de l'autoplay selon la stratégie
+      if (autoplayStrategy === 'user-gesture-required') {
+        // iOS Safari : nécessite une interaction explicite
+        console.log('Stratégie iOS Safari : interaction utilisateur requise');
+        // L'overlay sera affiché, pas d'autoplay automatique
+      } else if (autoplayStrategy === 'muted-autoplay-allowed') {
+        // Android Chrome : autoplay muet autorisé
+        console.log('Stratégie Android Chrome : autoplay muet');
+        videoEl.setAttribute('autoplay', 'true');
+        videoEl.setAttribute('muted', 'true');
+        videoEl.setAttribute('playsinline', 'true');
+
+        videoEl.play().catch(err => {
+          console.log('Autoplay Android échoué:', err);
+          // Fallback vers interaction utilisateur
+        });
+      } else {
+        // Desktop : jouer directement
+        videoEl.play().catch(error => {
+          console.error('Erreur de lecture de la pub:', error);
+          currentAdIndexRef.current++;
+          playNextAd();
+        });
+      }
+
+      // Gestion des interruptions (appels, notifications)
+      videoEl.onpause = () => {
+        if (isAdPlaying && !userPausedRef.current) {
+          console.log('Interruption détectée, tentative de reprise');
+          setTimeout(() => {
+            if (adVideoRef.current && isAdPlaying) {
+              adVideoRef.current.play().catch(() => {
+                console.log('Reprise échouée, passage à la vidéo principale');
+                skipAd();
+              });
+            }
+          }, 2000);
+        }
+      };
+
+      videoEl.onplay = () => {
+        userPausedRef.current = false;
+      };
+      
+      // Incrémenter l'index pour la prochaine pub
+      currentAdIndexRef.current++;
+      
+      // Masquer le bouton de skip pendant 5 secondes sur mobile, 10 sur desktop
+      setShowSkipButton(false);
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      // Détecter si on est sur mobile
+      const skipDelay = isMobileDevice ? 5000 : 10000; // 5 secondes sur mobile, 10 sur desktop
+      skipButtonTimeoutRef.current = setTimeout(() => {
+        setShowSkipButton(true);
+      }, skipDelay);
+    } else {
+      console.log('Toutes les publicités ont été jouées, lecture de la vidéo principale');
+      // Toutes les pubs ont été jouées, lancer la vidéo principale
+      if (mainVideoRef.current) {
+        mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+        // Ajout d'attributs pour améliorer la compatibilité mobile
+        if (isMobileDevice) {
+          mainVideoRef.current.setAttribute('playsinline', 'true');
+          mainVideoRef.current.setAttribute('muted', 'false'); // La vidéo principale peut avoir le son
+        }
+        
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture de la vidéo principale:', error);
+          // Pour les URLs d'iframe, l'erreur est normale, masquer le loader
+          const currentSource = videoSources[currentSourceIndex];
+          if (currentSource && currentSource.type === 'embed') {
+            setIsLoading(false);
+          }
+          // Sur mobile, on continue malgré l'erreur
+          if (isMobileDevice) {
+            console.log('Erreur de lecture principale ignorée sur mobile');
+            setIsLoading(false);
+          }
+        });
+      }
+      setIsAdPlaying(false);
+      setIsLoading(false);
+      
+      // Nettoyer le timeout du bouton skip
+      if (skipButtonTimeoutRef.current) {
+        clearTimeout(skipButtonTimeoutRef.current);
+      }
+      setShowSkipButton(false);
+    }
   };
 
   // Handle video load
@@ -276,27 +616,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     console.error('Erreur de chargement de la vidéo:', e);
     setIsLoading(false);
     setIsPlaying(false);
-    
-    // Essayer la source suivante si disponible
-    if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
-      console.log('Tentative de la source suivante...');
-      changeVideoSource(currentSourceIndex + 1);
+    // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
+    if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
+      setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
     } else {
-      // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
-      if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
-        setError('Le contenu mobile n\'est pas disponible. Veuillez réessayer plus tard.');
-      } else {
-        setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
-      }
-      onVideoError?.('Failed to load video content');
+      setError('Impossible de charger la vidéo. Veuillez vérifier votre connexion.');
     }
+    onVideoError?.('Failed to load video content');
   };
 
   // Reset loading state when videoUrl changes
   useEffect(() => {
-    // Ne pas réinitialiser le chargement si nous avons déjà chargé la source initiale
-    if (initialSourceLoaded) return;
-    
     setIsLoading(true);
     setError(null);
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
@@ -310,7 +640,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     if (currentSource && currentSource.type === 'embed') {
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
-        setInitialSourceLoaded(true);
       }, loaderDelay);
       
       return () => clearTimeout(loaderTimeout);
@@ -318,48 +647,113 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       // Pour les vidéos directes, masquer le loader après un court délai
       const loaderTimeout = setTimeout(() => {
         setIsLoading(false);
-        setInitialSourceLoaded(true);
       }, isMobileDevice ? 500 : 1000);
       
       return () => clearTimeout(loaderTimeout);
     }
-  }, [videoSources, currentSourceIndex, isMobileDevice, initialSourceLoaded]);
+  }, [videoSources, currentSourceIndex]);
 
-  // Handle ad for non-authenticated users - désactivé
+  // Handle ad for non-authenticated users
   useEffect(() => {
-    // Toujours désactiver les pubs
-    setShowAd(false);
-    setAdSkipped(true);
-    
-    // S'assurer que l'état de chargement est réinitialisé
-    if (!initialSourceLoaded) {
-      setIsLoading(true);
-    }
-    
-    // Précharger la vidéo immédiatement
-    setTimeout(() => {
-      preloadMainVideo();
-    }, 100);
-    
-    // Pour les URLs d'iframe, masquer rapidement le loader
-    const currentSource = videoSources[currentSourceIndex];
-    if (currentSource && currentSource.type === 'embed') {
+    if (!isAuthenticated && !adSkipped) {
+      setShowAd(true);
+      loadVastAd();
+      
+      // Précharger la vidéo principale pendant la lecture de la pub
+      // Sur mobile, commencer le préchargement plus tard pour économiser la bande passante
+      const preloadDelay = isMobileDevice ? 5000 : 3000; // 5 secondes sur mobile, 3 sur desktop
+      
+      // Réactivation du préchargement avec des ajustements pour mobile
       setTimeout(() => {
-        setIsLoading(false);
-        setInitialSourceLoaded(true);
-      }, 1000);
+        preloadMainVideo();
+      }, preloadDelay);
+      
+      // Ajuster la durée de la pub selon le type d'appareil
+      const adDuration = isMobileDevice ? 30000 : 45000; // 30 secondes sur mobile, 45 sur desktop
+      
+      const timer = setTimeout(() => {
+        setShowAd(false);
+        setAdSkipped(true);
+        // Réinitialiser l'état de chargement après la fin de la pub
+        setIsLoading(true);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type === 'embed') {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
+      }, adDuration);
+      return () => {
+        clearTimeout(timer);
+        if (skipButtonTimeoutRef.current) {
+          clearTimeout(skipButtonTimeoutRef.current);
+        }
+      };
+    } else {
+      setShowAd(false);
+      // S'assurer que l'état de chargement est réinitialisé quand il n'y a pas de pub
+      if (!isAuthenticated || adSkipped) {
+        setIsLoading(true);
+        // Précharger la vidéo immédiatement pour les utilisateurs authentifiés
+        setTimeout(() => {
+          preloadMainVideo();
+        }, 100);
+        
+        // Pour les URLs d'iframe, masquer rapidement le loader
+        const currentSource = videoSources[currentSourceIndex];
+        if (currentSource && currentSource.type === 'embed') {
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 1000);
+        }
+        // Sur mobile, on masque le loader immédiatement pour les utilisateurs authentifiés
+        else if (isMobileDevice) {
+          setIsLoading(false);
+        }
+      }
     }
-    // Sur mobile, on masque le loader immédiatement
-    else if (isMobileDevice) {
-      setIsLoading(false);
-      setInitialSourceLoaded(true);
-    }
-  }, [videoSources, currentSourceIndex, isMobileDevice, initialSourceLoaded]);
+  }, [isAuthenticated, adSkipped, videoSources, currentSourceIndex]);
 
   const skipAd = () => {
-    // Ne rien faire - les pubs sont déjà désactivées
-    console.log('Passage des publicités - fonction désactivée');
-    setInitialSourceLoaded(true);
+    console.log('Passage des publicités demandé par l\'utilisateur');
+    
+    if (adVideoRef.current) {
+      // Arrêter la lecture de la pub
+      adVideoRef.current.pause();
+      adVideoRef.current.oncanplay = null;
+      adVideoRef.current.onerror = null;
+    }
+    
+    // Passer toutes les pubs restantes et lancer la vidéo principale
+    if (mainVideoRef.current) {
+      mainVideoRef.current.src = videoSources[currentSourceIndex]?.url || '';
+      
+      // Pour les URLs d'iframe, ne pas tenter de jouer automatiquement
+      const currentSource = videoSources[currentSourceIndex];
+      if (currentSource && currentSource.type !== 'embed') {
+        mainVideoRef.current.play().catch(error => {
+          console.error('Erreur de lecture après avoir passé la pub:', error);
+        });
+      }
+    }
+    
+    // Vider la file d'attente des pubs
+    adQueueRef.current = [];
+    currentAdIndexRef.current = 0;
+    
+    setIsAdPlaying(false);
+    setShowAd(false);
+    setAdSkipped(true);
+    // Réinitialiser l'état de chargement après avoir passé la pub
+    setIsLoading(false);
+    
+    // Nettoyer le timeout du bouton skip
+    if (skipButtonTimeoutRef.current) {
+      clearTimeout(skipButtonTimeoutRef.current);
+    }
+    setShowSkipButton(false);
   };
 
   // Handle touch events for mobile devices
@@ -422,11 +816,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       userPausedRef.current = false;
     }
   }, [showAd]);
-  
-  // Réinitialiser initialSourceLoaded quand les sources changent
-  useEffect(() => {
-    setInitialSourceLoaded(false);
-  }, [videoUrl, tmdbId]);
 
   // Gestion de la lecture/pause
   const togglePlayPause = () => {
@@ -461,28 +850,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   };
 
   const currentSource = videoSources[currentSourceIndex];
-  
-  // Afficher un message si aucune source n'est disponible
-  if (videoSources.length === 0) {
-    return (
-      <div className="relative w-full h-screen bg-black flex items-center justify-center">
-        <div className="text-center p-8 sm:p-10 bg-black/90 rounded-2xl max-w-xs sm:max-w-md w-full">
-          <div className="text-red-500 text-5xl sm:text-6xl mb-6 sm:mb-8">⚠️</div>
-          <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Aucune source vidéo disponible</h3>
-          <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">Aucun lien vidéo n'a été trouvé pour ce contenu.</p>
-          <button
-            onClick={() => {
-              window.location.reload();
-              setInitialSourceLoaded(false);
-            }}
-            className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
-          >
-            Réessayer
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -518,8 +885,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onError={handleVideoError}
                 onEnded={() => {
                   if (isAdPlaying) {
-                    // Pub terminée, passer directement à la vidéo principale
-                    // Ne rien faire - les pubs sont désactivées
+                    // Pub terminée, jouer la pub suivante ou la vidéo principale
+                    playNextAd();
                   }
                 }}
                 playsInline
@@ -554,8 +921,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   <button
                     onClick={() => {
                       setHasUserInteracted(true);
-                      // Ne rien faire - les pubs sont désactivées
-                      setInitialSourceLoaded(true);
+                      playNextAd();
                     }}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors"
                   >
@@ -600,10 +966,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             <h3 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6">Erreur de chargement</h3>
             <p className="text-gray-300 mb-6 sm:mb-8 text-base sm:text-lg">{error}</p>
             <button
-              onClick={() => {
-                window.location.reload();
-                setInitialSourceLoaded(false);
-              }}
+              onClick={() => window.location.reload()}
               className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors text-lg sm:text-xl font-medium"
             >
               Réessayer
@@ -661,34 +1024,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 value={currentSourceIndex.toString()} 
                 onValueChange={(value) => changeVideoSource(parseInt(value))}
               >
-                <SelectTrigger 
-                  className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
+                <SelectTrigger className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center">
                   <Server className="w-4 h-4 mr-1" />
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
-                <SelectContent
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
+                <SelectContent>
                   {videoSources.map((source, index) => (
-                    <SelectItem 
-                      key={source.id} 
-                      value={index.toString()}
-                      // Ajout d'attributs pour améliorer la compatibilité mobile
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
+                    <SelectItem key={source.id} value={index.toString()}>
                       {source.name}
                     </SelectItem>
                   ))}
@@ -696,56 +1038,54 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               </Select>
             )}
             
-            {/* Bouton Plein écran */}
-            
             {onSkipIntro && (
               <button
                 onClick={onSkipIntro}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
               >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Passer l'intro</span>
+                <RotateCcw className="w-5 h-5 mr-2" />
+                <span className="hidden xs:inline sm:inline">Passer l'intro</span>
               </button>
             )}
             
             {onNextEpisode && (
               <button
                 onClick={onNextEpisode}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                className="bg-black/70 text-white px-4 py-3 rounded-lg hover:bg-black/90 transition-colors flex items-center text-sm sm:text-base font-medium"
               >
-                <SkipForward className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Épisode suivant</span>
+                <SkipForward className="w-5 h-5 mr-2" />
+                <span className="hidden xs:inline sm:inline">Épisode suivant</span>
               </button>
             )}
           </div>
         </div>
         
         {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center">
+        <div className="absolute top-1/2 left-3 sm:left-4 right-3 sm:right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {onPreviousEpisode && (
               <Button
                 onClick={onPreviousEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
                 disabled={currentEpisode <= 1}
               >
-                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+                <ChevronLeft className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
               </Button>
             )}
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             {onNextEpisode && (
               <Button
                 onClick={onNextEpisode}
                 variant="ghost"
                 size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                className="bg-black/70 text-white hover:bg-black/90 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full"
                 disabled={currentEpisode >= totalEpisodes}
               >
-                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+                <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12" />
               </Button>
             )}
           </div>
@@ -754,7 +1094,38 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         {/* Bottom Controls - Play/Pause, Volume, etc. */}
         {showControls && (
           <div className="absolute bottom-4 left-4 right-4 flex justify-center items-center space-x-4 pointer-events-auto">
-
+            <Button
+              onClick={togglePlayPause}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+            >
+              {isPlaying ? (
+                <Pause className="w-6 h-6" />
+              ) : (
+                <Play className="w-6 h-6" />
+              )}
+            </Button>
+            
+            <Button
+              onClick={toggleMute}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 rounded-full"
+            >
+              <Volume2 className="w-6 h-6" />
+            </Button>
+            
+            <div className="flex items-center w-32">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -777,24 +1148,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   console.log('Iframe chargée:', currentSource.url);
                   setIsLoading(false);
                   setError(null);
-                  setInitialSourceLoaded(true);
                 }}
                 onError={(e) => {
                   console.error('Erreur de chargement de l\'iframe:', e);
                   setIsLoading(false);
-                  // Essayer la source suivante si disponible
-                  if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
-                    console.log('Tentative de la source suivante pour l\'iframe...');
-                    changeVideoSource(currentSourceIndex + 1);
+                  // Sur mobile, on affiche un message plus spécifique
+                  if (isMobileDevice) {
+                    setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
                   } else {
-                    // Sur mobile, on affiche un message plus spécifique
-                    if (isMobileDevice) {
-                      setError('Le contenu mobile n\'est pas disponible pour le moment. Veuillez réessayer plus tard ou utiliser un ordinateur.');
-                    } else {
-                      setError('Impossible de charger la vidéo');
-                    }
-                    onVideoError?.('Impossible de charger la vidéo');
+                    setError('Impossible de charger la vidéo');
                   }
+                  onVideoError?.('Impossible de charger la vidéo');
                 }}
                 // Ajout de propriétés pour améliorer la compatibilité mobile
                 style={{
@@ -802,11 +1166,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
-                // Pour Frembed, utiliser les contrôles natifs - ne pas interférer
-                {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking;",
-                  sandbox: "allow-scripts allow-same-origin allow-presentation allow-popups-to-escape-sandbox allow-top-navigation allow-forms"
-                })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
               <div
@@ -844,12 +1203,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               onPlaying={handleVideoPlaying}
               onError={handleVideoError}
               onEnded={onVideoEnd}
-              onLoadedData={() => {
-                console.log('Vidéo chargée:', currentSource.url);
-                setIsLoading(false);
-                setError(null);
-                setInitialSourceLoaded(true);
-              }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onVolumeChange={(e) => {
