@@ -1958,7 +1958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       if (!foundEpisode) {
-        console.log(`[DEBUG] Episode not found: Content ${content.id}, Season ${Num}, Episode ${episodeNum}`);
+        console.log(`[DEBUG] Episode not found: Content ${content.id}, Season ${seasonNum}, Episode ${episodeNum}`);
         return res.status(404).json({ error: "Episode not found" });
       }
       
@@ -1970,64 +1970,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching episode by TMDB ID, season, and episode:", error);
       res.status(500).json({ error: "Failed to fetch episode" });
-    }
-  });
-
-  // Get Frembed movie sources by TMDB ID
-  app.get("/api/frembed/movie/:tmdbId", async (req: any, res: any) => {
-    try {
-      const { tmdbId } = req.params;
-      const tmdbIdNum = parseInt(tmdbId);
-      
-      if (isNaN(tmdbIdNum)) {
-        return res.status(400).json({ error: "Invalid TMDB ID" });
-      }
-
-      // Check if Frembed service is configured
-      if (!frembedService.isConfigured()) {
-        return res.status(500).json({ error: "Frembed service not configured" });
-      }
-
-      const sources = await frembedService.getMovieSources(tmdbIdNum);
-      
-      if (!sources) {
-        return res.status(404).json({ error: "No sources found for this movie" });
-      }
-      
-      res.json({ sources });
-    } catch (error: any) {
-      console.error("Error fetching Frembed movie sources:", error);
-      res.status(500).json({ error: "Failed to fetch Frembed movie sources", details: error.message || 'Unknown error' });
-    }
-  });
-
-  // Get Frembed episode sources by TMDB ID, season, and episode
-  app.get("/api/frembed/tv/:tmdbId/:season/:episode", async (req: any, res: any) => {
-    try {
-      const { tmdbId, season, episode } = req.params;
-      const tmdbIdNum = parseInt(tmdbId);
-      const seasonNum = parseInt(season);
-      const episodeNum = parseInt(episode);
-      
-      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
-        return res.status(400).json({ error: "Invalid parameters" });
-      }
-
-      // Check if Frembed service is configured
-      if (!frembedService.isConfigured()) {
-        return res.status(500).json({ error: "Frembed service not configured" });
-      }
-
-      const sources = await frembedService.getEpisodeSources(tmdbIdNum, seasonNum, episodeNum);
-      
-      if (!sources) {
-        return res.status(404).json({ error: "No sources found for this episode" });
-      }
-      
-      res.json({ sources });
-    } catch (error: any) {
-      console.error("Error fetching Frembed episode sources:", error);
-      res.status(500).json({ error: "Failed to fetch Frembed episode sources", details: error.message || 'Unknown error' });
     }
   });
 
@@ -3288,6 +3230,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error testing video link:", error);
       res.status(500).json({ error: "Failed to test video link" });
+    }
+  });
+
+  // Frembed API endpoints
+  app.get("/api/frembed/episode/:tmdbId/:season/:episode", async (req: any, res: any) => {
+    try {
+      const { tmdbId, season, episode } = req.params;
+      
+      if (!frembedService.isConfigured()) {
+        return res.status(500).json({ error: "Frembed service not configured" });
+      }
+      
+      // Validate inputs
+      if (!tmdbId || !season || !episode) {
+        return res.status(400).json({ error: "tmdbId, season, and episode are required" });
+      }
+      
+      const tmdbIdNum = parseInt(tmdbId);
+      const seasonNum = parseInt(season);
+      const episodeNum = parseInt(episode);
+      
+      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
+        return res.status(400).json({ error: "Invalid parameter format" });
+      }
+      
+      // Search for the content on Frembed
+      const searchResults = await frembedService.searchContent(tmdbId, 'tv');
+      if (searchResults.length === 0) {
+        return res.status(404).json({ error: "Content not found on Frembed" });
+      }
+      
+      const frembedId = searchResults[0].id;
+      
+      // Get the episode link from Frembed
+      const episodeLink = await frembedService.getEpisodeLink(frembedId, seasonNum, episodeNum);
+      if (!episodeLink) {
+        return res.status(404).json({ error: "Episode not found on Frembed" });
+      }
+      
+      res.json({
+        sources: [
+          {
+            id: `frembed-${frembedId}-${seasonNum}-${episodeNum}`,
+            url: episodeLink,
+            quality: "HD",
+            language: "VF",
+            provider: "Frembed"
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("Error fetching episode from Frembed:", error);
+      res.status(500).json({ error: "Failed to fetch episode from Frembed" });
+    }
+  });
+
+  app.get("/api/frembed/movie/:tmdbId", async (req: any, res: any) => {
+    try {
+      const { tmdbId } = req.params;
+      
+      if (!frembedService.isConfigured()) {
+        return res.status(500).json({ error: "Frembed service not configured" });
+      }
+      
+      // Validate input
+      if (!tmdbId) {
+        return res.status(400).json({ error: "tmdbId is required" });
+      }
+      
+      const tmdbIdNum = parseInt(tmdbId);
+      if (isNaN(tmdbIdNum)) {
+        return res.status(400).json({ error: "Invalid tmdbId format" });
+      }
+      
+      // Search for the content on Frembed
+      const searchResults = await frembedService.searchContent(tmdbId, 'movie');
+      if (searchResults.length === 0) {
+        return res.status(404).json({ error: "Movie not found on Frembed" });
+      }
+      
+      const frembedId = searchResults[0].id;
+      
+      // Get the movie link from Frembed
+      const movieLink = await frembedService.getMovieLink(frembedId);
+      if (!movieLink) {
+        return res.status(404).json({ error: "Movie link not found on Frembed" });
+      }
+      
+      res.json({
+        sources: [
+          {
+            id: `frembed-${frembedId}`,
+            url: movieLink,
+            quality: "HD",
+            language: "VF",
+            provider: "Frembed"
+          }
+        ]
+      });
+    } catch (error) {
+      console.error("Error fetching movie from Frembed:", error);
+      res.status(500).json({ error: "Failed to fetch movie from Frembed" });
     }
   });
 
