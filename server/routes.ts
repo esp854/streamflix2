@@ -1887,17 +1887,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test endpoint to check content
-  app.get("/api/test-content", async (req: any, res: any) => {
-    try {
-      const contents = await storage.getAllContent();
-      res.json({ contents });
-    } catch (error) {
-      console.error("Error fetching test content:", error);
-      res.status(500).json({ error: "Failed to fetch test content" });
-    }
-  });
-
   // Get content by TMDB ID (for frontend player)
   app.get("/api/contents/tmdb/:tmdbId", async (req: any, res: any) => {
     try {
@@ -1927,28 +1916,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Only return content if it has a video URL
-      if (!content.odyseeUrl) {
-        // Return content with empty URL instead of 404
-        return res.json({
-          ...content,
-          odyseeUrl: ""
-        });
-      }
-      
       res.json(content);
     } catch (error) {
       console.error("Error fetching content by TMDB ID:", error);
-      // Return a default content object with empty video URL instead of error
-      const { tmdbId } = req.params;
+      res.status(500).json({ error: "Failed to fetch content" });
+    }
+  });
+
+  // Get episode by TMDB ID, season, and episode number
+  app.get("/api/episodes/tv/:tmdbId/:season/:episode", async (req: any, res: any) => {
+    try {
+      const { tmdbId, season, episode } = req.params;
+      
+      // Validate inputs
+      if (!tmdbId || !season || !episode) {
+        return res.status(400).json({ error: "tmdbId, season, and episode are required" });
+      }
+      
       const tmdbIdNum = parseInt(tmdbId);
+      const seasonNum = parseInt(season);
+      const episodeNum = parseInt(episode);
+      
+      if (isNaN(tmdbIdNum) || isNaN(seasonNum) || isNaN(episodeNum)) {
+        return res.status(400).json({ error: "Invalid parameter format" });
+      }
+      
+      console.log(`[DEBUG] Episode request: TMDB ${tmdbIdNum}, Season ${seasonNum}, Episode ${episodeNum}`);
+      
+      // First, find the content by TMDB ID
+      const content = await storage.getContentByTmdbId(tmdbIdNum);
+      
+      if (!content) {
+        console.log(`[DEBUG] Content not found for TMDB ID ${tmdbIdNum}`);
+        return res.status(404).json({ error: "Content not found" });
+      }
+      
+      // Then, find the episode by content ID, season, and episode number
+      const episodes = await storage.getEpisodesByContentId(content.id);
+      const foundEpisode = episodes.find(
+        ep => ep.seasonNumber === seasonNum && ep.episodeNumber === episodeNum
+      );
+      
+      if (!foundEpisode) {
+        console.log(`[DEBUG] Episode not found: Content ${content.id}, Season ${seasonNum}, Episode ${episodeNum}`);
+        return res.status(404).json({ error: "Episode not found" });
+      }
+      
+      console.log(`[DEBUG] Episode found:`, foundEpisode);
+      
       res.json({
-        id: `tmdb-${tmdbIdNum}`,
-        tmdbId: tmdbIdNum,
-        odyseeUrl: "",
-        active: false,
-        createdAt: new Date().toISOString()
+        episode: foundEpisode
       });
+    } catch (error) {
+      console.error("Error fetching episode by TMDB ID, season, and episode:", error);
+      res.status(500).json({ error: "Failed to fetch episode" });
+    }
+  });
+
+  // Test endpoint to check content
+  app.get("/api/test-content", async (req: any, res: any) => {
+    try {
+      const contents = await storage.getAllContent();
+      res.json({ contents });
+    } catch (error) {
+      console.error("Error fetching test content:", error);
+      res.status(500).json({ error: "Failed to fetch test content" });
     }
   });
 
