@@ -565,8 +565,23 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     );
   }
 
+  // Fonction pour entrer en mode plein écran
+  const enterFullscreen = () => {
+    const elem = document.querySelector('#player-container');
+    if (elem?.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if ((elem as any)?.webkitRequestFullscreen) {
+      (elem as any).webkitRequestFullscreen();
+    } else if ((elem as any)?.mozRequestFullScreen) {
+      (elem as any).mozRequestFullScreen();
+    } else if ((elem as any)?.msRequestFullscreen) {
+      (elem as any).msRequestFullscreen();
+    }
+  };
+
   return (
     <div
+      id="player-container"
       className="relative w-full h-screen bg-black"
       onMouseMove={handleMouseMove}
       onTouchStart={handleTouch}
@@ -778,6 +793,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
             )}
             
             {/* Bouton Plein écran */}
+            <button
+              onClick={enterFullscreen}
+              className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+            >
+              <Maximize className="w-4 h-4 mr-1" />
+              <span className="hidden xs:inline">Plein écran</span>
+            </button>
             
             {onSkipIntro && (
               <button
@@ -884,12 +906,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 style={{
                   width: '100%',
                   height: '100%',
-                  minHeight: isMobileDevice ? '200px' : 'auto'
+                  minHeight: isMobileDevice ? '200px' : 'auto',
+                  border: 'none',
+                  backgroundColor: 'black'
                 }}
-                // Pour Frembed, utiliser la configuration optimale
+                // Pour Frembed, utiliser la configuration optimale corrigée
                 {...(currentSource.name === 'Frembed' && {
-                  allow: "autoplay; fullscreen; picture-in-picture",
-                  allowFullScreen: true
+                  allow: "autoplay; fullscreen; picture-in-picture; encrypted-media",
+                  allowFullScreen: true,
+                  referrerPolicy: "no-referrer",
+                  sandbox: "allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
@@ -923,6 +949,16 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 >
                   Cliquez sur le bouton plein écran dans l'iframe
                 </div>
+              )}
+              
+              {/* Bouton plein écran alternatif pour Frembed */}
+              {currentSource.name === 'Frembed' && (
+                <button
+                  onClick={enterFullscreen}
+                  className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-lg z-40"
+                >
+                  Plein écran
+                </button>
               )}
             </>
           ) : (
