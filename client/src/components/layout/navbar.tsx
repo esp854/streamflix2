@@ -81,26 +81,16 @@ export default function Navbar() {
             
             {/* Right side actions */}
             <div className="flex items-center space-x-4">
-              {/* Search */}
-              {!searchOpen ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSearchOpen(true)}
-                  className="text-muted-foreground hover:text-foreground"
-                  data-testid="search-toggle"
-                >
-                  <Search className="h-5 w-5" />
-                </Button>
-              ) : (
-                <div className="relative w-64">
-                  <SearchSuggestions 
-                    isOpen={searchOpen}
-                    onClose={() => setSearchOpen(false)}
-                    onSearch={handleSearch}
-                  />
-                </div>
-              )}
+              {/* Search - Icône de loupe qui redirige vers la page de recherche */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/search')}
+                className="text-muted-foreground hover:text-foreground"
+                data-testid="search-toggle"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
               
               {/* Notifications */}
               {isAuthenticated && (
@@ -215,32 +205,6 @@ export default function Navbar() {
             </div>
           </div>
         </div>
-        
-        {/* Search Overlay for mobile */}
-        {searchOpen && (
-          <div className="md:hidden bg-background border-b border-border" data-testid="mobile-search-overlay">
-            <div className="px-4 py-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <h3 className="text-lg font-medium flex-1">Rechercher</h3>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setSearchOpen(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="relative">
-                <SearchSuggestions 
-                  isOpen={searchOpen}
-                  onClose={() => setSearchOpen(false)}
-                  onSearch={handleSearch}
-                />
-              </div>
-            </div>
-          </div>
-        )}
         
         {/* Authentication Modal */}
         <AuthModal
