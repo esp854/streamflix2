@@ -1732,7 +1732,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           supported_platforms: "Odysee, YouTube, Vimeo, Mux, Frembed, and direct video files"
         });
       }
-      }
       
       // Check if content with this TMDB ID already exists (regardless of active status)
       let existingContent = await storage.getContentByTmdbIdAnyStatus(tmdbId);
