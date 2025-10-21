@@ -9,9 +9,6 @@ import { storage } from "./storage.js";
 
 // Alternative approach for getting __dirname in both ESM and CommonJS
 const getCurrentDir = (): string => {
-  if (typeof __dirname !== 'undefined') {
-    return __dirname;
-  }
   try {
     const __filename = fileURLToPath(import.meta.url);
     return path.dirname(__filename);
