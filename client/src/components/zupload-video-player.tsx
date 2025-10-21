@@ -828,7 +828,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   value={currentSeason.toString()} 
                   onValueChange={(value) => onSeasonChange(parseInt(value))}
                 >
-                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectTrigger className="w-12 bg-black/70 text-white border-white/20 text-xs">
                     <SelectValue placeholder="S" />
                   </SelectTrigger>
                   <SelectContent>
@@ -846,7 +846,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   value={currentEpisode.toString()} 
                   onValueChange={(value) => onEpisodeChange(parseInt(value))}
                 >
-                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                  <SelectTrigger className="w-12 bg-black/70 text-white border-white/20 text-xs">
                     <SelectValue placeholder="E" />
                   </SelectTrigger>
                   <SelectContent>
@@ -859,8 +859,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 </Select>
               )}
             </div>
-            
-            <div className="flex space-x-1">
+            <div className="flex items-center space-x-1">
               {/* Bouton Source - Nouveau bouton pour changer de source */}
               {videoSources.length > 1 && (
                 <Select 
@@ -868,7 +867,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   onValueChange={(value) => changeVideoSource(parseInt(value))}
                 >
                   <SelectTrigger 
-                    className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
+                    className="bg-black/70 text-white border-white/20 text-xs flex items-center touch-manipulation px-2 py-1"
                     // Ajout d'attributs pour améliorer la compatibilité mobile
                     onTouchStart={(e) => {
                       e.stopPropagation();
@@ -877,7 +876,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                       e.stopPropagation();
                     }}
                   >
-                    <Server className="w-4 h-4 mr-1" />
+                    <Server className="w-3 h-3 mr-1" />
                     <SelectValue placeholder="Source" />
                   </SelectTrigger>
                   <SelectContent
@@ -905,18 +904,18 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {/* Bouton Plein écran */}
               <button
                 onClick={enterFullscreen}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                className="bg-black/70 text-white px-2 py-1 rounded-md hover:bg-black/90 transition-colors flex items-center text-xs font-medium"
               >
-                <Maximize className="w-4 h-4 mr-1" />
+                <Maximize className="w-3 h-3 mr-1" />
                 <span className="hidden xs:inline">Plein écran</span>
               </button>
               
               {onSkipIntro && (
                 <button
                   onClick={onSkipIntro}
-                  className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                  className="bg-black/70 text-white px-2 py-1 rounded-md hover:bg-black/90 transition-colors flex items-center text-xs font-medium"
                 >
-                  <RotateCcw className="w-4 h-4 mr-1" />
+                  <RotateCcw className="w-3 h-3 mr-1" />
                   <span className="hidden xs:inline">Passer l'intro</span>
                 </button>
               )}
@@ -924,9 +923,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {onNextEpisode && (
                 <button
                   onClick={onNextEpisode}
-                  className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                  className="bg-black/70 text-white px-2 py-1 rounded-md hover:bg-black/90 transition-colors flex items-center text-xs font-medium"
                 >
-                  <SkipForward className="w-4 h-4 mr-1" />
+                  <SkipForward className="w-3 h-3 mr-1" />
                   <span className="hidden xs:inline">Épisode suivant</span>
                 </button>
               )}
@@ -943,10 +942,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   onClick={onPreviousEpisode}
                   variant="ghost"
                   size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
                   disabled={currentEpisode <= 1}
                 >
-                  <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
               )}
             </div>
@@ -957,10 +956,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   onClick={onNextEpisode}
                   variant="ghost"
                   size="icon"
-                  className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                  className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
                   disabled={currentEpisode >= totalEpisodes}
                 >
-                  <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               )}
             </div>
