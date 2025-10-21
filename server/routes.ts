@@ -3666,6 +3666,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint pour récupérer les liens vidéo Frembed uniquement pour les contenus sans liens existants
+  app.get("/api/frembed/video-link/:tmdbId", async (req: any, res: any) => {
+    try {
+      const { tmdbId } = req.params;
+      const { mediaType, season, episode } = req.query;
+      
+      // Validation des paramètres
+      if (!tmdbId) {
+        return res.status(400).json({ error: "tmdbId is required" });
+      }
+      
+      const tmdbIdNum = parseInt(tmdbId);
+      if (isNaN(tmdbIdNum)) {
+        return res.status(400).json({ error: "Invalid tmdbId format" });
+      }
+      
+      // Vérifier si le contenu existe déjà dans la base de données
+      const existingContent = await storage.getContentByTmdbId(tmdbIdNum);
+      
+      // Si le contenu existe et a déjà un lien vidéo, ne pas utiliser Frembed
+      if (existingContent && existingContent.odyseeUrl && existingContent.odyseeUrl.trim() !== '') {
+        return res.json({ 
+          success: true, 
+          message: "Content already has a video link",
+          videoUrl: existingContent.odyseeUrl,
+          usedExisting: true
+        });
+      }
+      
+      // Si le contenu n'existe pas ou n'a pas de lien vidéo, récupérer depuis Frembed
+      let frembedUrl: string | null = null;
+      
+      if (mediaType === 'tv' && season && episode) {
+        // Pour les séries TV
+        const seasonNum = parseInt(season as string);
+        const episodeNum = parseInt(episode as string);
+        
+        if (isNaN(seasonNum) || isNaN(episodeNum)) {
+          return res.status(400).json({ error: "Invalid season or episode format" });
+        }
+        
+        frembedUrl = await FrembedService.getSeriesEmbedUrl(tmdbIdNum, seasonNum, episodeNum);
+      } else {
+        // Pour les films
+        frembedUrl = await FrembedService.getMovieEmbedUrl(tmdbIdNum);
+      }
+      
+      if (!frembedUrl) {
+        return res.status(404).json({ 
+          error: "No video link found from Frembed",
+          usedExisting: false
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        videoUrl: frembedUrl,
+        usedExisting: false
+      });
+    } catch (error) {
+      console.error("Error fetching Frembed video link:", error);
+      res.status(500).json({ error: "Failed to fetch video link from Frembed" });
+    }
+  });
   
   return server;
 }

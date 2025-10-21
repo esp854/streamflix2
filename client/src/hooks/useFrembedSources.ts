@@ -29,23 +29,17 @@ export const useFrembedSources = (
         return [];
       }
 
-      let url = `https://frembed.fun/api/embed/${tmdbId}`;
+      // Utiliser l'endpoint API pour récupérer les liens Frembed
+      let url = `/api/frembed/video-link/${tmdbId}`;
       
       // Pour les séries (avec saison et épisode)
       if (season !== undefined && episode !== undefined) {
-        url += `?s=${season}&e=${episode}`;
+        url += `?mediaType=tv&season=${season}&episode=${episode}`;
+      } else {
+        url += `?mediaType=movie`;
       }
 
-      // Utiliser l'endpoint Frembed directement
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Streamflix/1.0',
-          'Accept': 'application/json',
-        },
-        // Ajout d'un timeout
-        signal: AbortSignal.timeout(10000) // 10 secondes
-      });
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch Frembed sources: ${response.statusText}`);
@@ -53,21 +47,34 @@ export const useFrembedSources = (
       
       const data = await response.json();
       
-      // Validation de la réponse
-      if (!data || !data.link) {
-        throw new Error("Invalid response from Frembed API");
+      // Si on a utilisé un lien existant, le retourner
+      if (data.usedExisting && data.videoUrl) {
+        return [{
+          id: season !== undefined && episode !== undefined 
+            ? `frembed-${tmdbId}-${season}-${episode}` 
+            : `frembed-${tmdbId}`,
+          url: data.videoUrl,
+          quality: "HD",
+          language: "VF",
+          provider: "Existing"
+        }];
       }
       
-      // Retourner les sources au format attendu
-      return [{
-        id: season !== undefined && episode !== undefined 
-          ? `frembed-${tmdbId}-${season}-${episode}` 
-          : `frembed-${tmdbId}`,
-        url: data.link,
-        quality: data.quality || "HD",
-        language: data.language || "VF",
-        provider: "Frembed"
-      }];
+      // Si on a un nouveau lien Frembed, le retourner
+      if (!data.usedExisting && data.videoUrl) {
+        return [{
+          id: season !== undefined && episode !== undefined 
+            ? `frembed-${tmdbId}-${season}-${episode}` 
+            : `frembed-${tmdbId}`,
+          url: data.videoUrl,
+          quality: "HD",
+          language: "VF",
+          provider: "Frembed"
+        }];
+      }
+      
+      // Aucun lien trouvé
+      throw new Error("No video link found");
     } catch (error) {
       console.error("Error fetching Frembed sources:", error);
       // Retourner un tableau vide pour permettre le fallback

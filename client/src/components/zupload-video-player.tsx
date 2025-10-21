@@ -212,6 +212,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   );
 
   // Utilisation du hook useFrembedSources - déplacé au niveau approprié
+  // Modification pour utiliser l'endpoint API au lieu d'appeler Frembed directement
   const { data: frembedSources } = useFrembedSources(
     tmdbId || 0, 
     mediaType === 'tv' ? seasonNumber : undefined, 
