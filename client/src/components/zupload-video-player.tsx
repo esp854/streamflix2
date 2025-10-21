@@ -567,7 +567,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Fonction pour entrer en mode plein écran
   const enterFullscreen = () => {
-    const elem = document.querySelector('#player-container');
+    const elem = document.getElementById('player-container');
     if (elem?.requestFullscreen) {
       elem.requestFullscreen();
     } else if ((elem as any)?.webkitRequestFullscreen) {
@@ -875,7 +875,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 // Attributs par défaut pour les iframes
                 {...!(currentSource.name === 'Frembed') && {
                   allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen",
-                  allowFullScreen: true
+                  allowFullScreen: true,
+                  webkitallowfullscreen: "true",
+                  mozallowfullscreen: "true"
                 }}
                 title={`${title} - ${currentSource.name}`}
                 loading="lazy"
@@ -914,6 +916,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 {...(currentSource.name === 'Frembed' && {
                   allow: "autoplay; fullscreen; picture-in-picture; encrypted-media",
                   allowFullScreen: true,
+                  webkitallowfullscreen: "true",
+                  mozallowfullscreen: "true",
                   referrerPolicy: "no-referrer",
                   sandbox: "allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
                 })}
