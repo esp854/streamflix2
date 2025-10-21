@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/auth-context';
 import { SkipForward, RotateCcw, RotateCw, ChevronLeft, ChevronRight, Server, Play, Pause, Volume2, Maximize, Minimize } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useFrembedSources } from '@/hooks/useFrembedSources'; // Ajout de l'import
+import { useFrembedSources } from '../hooks/useFrembedSources'; // Ajout de l'import
 
 interface VideoSource {
   id: string;
@@ -59,11 +59,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [showAd, setShowAd] = useState(false); // Toujours false - pas de pubs
   const [adSkipped, setAdSkipped] = useState(true); // Toujours true - pubs désactivées
   const [showControls, setShowControls] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false); // Nouvel état pour le plein écran
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [showSkipButton, setShowSkipButton] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  // Correction du type pour les setTimeout - utilisation de NodeJS.Timeout pour compatibilité
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Références pour les autres timeouts
+  const loaderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const adQueueRef = useRef<string[]>([]); // File d'attente des pubs
   const currentAdIndexRef = useRef(0); // Index de la pub actuelle
   const videoPreloadStartedRef = useRef(false); // Pour éviter le préchargement multiple
@@ -84,10 +88,12 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Détecter la connexion lente
   const isSlowConnection = () => {
-    const connection = (navigator as any).connection;
-    return connection && (connection.effectiveType === 'slow-2g' ||
-           connection.effectiveType === '2g' ||
-           connection.downlink < 1);
+    const connection = (navigator as any)?.connection;
+    return connection && (
+      connection.effectiveType === 'slow-2g' ||
+      connection.effectiveType === '2g' ||
+      connection.downlink < 1
+    );
   };
 
   // Stratégie autoplay selon le navigateur
@@ -105,8 +111,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   const autoplayStrategy = getAutoplayStrategy();
 
-  // URL VAST de HilltopAds - non utilisée
-  const vastTag = '';
+  // URL VAST de HilltopAds - non utilisée - suppression de la variable inutile
 
   // Générer les sources vidéo à partir du TMDB ID
   useEffect(() => {
@@ -324,6 +329,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setIsLoading(false);
     setIsPlaying(false);
     
+    // Protection contre les boucles infinies - si c'est la dernière source, afficher une erreur
+    if (currentSourceIndex >= videoSources.length - 1) {
+      setError('Toutes les sources ont échoué. Veuillez réessayer plus tard.');
+      onVideoError?.('Toutes les sources ont échoué');
+      return;
+    }
+    
     // Essayer la source suivante si disponible
     if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
       console.log('Tentative de la source suivante...');
@@ -344,9 +356,13 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Reset loading state when videoUrl changes
   useEffect(() => {
+    // Références pour les timeouts
+    let loaderTimeout: NodeJS.Timeout | null = null;
+    
     // Ne pas réinitialiser le chargement si nous avons déjà chargé la source initiale
     if (initialSourceLoaded) return;
     
+    // Centraliser la gestion de l'état de chargement
     setIsLoading(true);
     setError(null);
     videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
@@ -358,21 +374,69 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     // Ajustement pour s'assurer que le loader s'affiche correctement
     const currentSource = videoSources[currentSourceIndex];
     if (currentSource && currentSource.type === 'embed') {
-      const loaderTimeout = setTimeout(() => {
+      loaderTimeout = setTimeout(() => {
         setIsLoading(false);
         setInitialSourceLoaded(true);
       }, loaderDelay);
-      
-      return () => clearTimeout(loaderTimeout);
     } else {
       // Pour les vidéos directes, masquer le loader après un court délai
-      const loaderTimeout = setTimeout(() => {
+      loaderTimeout = setTimeout(() => {
         setIsLoading(false);
         setInitialSourceLoaded(true);
       }, isMobileDevice ? 500 : 1000);
-      
-      return () => clearTimeout(loaderTimeout);
     }
+    
+    // Nettoyage
+    return () => {
+      if (loaderTimeout) {
+        clearTimeout(loaderTimeout);
+      }
+    };
+  }, [videoSources, currentSourceIndex, isMobileDevice, initialSourceLoaded]);
+
+  // Effet pour gérer le chargement initial et les changements de source
+  useEffect(() => {
+    // Références pour les timeouts
+    let loaderTimeout: NodeJS.Timeout | null = null;
+    
+    // Ne pas réinitialiser le chargement si nous avons déjà chargé la source initiale
+    if (initialSourceLoaded) return;
+    
+    // Centraliser la gestion de l'état de chargement
+    setIsLoading(true);
+    setError(null);
+    videoPreloadStartedRef.current = false; // Réinitialiser le flag de préchargement
+    
+    // Pour les URLs d'iframe, réduire le temps d'affichage du loader
+    // Sur mobile, masquer encore plus rapidement
+    const loaderDelay = isMobileDevice ? 1000 : 2000; // 1 seconde sur mobile, 2 sur desktop
+    
+    // Ajustement pour s'assurer que le loader s'affiche correctement
+    const currentSource = videoSources[currentSourceIndex];
+    if (currentSource && currentSource.type === 'embed') {
+      loaderTimeout = setTimeout(() => {
+        setIsLoading(false);
+        setInitialSourceLoaded(true);
+      }, loaderDelay);
+    } else {
+      // Pour les vidéos directes, masquer le loader après un court délai
+      loaderTimeout = setTimeout(() => {
+        setIsLoading(false);
+        setInitialSourceLoaded(true);
+      }, isMobileDevice ? 500 : 1000);
+    }
+    
+    // Précharger la vidéo immédiatement
+    setTimeout(() => {
+      preloadMainVideo();
+    }, 100);
+    
+    // Nettoyage
+    return () => {
+      if (loaderTimeout) {
+        clearTimeout(loaderTimeout);
+      }
+    };
   }, [videoSources, currentSourceIndex, isMobileDevice, initialSourceLoaded]);
 
   // Handle ad for non-authenticated users - désactivé
@@ -381,7 +445,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setShowAd(false);
     setAdSkipped(true);
     
-    // S'assurer que l'état de chargement est réinitialisé
+    // Réinitialiser l'état de chargement initial si nécessaire
     if (!initialSourceLoaded) {
       setIsLoading(true);
     }
@@ -414,42 +478,45 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
 
   // Handle touch events for mobile devices
   const handleTouch = (e: React.TouchEvent) => {
-    e.preventDefault();
-    setShowControls(true);
+    // Ne pas afficher les contrôles en mode plein écran
+    if (!isFullscreen) {
+      setShowControls(true);
 
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
 
-    // Sur mobile, garder les contrôles visibles plus longtemps
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 5000); // 5 secondes sur mobile au lieu de 3
+      // Sur mobile, garder les contrôles visibles plus longtemps
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 5000); // 5 secondes sur mobile au lieu de 3
 
-    // Marquer l'interaction utilisateur pour les pubs
-    if (isMobileDevice && !hasUserInteracted) {
-      setHasUserInteracted(true);
+      // Marquer l'interaction utilisateur pour les pubs
+      if (isMobileDevice && !hasUserInteracted) {
+        setHasUserInteracted(true);
+      }
     }
   };
 
   // Show controls on mouse move (desktop) or touch (mobile)
   const handleMouseMove = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setShowControls(true);
-    
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
+    // Ne pas afficher les contrôles en mode plein écran
+    if (!isFullscreen) {
+      setShowControls(true);
+      
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      
+      // Sur desktop, masquer plus rapidement
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000); // 3 secondes sur desktop
     }
-    
-    // Sur desktop, masquer plus rapidement
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 3000); // 3 secondes sur desktop
   };
 
   // Handle touch end event
   const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
     // Ne pas masquer immédiatement les contrôles après un touch
   };
 
@@ -477,6 +544,39 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   useEffect(() => {
     setInitialSourceLoaded(false);
   }, [videoUrl, tmdbId]);
+
+  // Effet pour détecter les changements de mode plein écran
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // Masquer les contrôles immédiatement en mode plein écran
+      if (isCurrentlyFullscreen) {
+        setShowControls(false);
+      }
+    };
+
+    // Ajouter les écouteurs d'événements pour le plein écran
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    // Nettoyer les écouteurs d'événements
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   // Gestion de la lecture/pause
   const togglePlayPause = () => {
@@ -537,6 +637,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   // Fonction pour entrer en mode plein écran
   const enterFullscreen = () => {
     const elem = document.getElementById('player-container');
+    
+    // Pour les iframes cross-origin comme Frembed, afficher une instruction
+    const currentSource = videoSources[currentSourceIndex];
+    if (currentSource && currentSource.type === 'embed' && currentSource.name === 'Frembed') {
+      // Afficher un message d'instruction pour l'utilisateur au lieu d'un alert
+      setError("Activez le plein écran avec le bouton intégré dans la vidéo.");
+      // Masquer le message après 5 secondes
+      setTimeout(() => {
+        if (error?.includes("plein écran")) {
+          setError(null);
+        }
+      }, 5000);
+      return;
+    }
+    
     if (elem?.requestFullscreen) {
       elem.requestFullscreen();
     } else if ((elem as any)?.webkitRequestFullscreen) {
@@ -557,11 +672,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       onTouchMove={handleTouch}
       onTouchEnd={handleTouchEnd}
       onMouseLeave={() => {
-        if (controlsTimeoutRef.current) {
-          clearTimeout(controlsTimeoutRef.current);
-          controlsTimeoutRef.current = setTimeout(() => {
-            setShowControls(false);
-          }, 500);
+        // Ne pas masquer les contrôles en mode plein écran
+        if (!isFullscreen) {
+          if (controlsTimeoutRef.current) {
+            clearTimeout(controlsTimeoutRef.current);
+            controlsTimeoutRef.current = setTimeout(() => {
+              setShowControls(false);
+            }, 500);
+          }
         }
       }}
     >
@@ -680,153 +798,181 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       {/* Custom Controls Overlay for Zupload - Optimized for mobile */}
       <div className="absolute inset-0 z-20 pointer-events-none">
         {/* Top Controls - Season and Episode Selection - Mobile optimized */}
-        <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center space-x-1 sm:space-x-2">
-            {onSeasonChange && (
-              <Select 
-                value={currentSeason.toString()} 
-                onValueChange={(value) => onSeasonChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="S" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
-                    <SelectItem key={seasonNum} value={seasonNum.toString()}>
-                      S{seasonNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            {onEpisodeChange && (
-              <Select 
-                value={currentEpisode.toString()} 
-                onValueChange={(value) => onEpisodeChange(parseInt(value))}
-              >
-                <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
-                  <SelectValue placeholder="E" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
-                    <SelectItem key={episodeNum} value={episodeNum.toString()}>
-                      E{episodeNum}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-          
-          <div className="flex space-x-1">
-            {/* Bouton Source - Nouveau bouton pour changer de source */}
-            {videoSources.length > 1 && (
-              <Select 
-                value={currentSourceIndex.toString()} 
-                onValueChange={(value) => changeVideoSource(parseInt(value))}
-              >
-                <SelectTrigger 
-                  className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
+        {!isFullscreen && (
+          <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              {onSeasonChange && (
+                <Select 
+                  value={currentSeason.toString()} 
+                  onValueChange={(value) => onSeasonChange(parseInt(value))}
                 >
-                  <Server className="w-4 h-4 mr-1" />
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent
-                  // Ajout d'attributs pour améliorer la compatibilité mobile
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                  }}
+                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                    <SelectValue placeholder="S" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                      <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                        S{seasonNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {onEpisodeChange && (
+                <Select 
+                  value={currentEpisode.toString()} 
+                  onValueChange={(value) => onEpisodeChange(parseInt(value))}
                 >
-                  {videoSources.map((source, index) => (
-                    <SelectItem 
-                      key={source.id} 
-                      value={index.toString()}
-                      // Ajout d'attributs pour améliorer la compatibilité mobile
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      {source.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+                  <SelectTrigger className="w-14 sm:w-16 md:w-24 bg-black/70 text-white border-white/20 text-xs sm:text-sm">
+                    <SelectValue placeholder="E" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                      <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                        E{episodeNum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             
-            {/* Bouton Plein écran */}
-            <button
-              onClick={enterFullscreen}
-              className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-            >
-              <Maximize className="w-4 h-4 mr-1" />
-              <span className="hidden xs:inline">Plein écran</span>
-            </button>
-            
-            {onSkipIntro && (
+            <div className="flex space-x-1">
+              {/* Bouton Source - Nouveau bouton pour changer de source */}
+              {videoSources.length > 1 && (
+                <Select 
+                  value={currentSourceIndex.toString()} 
+                  onValueChange={(value) => changeVideoSource(parseInt(value))}
+                >
+                  <SelectTrigger 
+                    className="bg-black/70 text-white border-white/20 text-xs sm:text-sm flex items-center touch-manipulation"
+                    // Ajout d'attributs pour améliorer la compatibilité mobile
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <Server className="w-4 h-4 mr-1" />
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent
+                    // Ajout d'attributs pour améliorer la compatibilité mobile
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    {videoSources.map((source, index) => (
+                      <SelectItem 
+                        key={source.id} 
+                        value={index.toString()}
+                        // Ajout d'attributs pour améliorer la compatibilité mobile
+                        onTouchEnd={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        {source.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
+              {/* Bouton Plein écran */}
               <button
-                onClick={onSkipIntro}
+                onClick={enterFullscreen}
                 className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
               >
-                <RotateCcw className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Passer l'intro</span>
+                <Maximize className="w-4 h-4 mr-1" />
+                <span className="hidden xs:inline">Plein écran</span>
               </button>
-            )}
-            
-            {onNextEpisode && (
-              <button
-                onClick={onNextEpisode}
-                className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
-              >
-                <SkipForward className="w-4 h-4 mr-1" />
-                <span className="hidden xs:inline">Épisode suivant</span>
-              </button>
-            )}
+              
+              {onSkipIntro && (
+                <button
+                  onClick={onSkipIntro}
+                  className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  <span className="hidden xs:inline">Passer l'intro</span>
+                </button>
+              )}
+              
+              {onNextEpisode && (
+                <button
+                  onClick={onNextEpisode}
+                  className="bg-black/70 text-white px-3 py-2 rounded-lg hover:bg-black/90 transition-colors flex items-center text-xs sm:text-sm font-medium"
+                >
+                  <SkipForward className="w-4 h-4 mr-1" />
+                  <span className="hidden xs:inline">Épisode suivant</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Middle Controls - Previous/Next Episode Navigation - Mobile optimized */}
-        <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
-          <div className="flex items-center">
-            {onPreviousEpisode && (
-              <Button
-                onClick={onPreviousEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
-                disabled={currentEpisode <= 1}
-              >
-                <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
-              </Button>
-            )}
+        {!isFullscreen && (
+          <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center pointer-events-auto">
+            <div className="flex items-center">
+              {onPreviousEpisode && (
+                <Button
+                  onClick={onPreviousEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                  disabled={currentEpisode <= 1}
+                >
+                  <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex items-center">
+              {onNextEpisode && (
+                <Button
+                  onClick={onNextEpisode}
+                  variant="ghost"
+                  size="icon"
+                  className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
+                  disabled={currentEpisode >= totalEpisodes}
+                >
+                  <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+                </Button>
+              )}
+            </div>
           </div>
-          
-          <div className="flex items-center">
-            {onNextEpisode && (
-              <Button
-                onClick={onNextEpisode}
-                variant="ghost"
-                size="icon"
-                className="bg-black/70 text-white hover:bg-black/90 w-12 h-12 sm:w-14 sm:h-14 rounded-full"
-                disabled={currentEpisode >= totalEpisodes}
-              >
-                <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
-              </Button>
-            )}
-          </div>
-        </div>
+        )}
         
         {/* Bottom Controls - Play/Pause, Volume, etc. */}
-        {showControls && (
+        {showControls && !isFullscreen && (
           <div className="absolute bottom-4 left-4 right-4 flex justify-center items-center space-x-4 pointer-events-auto">
-
+            <button
+              onClick={togglePlayPause}
+              className="bg-black/70 text-white p-3 rounded-full hover:bg-black/90 transition-colors"
+            >
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+            </button>
+            
+            <button
+              onClick={toggleMute}
+              className="bg-black/70 text-white p-3 rounded-full hover:bg-black/90 transition-colors"
+            >
+              <Volume2 className="w-6 h-6" />
+            </button>
+            
+            <div className="flex items-center space-x-2">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume}
+                onChange={(e) => handleVolumeChange(parseInt(e.target.value))}
+                className="w-24 accent-white"
+              />
+              <span className="text-white text-sm">{volume}%</span>
+            </div>
           </div>
         )}
       </div>
@@ -914,8 +1060,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 }}
               />
 
-              {/* Message d'instruction pour Frembed - afficher uniquement pour Frembed */}
-              {currentSource.name === 'Frembed' && (
+              {/* Message d'instruction pour Frembed - afficher uniquement pour Frembed et pas en plein écran */}
+              {currentSource.name === 'Frembed' && !isFullscreen && (
                 <div 
                   className="absolute bottom-4 left-4 bg-black/70 text-white text-xs sm:text-sm px-2 py-1 rounded z-40"
                   style={{ maxWidth: '200px' }}
@@ -924,8 +1070,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 </div>
               )}
               
-              {/* Bouton plein écran alternatif pour Frembed */}
-              {currentSource.name === 'Frembed' && (
+              {/* Bouton plein écran alternatif pour Frembed - afficher uniquement pour Frembed et pas en plein écran */}
+              {currentSource.name === 'Frembed' && !isFullscreen && (
                 <button
                   onClick={enterFullscreen}
                   className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-lg z-40"
