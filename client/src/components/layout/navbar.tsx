@@ -20,6 +20,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import PWAInstallButton from "@/components/PWAInstallButton";
 import NotificationBell from "@/components/NotificationBell";
+import SearchSuggestions from "@/components/search-suggestions";
 
 export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,25 +30,11 @@ export default function Navbar() {
   
   const { user, logout, isAuthenticated } = useAuth();
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const query = formData.get("query") as string;
+  const handleSearch = (query: string) => {
     if (query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
       setSearchOpen(false);
-      // Clear the form
-      e.currentTarget.reset();
     }
-  };
-
-  const handleSearchBlur = (e: React.FocusEvent) => {
-    // Only close if clicking outside the search form
-    setTimeout(() => {
-      if (!e.currentTarget.contains(document.activeElement)) {
-        setSearchOpen(false);
-      }
-    }, 100);
   };
 
   const navigationLinks = [
@@ -106,18 +93,13 @@ export default function Navbar() {
                   <Search className="h-5 w-5" />
                 </Button>
               ) : (
-                <form onSubmit={handleSearch} className="flex items-center space-x-2" onBlur={handleSearchBlur}>
-                  <Input
-                    name="query"
-                    placeholder="Rechercher des films..."
-                    className="w-64"
-                    autoFocus
-                    data-testid="search-input"
+                <div className="relative w-64">
+                  <SearchSuggestions 
+                    isOpen={searchOpen}
+                    onClose={() => setSearchOpen(false)}
+                    onSearch={handleSearch}
                   />
-                  <Button type="submit" size="sm" variant="secondary">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </form>
+                </div>
               )}
               
               {/* Notifications */}
@@ -249,18 +231,13 @@ export default function Navbar() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <form onSubmit={handleSearch} className="flex items-center space-x-2">
-                <Input
-                  name="query"
-                  placeholder="Rechercher des films, séries..."
-                  className="flex-1"
-                  autoFocus
-                  data-testid="mobile-search-input"
+              <div className="relative">
+                <SearchSuggestions 
+                  isOpen={searchOpen}
+                  onClose={() => setSearchOpen(false)}
+                  onSearch={handleSearch}
                 />
-                <Button type="submit" size="sm" variant="secondary">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </form>
+              </div>
             </div>
           </div>
         )}
@@ -286,7 +263,7 @@ export default function Navbar() {
 
           <Link
             href="/films"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Film className="w-5 h-5" />
             <span className="text-xs">Films</span>
@@ -294,7 +271,7 @@ export default function Navbar() {
 
           <Link
             href="/series"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Tv className="w-5 h-5" />
             <span className="text-xs">Séries</span>
@@ -302,7 +279,7 @@ export default function Navbar() {
 
           <Link
             href="/ma-liste"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Heart className="w-5 h-5" />
             <span className="text-xs">Favoris</span>
@@ -310,7 +287,7 @@ export default function Navbar() {
 
           <Link
             href="/tendances"
-            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
           >
             <TrendingUp className="w-5 h-5" />
             <span className="text-xs">Tendance</span>

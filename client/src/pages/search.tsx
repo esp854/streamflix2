@@ -4,11 +4,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Search as SearchIcon, Film, Tv, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { tmdbService } from "@/lib/tmdb";
 import MovieCard from "@/components/movie-card";
 import TVCard from "@/components/tv-card";
+import { tmdbService } from "@/lib/tmdb";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
+
+// Type pour les résultats combinés
+type SearchResult = {
+  type: 'movie' | 'tv';
+  data: any;
+};
 
 export default function Search() {
   const { shouldShowAds } = useAuthCheck();
@@ -18,31 +23,12 @@ export default function Search() {
   
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeTab, setActiveTab] = useState("movies");
   const searchRef = useRef<HTMLDivElement>(null);
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-      if (searchQuery) {
-        setShowSuggestions(true);
-      }
     }, 300);
 
     return () => clearTimeout(timer);
@@ -54,7 +40,7 @@ export default function Search() {
     gcTime: 5 * 60 * 1000, // 5 minutes
   };
 
-  const { data: searchResults, isLoading, error } = useQuery({
+  const { data: movieSearchResults, isLoading: moviesLoading, error: moviesError } = useQuery({
     queryKey: [`/api/tmdb/search`, debouncedQuery],
     queryFn: () => tmdbService.searchMovies(debouncedQuery),
     enabled: debouncedQuery.length > 0,
@@ -69,42 +55,42 @@ export default function Search() {
       console.log(`[DEBUG] searchTVShows returned:`, result);
       return result;
     },
-    enabled: debouncedQuery.length > 0 && activeTab === "tv",
+    enabled: debouncedQuery.length > 0,
     ...queryOptions,
   });
 
-  // Get search suggestions - only fetch when needed
-  const { data: suggestions } = useQuery({
-    queryKey: [`/api/tmdb/multi-search`, debouncedQuery],
-    queryFn: () => tmdbService.multiSearch(debouncedQuery),
-    enabled: debouncedQuery.length > 2 && showSuggestions,
-    ...queryOptions,
+  // Combiner les résultats de films et de séries
+  const combinedResults: SearchResult[] = [];
+  
+  if (movieSearchResults && movieSearchResults.length > 0) {
+    movieSearchResults.forEach((movie: any) => {
+      combinedResults.push({ type: 'movie', data: movie });
+    });
+  }
+  
+  if (tvSearchResults && tvSearchResults.length > 0) {
+    tvSearchResults.forEach((tv: any) => {
+      combinedResults.push({ type: 'tv', data: tv });
+    });
+  }
+
+  // Trier les résultats combinés par popularité (vote_count)
+  combinedResults.sort((a, b) => {
+    const popularityA = a.data.vote_count || 0;
+    const popularityB = b.data.vote_count || 0;
+    return popularityB - popularityA;
   });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery) {
       setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setShowSuggestions(false);
     }
-  };
-
-  const handleSuggestionClick = (item: any) => {
-    setSearchQuery(item.title || item.name);
-    setShowSuggestions(false);
-    setLocation(`/search?q=${encodeURIComponent(item.title || item.name)}`);
   };
 
   const clearSearch = () => {
     setSearchQuery("");
     setDebouncedQuery("");
-    setShowSuggestions(false);
-  };
-
-  // Handle tab change
-  const handleTabChange = (value: string) => {
-    console.log(`[DEBUG] Tab changed to: ${value}`);
-    setActiveTab(value);
   };
 
   return (
@@ -125,7 +111,6 @@ export default function Search() {
               placeholder="Rechercher des films et séries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery && setShowSuggestions(true)}
               className="pl-10 pr-10 py-3 text-lg"
               data-testid="search-input"
             />
@@ -141,54 +126,11 @@ export default function Search() {
                 <X className="h-4 w-4" />
               </Button>
             )}
-            
-            {/* Search Suggestions */}
-            {showSuggestions && debouncedQuery.length > 2 && suggestions && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto" data-testid="search-suggestions">
-                <div className="py-1">
-                  {suggestions.slice(0, 8).map((item: any) => (
-                    <div
-                      key={item.id}
-                      className="px-4 py-2 hover:bg-muted cursor-pointer flex items-center space-x-3"
-                      onClick={() => handleSuggestionClick(item)}
-                      data-testid={`suggestion-${item.id}`}
-                    >
-                      <div className="flex-shrink-0">
-                        {item.poster_path ? (
-                          <img
-                            src={tmdbService.getPosterUrl(item.poster_path)}
-                            alt={item.title || item.name}
-                            className="w-8 h-12 object-cover rounded"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-8 h-12 bg-muted rounded flex items-center justify-center">
-                            {item.media_type === 'movie' ? (
-                              <Film className="w-4 h-4 text-muted-foreground" />
-                            ) : (
-                              <Tv className="w-4 h-4 text-muted-foreground" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {item.title || item.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.media_type === 'movie' ? 'Film' : 'Série'} • {item.release_date || item.first_air_date ? new Date(item.release_date || item.first_air_date).getFullYear() : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </form>
         </div>
 
         {/* Search Results */}
-        {(isLoading || tvLoading) && debouncedQuery && (
+        {(moviesLoading || tvLoading) && debouncedQuery && (
           <div className="text-center py-12" data-testid="search-loading">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Recherche en cours...</p>
@@ -196,7 +138,7 @@ export default function Search() {
         )}
 
         {/* Error handling */}
-        {(error || tvError) && debouncedQuery && (
+        {(moviesError || tvError) && debouncedQuery && (
           <div className="text-center py-12" data-testid="search-error">
             <div className="text-6xl mb-4">⚠️</div>
             <h3 className="text-xl font-semibold text-foreground mb-2">Erreur de recherche</h3>
@@ -209,56 +151,26 @@ export default function Search() {
           </div>
         )}
 
-        {!isLoading && !tvLoading && debouncedQuery && (searchResults || tvSearchResults) && (
-          <Tabs defaultValue="movies" className="w-full" onValueChange={handleTabChange} data-testid="search-results">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="movies" className="flex items-center space-x-2">
-                <Film className="h-4 w-4" />
-                <span>Films ({searchResults?.length || 0})</span>
-              </TabsTrigger>
-              <TabsTrigger value="tv" className="flex items-center space-x-2">
-                <Tv className="h-4 w-4" />
-                <span>Séries ({tvSearchResults?.length || 0})</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="movies">
-              {searchResults && searchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-results-grid">
-                  {searchResults.map((movie) => (
-                    <MovieCard key={movie.id} movie={movie} size="small" showOverlay={window.innerWidth > 768} />
-                  ))}
-                </div>
+        {!moviesLoading && !tvLoading && debouncedQuery && combinedResults.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-results-grid">
+            {combinedResults.map((result, index) => (
+              result.type === 'movie' ? (
+                <MovieCard key={`movie-${result.data.id}`} movie={result.data} size="small" showOverlay={window.innerWidth > 768} />
               ) : (
-                <div className="text-center py-12" data-testid="search-no-results">
-                  <div className="text-6xl mb-4">🎬</div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Aucun film trouvé</h3>
-                  <p className="text-muted-foreground">
-                    Essayez avec d'autres mots-clés ou vérifiez l'orthographe.
-                  </p>
-                </div>
-              )}
-            </TabsContent>
+                <TVCard key={`tv-${result.data.id}`} series={result.data} size="small" showOverlay={window.innerWidth > 768} />
+              )
+            ))}
+          </div>
+        )}
 
-            <TabsContent value="tv">
-              {console.log(`[DEBUG] Rendering TV tab - tvSearchResults:`, tvSearchResults)}
-              {tvSearchResults && tvSearchResults.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-tv-results-grid">
-                  {tvSearchResults.map((series) => (
-                    <TVCard key={series.id} series={series} size="small" showOverlay={window.innerWidth > 768} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12" data-testid="search-tv-no-results">
-                  <div className="text-6xl mb-4">📺</div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Aucune série trouvée</h3>
-                  <p className="text-muted-foreground">
-                    Essayez avec d'autres mots-clés ou vérifiez l'orthographe.
-                  </p>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+        {!moviesLoading && !tvLoading && debouncedQuery && combinedResults.length === 0 && (
+          <div className="text-center py-12" data-testid="search-no-results">
+            <div className="text-6xl mb-4">🎬</div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Aucun résultat trouvé</h3>
+            <p className="text-muted-foreground">
+              Essayez avec d'autres mots-clés ou vérifiez l'orthographe.
+            </p>
+          </div>
         )}
 
         {!debouncedQuery && (

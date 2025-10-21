@@ -124,23 +124,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     
     // Ajouter les sources alternatives seulement si tmdbId est disponible
     if (tmdbId) {
-      // Source SuperEmbed (fonctionne bien)
-      if (mediaType === 'movie') {
-        sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=1&e=1`,
-          type: 'embed'
-        });
-      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        sources.push({
-          id: 'superembed',
-          name: 'SuperEmbed',
-          url: `https://multiembed.mov/directstream.php?video_id=${tmdbId}&s=${seasonNumber}&e=${episodeNumber}`,
-          type: 'embed'
-        });
-      }
-      
       // Source VidSrc
       if (mediaType === 'movie') {
         sources.push({
@@ -175,51 +158,37 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         });
       }
       
-      // Services de streaming alternatifs
+      // Nouveaux services de streaming - StreamTape et Moviehab
       if (mediaType === 'movie') {
-        // FilmZer - Remplacement de French Stream
+        // StreamTape pour les films
         sources.push({
-          id: 'filmzer',
-          name: 'FilmZer',
-          url: `https://www.filmzer.com/film-${tmdbId}.html`,
+          id: 'streamtape',
+          name: 'StreamTape',
+          url: `https://streamtape.com/e/${tmdbId}`,
           type: 'embed'
         });
         
-        // Alternatives fonctionnelles
+        // Moviehab pour les films
         sources.push({
-          id: 'voirseries',
-          name: 'VoirSeries',
-          url: `https://www.voirseries.co/film-${tmdbId}.html`,
-          type: 'embed'
-        });
-        
-        sources.push({
-          id: 'skstream',
-          name: 'SkStream',
-          url: `https://www.skstream.co/film-${tmdbId}.html`,
+          id: 'moviehab',
+          name: 'Moviehab',
+          url: `https://moviehab.com/embed/${tmdbId}`,
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        // FilmZer pour séries - Remplacement de French Stream
+        // StreamTape pour les séries
         sources.push({
-          id: 'filmzer-tv',
-          name: 'FilmZer',
-          url: `https://www.filmzer.com/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
+          id: 'streamtape',
+          name: 'StreamTape',
+          url: `https://streamtape.com/e/${tmdbId}?s=${seasonNumber}&e=${episodeNumber}`,
           type: 'embed'
         });
         
-        // Alternatives fonctionnelles pour séries
+        // Moviehab pour les séries
         sources.push({
-          id: 'voirseries-tv',
-          name: 'VoirSeries',
-          url: `https://www.voirseries.co/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
-          type: 'embed'
-        });
-        
-        sources.push({
-          id: 'skstream-tv',
-          name: 'SkStream',
-          url: `https://www.skstream.co/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
+          id: 'moviehab',
+          name: 'Moviehab',
+          url: `https://moviehab.com/embed/${tmdbId}/${seasonNumber}/${episodeNumber}`,
           type: 'embed'
         });
       }
@@ -253,15 +222,15 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           };
           return updatedSources;
         } else {
-          // Ajouter la nouvelle source
+          // Ajouter la nouvelle source Frembed au début de la liste
           return [
-            ...prevSources,
             {
               id: 'frembed',
               name: 'Frembed',
               url: frembedSources[0].url,
               type: 'embed'
-            }
+            },
+            ...prevSources
           ];
         }
       });

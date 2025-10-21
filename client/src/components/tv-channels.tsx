@@ -118,7 +118,7 @@ const TVChannels: React.FC = () => {
           {
             id: 'fr3',
             name: 'France 3',
-            url: 'https://directfr.sbs/player/player.php?id=96',
+            url: 'https://directfr.sbs/player/player.php?id=49',
             logo: 'https://example.com/fr3-logo.png',
             category: 'general',
             language: 'français',
@@ -178,7 +178,7 @@ const TVChannels: React.FC = () => {
           {
             id: 'tfx',
             name: 'TFX',
-            url: 'https://directfr.sbs/player/player.php?id=107',
+            url: 'https://directfr.sbs/player/player.php?id=16',
             logo: 'https://example.com/tfx-logo.png',
             category: 'general',
             language: 'français',
@@ -301,6 +301,27 @@ const TVChannels: React.FC = () => {
             url: 'https://directfr.sbs/player/player.php?id=23',
             logo: 'https://example.com/ocscity-logo.png',
             category: 'movies',
+            language: 'français',
+            country: 'FR',
+            isFavorite: false
+          },
+          // Nouvelles chaînes ajoutées
+          {
+            id: 'canalplus-sport',
+            name: 'CANAL + SPORT',
+            url: 'https://directfr.sbs/player/player.php?id=12',
+            logo: 'https://example.com/canalplus-sport-logo.png',
+            category: 'sports',
+            language: 'français',
+            country: 'FR',
+            isFavorite: false
+          },
+          {
+            id: 'novelas-tv',
+            name: 'NOVELAS TV',
+            url: 'https://directfr.sbs/player/player.php?id=3',
+            logo: 'https://example.com/novelas-tv-logo.png',
+            category: 'entertainment',
             language: 'français',
             country: 'FR',
             isFavorite: false
