@@ -886,9 +886,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto'
                 }}
-                // Pour Frembed, utiliser les contrôles natifs - configuration optimisée
+                // Pour Frembed, utiliser la configuration optimale
                 {...(currentSource.name === 'Frembed' && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking; web-share; cross-origin-isolated;",
+                  allow: "autoplay; fullscreen; picture-in-picture",
                   allowFullScreen: true
                 })}
               />
