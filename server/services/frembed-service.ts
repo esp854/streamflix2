@@ -11,7 +11,7 @@ interface FrembedSeriesResponse {
 }
 
 export class FrembedService {
-  private static readonly BASE_URL = 'https://frembed.fun/api';
+  private static readonly BASE_URL = 'https://frembed.cfd/api';
 
   /**
    * Récupère les informations d'un film depuis l'API Frembed
@@ -19,7 +19,10 @@ export class FrembedService {
    */
   static async getMovieEmbedUrl(tmdbId: number): Promise<string | null> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/embed/${tmdbId}`, {
+      const response = await axios.get(`${this.BASE_URL}/film.php`, {
+        params: {
+          id: tmdbId
+        },
         timeout: 10000, // 10 secondes timeout
         headers: {
           'User-Agent': 'Streamflix/1.0'
@@ -42,8 +45,9 @@ export class FrembedService {
    */
   static async getSeriesEmbedUrl(tmdbId: number, season: number, episode: number): Promise<string | null> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/embed/${tmdbId}`, {
+      const response = await axios.get(`${this.BASE_URL}/tv.php`, {
         params: {
+          id: tmdbId,
           s: season,
           e: episode
         },
@@ -66,7 +70,10 @@ export class FrembedService {
    */
   static async healthCheck(): Promise<boolean> {
     try {
-      await axios.get(`${this.BASE_URL}/health`, {
+      await axios.get(`${this.BASE_URL}/film.php`, {
+        params: {
+          id: 1 // Test avec un ID simple
+        },
         timeout: 5000
       });
       return true;
