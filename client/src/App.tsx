@@ -27,6 +27,7 @@ import TrendingPage from "./pages/trending";
 import Favorites from "./pages/favorites";
 import MoviesPage from "./pages/movies";
 import Category from "./pages/category";
+import TVChannelsPage from "./pages/tv-channels-page"; // Ajout de l'import
 
 const routes = [
   { path: "/", component: Home },
@@ -42,6 +43,7 @@ const routes = [
   { path: "/tendances", component: TrendingPage },
   { path: "/ma-liste", component: Favorites },
   { path: "/category/:genre", component: Category },
+  { path: "/tv-channels", component: TVChannelsPage }, // Ajout de la route
   { path: "/*", component: NotFound },
 ];
 
@@ -93,6 +95,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       
       {/* Regular routes with navbar/footer */}
+      <Route path="/tv-channels" component={TVChannelsPage} /> {/* Ajout de la route */}
       <Route path="/" component={Home} />
       <Route path="/movie/:id" component={MovieDetail} />
       <Route path="/universe/:id" component={Universe} />

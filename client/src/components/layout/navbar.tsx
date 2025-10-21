@@ -54,6 +54,7 @@ export default function Navbar() {
     { href: "/", label: "Accueil", active: location === "/" },
     { href: "/films", label: "Films", active: location === "/films" },
     { href: "/series", label: "Séries", active: location === "/series" },
+    { href: "/tv-channels", label: "Chaînes TV", active: location === "/tv-channels" }, // Ajout du lien
     { href: "/ma-liste", label: "Ma Liste", active: location === "/ma-liste" },
     { href: "/tendances", label: "Tendances", active: location === "/tendances" },
   ];
