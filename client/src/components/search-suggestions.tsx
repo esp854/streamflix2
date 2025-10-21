@@ -59,11 +59,21 @@ export default function SearchSuggestions({ isOpen, onClose, onSearch }: SearchS
   };
 
   const handleSuggestionClick = (item: any) => {
-    const title = item.title || item.name;
-    if (title) {
-      onSearch(title);
-      onClose();
+    // Rediriger vers la page du film ou de la série
+    if (item.media_type === 'movie' || item.title) {
+      // C'est un film
+      setLocation(`/movie/${item.id}`);
+    } else if (item.media_type === 'tv' || item.name) {
+      // C'est une série
+      setLocation(`/tv/${item.id}`);
+    } else {
+      // Fallback : effectuer une recherche par titre
+      const title = item.title || item.name;
+      if (title) {
+        onSearch(title);
+      }
     }
+    onClose();
   };
 
   if (!isOpen) return null;
