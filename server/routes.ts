@@ -1709,6 +1709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'vimeo.com',
         'mux.com',
         'player.mux.com',
+        'frembed.cfd', // Ajout du domaine Frembed
         '.mp4',
         '.webm',
         '.ogg',
@@ -1728,8 +1729,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isSupported) {
         return res.status(400).json({ 
           error: "URL is not from a recognized video platform",
-          supported_platforms: "Odysee, YouTube, Vimeo, Mux, and direct video files"
+          supported_platforms: "Odysee, YouTube, Vimeo, Mux, Frembed, and direct video files"
         });
+      }
       }
       
       // Check if content with this TMDB ID already exists (regardless of active status)
