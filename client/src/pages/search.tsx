@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Search as SearchIcon, Film, Tv, X } from "lucide-react";
@@ -18,12 +18,33 @@ type SearchResult = {
 export default function Search() {
   const { shouldShowAds } = useAuthCheck();
   const [location, setLocation] = useLocation();
-  const urlParams = new URLSearchParams(location.split("?")[1] || "");
+  
+  // Utilisation sécurisée de useLocation
+  const [path, query] = location.split("?");
+  const urlParams = new URLSearchParams(query || "");
   const initialQuery = urlParams.get("q") || "";
   
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  // Détection du desktop pour les overlays
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  useEffect(() => {
+    // Vérifier si on est côté client avant d'accéder à window
+    if (typeof window !== 'undefined') {
+      setIsDesktop(window.innerWidth > 768);
+      
+      // Ajouter un event listener pour gérer le redimensionnement
+      const handleResize = () => {
+        setIsDesktop(window.innerWidth > 768);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Debounce search query
   useEffect(() => {
@@ -50,36 +71,35 @@ export default function Search() {
   const { data: tvSearchResults, isLoading: tvLoading, error: tvError } = useQuery({
     queryKey: [`/api/tmdb/tv/search`, debouncedQuery],
     queryFn: () => {
-      console.log(`[DEBUG] Calling searchTVShows with query: ${debouncedQuery}`);
+      // Logs de debug uniquement en développement
+      const isDev = process.env.NODE_ENV === 'development';
+      if (isDev) {
+        console.log(`[DEBUG] Calling searchTVShows with query: ${debouncedQuery}`);
+      }
       const result = tmdbService.searchTVShows(debouncedQuery);
-      console.log(`[DEBUG] searchTVShows returned:`, result);
+      if (isDev) {
+        console.log(`[DEBUG] searchTVShows returned:`, result);
+      }
       return result;
     },
     enabled: debouncedQuery.length > 0,
     ...queryOptions,
   });
 
-  // Combiner les résultats de films et de séries
-  const combinedResults: SearchResult[] = [];
-  
-  if (movieSearchResults && movieSearchResults.length > 0) {
-    movieSearchResults.forEach((movie: any) => {
-      combinedResults.push({ type: 'movie', data: movie });
-    });
-  }
-  
-  if (tvSearchResults && tvSearchResults.length > 0) {
-    tvSearchResults.forEach((tv: any) => {
-      combinedResults.push({ type: 'tv', data: tv });
-    });
-  }
+  // Utilisation de useMemo pour optimiser les résultats combinés
+  const combinedResults = useMemo(() => {
+    const results: SearchResult[] = [];
 
-  // Trier les résultats combinés par popularité (vote_count)
-  combinedResults.sort((a, b) => {
-    const popularityA = a.data.vote_count || 0;
-    const popularityB = b.data.vote_count || 0;
-    return popularityB - popularityA;
-  });
+    if (movieSearchResults?.length) {
+      results.push(...movieSearchResults.map((movie: any) => ({ type: "movie" as const, data: movie })));
+    }
+
+    if (tvSearchResults?.length) {
+      results.push(...tvSearchResults.map((tv: any) => ({ type: "tv" as const, data: tv })));
+    }
+
+    return results.sort((a, b) => (b.data.vote_count || 0) - (a.data.vote_count || 0));
+  }, [movieSearchResults, tvSearchResults]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +133,7 @@ export default function Search() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-10 py-3 text-lg"
               data-testid="search-input"
+              aria-label="Recherche de films et séries"
             />
             {searchQuery && (
               <Button
@@ -155,9 +176,9 @@ export default function Search() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-results-grid">
             {combinedResults.map((result, index) => (
               result.type === 'movie' ? (
-                <MovieCard key={`movie-${result.data.id}`} movie={result.data} size="small" showOverlay={window.innerWidth > 768} />
+                <MovieCard key={`movie-${result.data.id}`} movie={result.data} size="small" showOverlay={isDesktop} />
               ) : (
-                <TVCard key={`tv-${result.data.id}`} series={result.data} size="small" showOverlay={window.innerWidth > 768} />
+                <TVCard key={`tv-${result.data.id}`} series={result.data} size="small" showOverlay={isDesktop} />
               )
             ))}
           </div>
@@ -167,7 +188,7 @@ export default function Search() {
           <div className="text-center py-12" data-testid="search-no-results">
             <div className="text-6xl mb-4">🎬</div>
             <h3 className="text-xl font-semibold text-foreground mb-2">Aucun résultat trouvé</h3>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground animate-pulse">
               Essayez avec d'autres mots-clés ou vérifiez l'orthographe.
             </p>
           </div>
@@ -180,6 +201,13 @@ export default function Search() {
             <p className="text-muted-foreground">
               Utilisez la barre de recherche pour trouver vos contenus préférés.
             </p>
+          </div>
+        )}
+        
+        {/* Message pour les utilisateurs non premium */}
+        {shouldShowAds && debouncedQuery && combinedResults.length > 0 && (
+          <div className="mt-12 text-center text-muted-foreground">
+            🔔 Certaines fonctionnalités sont réservées aux abonnés Premium.
           </div>
         )}
       </div>
