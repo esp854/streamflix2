@@ -9,13 +9,24 @@ interface VideoSource {
   provider: string;
 }
 
-// Hook personnalisé pour récupérer les sources Frembed
-export const useFrembedSources = (tmdbId: number, season?: number, episode?: number) => {
+// Hook personnalisé pour récupérer les sources Frembed uniquement pour les contenus qui n'en ont pas
+export const useFrembedSources = (
+  tmdbId: number, 
+  season?: number, 
+  episode?: number,
+  hasExistingSources?: boolean // Nouveau paramètre pour vérifier si des sources existent déjà
+) => {
   const fetchFrembedSources = async (): Promise<VideoSource[]> => {
     try {
       // Validation des paramètres
       if (!tmdbId) {
         throw new Error("TMDB ID is required");
+      }
+
+      // Ne pas récupérer les sources si le contenu en a déjà
+      if (hasExistingSources) {
+        console.log("Le contenu a déjà des sources vidéo, Frembed non nécessaire");
+        return [];
       }
 
       let url = `https://frembed.fun/api/embed/${tmdbId}`;
@@ -65,9 +76,9 @@ export const useFrembedSources = (tmdbId: number, season?: number, episode?: num
   };
 
   return useQuery({
-    queryKey: ["frembed-sources", tmdbId, season, episode],
+    queryKey: ["frembed-sources", tmdbId, season, episode, hasExistingSources],
     queryFn: fetchFrembedSources,
-    enabled: !!tmdbId,
+    enabled: !!tmdbId && !hasExistingSources, // Ne pas activer la requête si des sources existent déjà
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2, // Réessayer 2 fois en cas d'erreur
     retryDelay: 1000, // Attendre 1 seconde entre les tentatives

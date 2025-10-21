@@ -204,43 +204,64 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
   }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
 
+  // Vérifier si des sources existent déjà (autres que Frembed)
+  const hasExistingSources = videoSources.some(source => 
+    source.id !== 'frembed' && 
+    source.type === 'embed' && 
+    source.url.length > 0
+  );
+
   // Utilisation du hook useFrembedSources - déplacé au niveau approprié
   const { data: frembedSources } = useFrembedSources(
     tmdbId || 0, 
     mediaType === 'tv' ? seasonNumber : undefined, 
-    mediaType === 'tv' ? episodeNumber : undefined
+    mediaType === 'tv' ? episodeNumber : undefined,
+    hasExistingSources // Passer l'information sur l'existence de sources
   );
 
   // Effet pour ajouter la source Frembed quand elle est disponible
   useEffect(() => {
     if (frembedSources && frembedSources.length > 0 && tmdbId) {
-      setVideoSources(prevSources => {
-        // Vérifier si la source Frembed existe déjà
-        const existingFrembedIndex = prevSources.findIndex(source => source.id === 'frembed');
-        
-        if (existingFrembedIndex >= 0) {
-          // Mettre à jour la source existante
-          const updatedSources = [...prevSources];
-          updatedSources[existingFrembedIndex] = {
-            ...updatedSources[existingFrembedIndex],
-            url: frembedSources[0].url
-          };
-          return updatedSources;
-        } else {
-          // Ajouter la nouvelle source Frembed au début de la liste
-          return [
-            {
-              id: 'frembed',
-              name: 'Frembed',
-              url: frembedSources[0].url,
-              type: 'embed'
-            },
-            ...prevSources
-          ];
-        }
-      });
+      // Vérifier s'il y a déjà des sources fonctionnelles
+      const hasWorkingSources = videoSources.some(source => 
+        source.id !== 'frembed' && 
+        source.type === 'embed' && 
+        source.url.length > 0
+      );
+      
+      // N'ajouter Frembed que s'il n'y a pas d'autres sources valides
+      if (!hasWorkingSources) {
+        setVideoSources(prevSources => {
+          // Vérifier si la source Frembed existe déjà
+          const existingFrembedIndex = prevSources.findIndex(source => source.id === 'frembed');
+          
+          if (existingFrembedIndex >= 0) {
+            // Mettre à jour la source existante
+            const updatedSources = [...prevSources];
+            updatedSources[existingFrembedIndex] = {
+              ...updatedSources[existingFrembedIndex],
+              url: frembedSources[0].url
+            };
+            return updatedSources;
+          } else {
+            // Ajouter la nouvelle source Frembed
+            return [
+              ...prevSources,
+              {
+                id: 'frembed',
+                name: 'Frembed',
+                url: frembedSources[0].url,
+                type: 'embed'
+              }
+            ];
+          }
+        });
+        console.log('Frembed ajouté comme source vidéo');
+      } else {
+        console.log('Sources existantes détectées, Frembed non nécessaire');
+      }
     }
-  }, [frembedSources, tmdbId, mediaType, seasonNumber, episodeNumber]);
+  }, [frembedSources, tmdbId, videoSources]);
 
   // Changer de source vidéo
   const changeVideoSource = (index: number) => {
