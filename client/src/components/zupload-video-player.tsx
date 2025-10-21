@@ -177,11 +177,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       
       // Services de streaming alternatifs
       if (mediaType === 'movie') {
-        // French Stream
+        // FilmZer - Remplacement de French Stream
         sources.push({
-          id: 'frenchstream',
-          name: 'French Stream',
-          url: `https://www.french-streaming.com/film-${tmdbId}.html`,
+          id: 'filmzer',
+          name: 'FilmZer',
+          url: `https://www.filmzer.com/film-${tmdbId}.html`,
           type: 'embed'
         });
         
@@ -200,11 +200,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           type: 'embed'
         });
       } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
-        // French Stream pour séries
+        // FilmZer pour séries - Remplacement de French Stream
         sources.push({
-          id: 'frenchstream-tv',
-          name: 'French Stream',
-          url: `https://www.french-streaming.com/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
+          id: 'filmzer-tv',
+          name: 'FilmZer',
+          url: `https://www.filmzer.com/serie-${tmdbId}-s${seasonNumber}e${episodeNumber}.html`,
           type: 'embed'
         });
         
@@ -358,7 +358,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     // Essayer la source suivante si disponible
     if (videoSources.length > 1 && currentSourceIndex < videoSources.length - 1) {
       console.log('Tentative de la source suivante...');
-      changeVideoSource(currentSourceIndex + 1);
+      // Attendre un peu avant de changer de source pour éviter les boucles rapides
+      setTimeout(() => {
+        changeVideoSource(currentSourceIndex + 1);
+      }, 1000);
     } else {
       // Sur mobile, certaines URLs peuvent échouer à charger, on tente un fallback
       if (isMobileDevice && videoSources[currentSourceIndex]?.url.includes('embed')) {
@@ -887,8 +890,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 {...(currentSource.name === 'Frembed' && {
                   allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking; web-share; cross-origin-isolated;",
                   allowFullScreen: true
-                  // Note: L'attribut sandbox a été supprimé car il est interdit selon les spécifications du projet
-                  // Il peut bloquer les publicités, ce qui viole les politiques de l'infrastructure Frembed
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}

@@ -88,10 +88,12 @@ const TVChannels: React.FC = () => {
         throw new Error('API Frembed non disponible');
       } catch (err) {
         console.error('Error fetching TV channels:', err);
-        setError('Impossible de charger les chaînes TV. Veuillez réessayer plus tard.');
+        // Ne pas afficher d'erreur à l'utilisateur puisqu'on utilise les données de secours
+        // setError('Impossible de charger les chaînes TV. Veuillez réessayer plus tard.');
         setLoading(false);
         
         // Données de secours avec des chaînes populaires françaises
+        // Utilisation des liens directs fournis par l'utilisateur
         const fallbackChannels: TVChannel[] = [
           {
             id: 'tf1',
