@@ -304,16 +304,22 @@ class TMDBService {
 
   async searchMovies(query: string): Promise<TMDBMovie[]> {
     // Don't cache search results as they're user-specific
+    if (!query) return [];
     try {
-      const response = await this.fetchWithRetry(`${this.baseUrl}/search?query=${encodeURIComponent(query)}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/search/movie?query=${encodeURIComponent(query)}&language=fr-FR`);
       if (!response.ok) {
-        throw new Error("Failed to search movies");
+        const errorText = await response.text();
+        console.error(`[DEBUG] Movie search error response: ${errorText}`);
+        // Return empty array instead of throwing error to prevent complete failure
+        return [];
       }
       const data: TMDBResponse = await response.json();
-      return data.results;
+      console.log(`[DEBUG] Movie search results count: ${data.results?.length || 0}`);
+      return data.results || [];
     } catch (error) {
       console.error("Error searching movies:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent complete failure
+      return [];
     }
   }
 
@@ -523,9 +529,10 @@ class TMDBService {
 
   async searchTVShows(query: string): Promise<TMDBTVSeries[]> {
     // Don't cache search results as they're user-specific
+    if (!query) return [];
     try {
       console.log(`[DEBUG] Searching TV shows with query: ${query}`);
-      const response = await this.fetchWithRetry(`${this.baseUrl}/tv/search?query=${encodeURIComponent(query)}`);
+      const response = await this.fetchWithRetry(`${this.baseUrl}/search/tv?query=${encodeURIComponent(query)}&language=fr-FR`);
       console.log(`[DEBUG] TV search response status: ${response.status}`);
       if (!response.ok) {
         const errorText = await response.text();

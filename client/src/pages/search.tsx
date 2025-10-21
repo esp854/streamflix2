@@ -58,7 +58,7 @@ export default function Search() {
   // Reduce retry attempts and cache time for mobile performance
   const queryOptions = {
     retry: 1,
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 0, // désactive le cache pendant les tests
   };
 
   const { data: movieSearchResults, isLoading: moviesLoading, error: moviesError } = useQuery({
@@ -100,6 +100,14 @@ export default function Search() {
 
     return results.sort((a, b) => (b.data.vote_count || 0) - (a.data.vote_count || 0));
   }, [movieSearchResults, tvSearchResults]);
+
+  // Log de débogage pour diagnostiquer les problèmes de recherche
+  console.log("🎬 Debug TMDB:", {
+    debouncedQuery,
+    movieSearchResults,
+    tvSearchResults,
+    combinedResults,
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

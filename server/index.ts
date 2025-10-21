@@ -58,7 +58,7 @@ app.use(express.static(getPublicPath()));
 // Enregistrer les routes API
 registerRoutes(app);
 
-// Route catch-all pour React Router
+// Route catch-all pour React Router (doit être après les routes API)
 app.get('*', (req, res) => {
   res.sendFile(path.join(getPublicPath(), 'index.html'));
 });
