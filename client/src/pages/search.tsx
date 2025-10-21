@@ -63,7 +63,12 @@ export default function Search() {
 
   const { data: tvSearchResults, isLoading: tvLoading, error: tvError } = useQuery({
     queryKey: [`/api/tmdb/tv/search`, debouncedQuery],
-    queryFn: () => tmdbService.searchTVShows(debouncedQuery),
+    queryFn: () => {
+      console.log(`[DEBUG] Calling searchTVShows with query: ${debouncedQuery}`);
+      const result = tmdbService.searchTVShows(debouncedQuery);
+      console.log(`[DEBUG] searchTVShows returned:`, result);
+      return result;
+    },
     enabled: debouncedQuery.length > 0 && activeTab === "tv",
     ...queryOptions,
   });
@@ -98,6 +103,7 @@ export default function Search() {
 
   // Handle tab change
   const handleTabChange = (value: string) => {
+    console.log(`[DEBUG] Tab changed to: ${value}`);
     setActiveTab(value);
   };
 
@@ -235,6 +241,7 @@ export default function Search() {
             </TabsContent>
 
             <TabsContent value="tv">
+              {console.log(`[DEBUG] Rendering TV tab - tvSearchResults:`, tvSearchResults)}
               {tvSearchResults && tvSearchResults.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" data-testid="search-tv-results-grid">
                   {tvSearchResults.map((series) => (

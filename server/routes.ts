@@ -2938,7 +2938,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { query } = req.query;
       const apiKey = process.env.TMDB_API_KEY;
       
+      console.log(`[DEBUG] TV search request - query: ${query}, apiKey present: ${!!apiKey}`);
+      
       if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
         return res.status(500).json({ error: "TMDB API key not configured" });
       }
 
@@ -2946,19 +2949,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const response = await fetch(
-        `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`
-      );
+      const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(query as string)}&page=1`;
+      console.log(`[DEBUG] Calling TMDB API: ${url}`);
+      
+      const response = await fetch(url);
+      
+      console.log(`[DEBUG] TMDB API response status: ${response.status}`);
       
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
+        throw new Error(`TMDB API error: ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log(`[DEBUG] TMDB API response data - results count: ${data.results?.length || 0}`);
       res.json(data);
     } catch (error) {
       console.error("Error searching TV shows:", error);
-      res.status(500).json({ error: "Failed to search TV shows" });
+      res.status(500).json({ error: "Failed to search TV shows", details: (error as Error).message });
     }
   });
 
