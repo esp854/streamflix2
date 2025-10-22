@@ -7,7 +7,6 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
 - 🔐 Authentification utilisateur (inscription/connexion)
 - 🎬 Catalogue de films et séries
 - ❤️ Système de favoris
-- 📺 Historique de visionnage
 - 💰 Système d'abonnement avec PayPal
 - 📱 Interface responsive
 - 🔍 Recherche et filtrage de contenu
@@ -33,10 +32,6 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
 5. Exécuter les migrations Drizzle :
    ```bash
    npx drizzle-kit push
-   ```
-6. Exécuter les migrations personnalisées (si nécessaire) :
-   ```bash
-   npm run migrate
    ```
 
 ## Configuration PayPal

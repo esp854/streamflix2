@@ -1,2 +1,2 @@
-// Declaration file for run-migrations.js
-export function runAllMigrations(): Promise<void>;
+// Type definitions for run-migrations
+export declare function runAllMigrations(): Promise<void>;

@@ -1,13 +1,11 @@
 // Script to run all database migrations
-import { createWatchProgressTable } from './001-create-watch-progress-table.js';
 
 async function runAllMigrations() {
   console.log('Starting database migrations...');
   
   try {
-    // Run watch_progress table creation
-    await createWatchProgressTable();
-    console.log('✅ Migration 001 completed: watch_progress table');
+    // Actuellement, il n'y a pas de migrations à exécuter
+    console.log('✅ No migrations to run');
     
     console.log('🎉 All migrations completed successfully!');
   } catch (error) {
