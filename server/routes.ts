@@ -581,13 +581,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });
-      await storage.deleteContactMessage(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting contact message:", error);
-      res.status(500).json({ error: "Failed to delete contact message" });
-    }
-  });
 
   // Get all users (admin only)
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
@@ -3830,8 +3823,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const progressData = insertWatchProgressSchema.parse(req.body);
       const existingProgress = await storage.getWatchProgressByContent(
         progressData.userId,
-        progressData.contentId,
-        progressData.episodeId
+        progressData.contentId !== null ? progressData.contentId : undefined,
+        progressData.episodeId !== null ? progressData.episodeId : undefined
       );
       
       let progress;
