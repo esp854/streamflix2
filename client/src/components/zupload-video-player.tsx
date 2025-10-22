@@ -913,9 +913,9 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {/* Bouton Plein écran */}
               <button
                 onClick={enterFullscreen}
-                className="bg-black/70 text-white px-2 py-1 rounded-md hover:bg-black/90 transition-colors flex items-center text-xs font-medium"
+                className="bg-black/70 text-white px-4 py-2 rounded-md hover:bg-black/90 transition-colors flex items-center text-sm font-medium"
               >
-                <Maximize className="w-33 h-3 mr-1" />
+                <Maximize className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Plein écran</span>
               </button>
               
@@ -1102,9 +1102,10 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {currentSource.name === 'Frembed' && !isFullscreen && (
                 <button
                   onClick={enterFullscreen}
-                  className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-lg z-40 hover:bg-black/90 transition-colors"
+                  className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-md hover:bg-black/90 transition-colors flex items-center text-sm font-medium z-40"
                 >
-                  Plein écran
+                  <Maximize className="w-4 h-4 mr-2" />
+                  <span>Plein écran</span>
                 </button>
               )}
             </>
