@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import { 
   insertFavoriteSchema, 
   insertWatchHistorySchema, 
+  insertWatchProgressSchema,
   insertUserPreferencesSchema, 
   insertContactMessageSchema, 
   insertUserSchema,
@@ -23,7 +24,8 @@ import {
   userSessions,
   viewTracking,
   favorites,
-  watchHistory
+  watchHistory,
+  watchProgress
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -501,6 +503,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/contact-messages/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
+      await storage.deleteContactMessage(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting contact message:", error);
+      res.status(500).json({ error: "Failed to delete contact message" });
+    }
+  });
+
+  // Get watch progress
+  app.get("/api/watch-progress/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const progress = await storage.getWatchProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching watch progress:", error);
+      res.status(500).json({ error: "Failed to fetch watch progress" });
+    }
+  });
+
+  // Create or update watch progress
+  app.post("/api/watch-progress", async (req, res) => {
+    try {
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const existingProgress = await storage.getWatchProgressByContent(
+        progressData.userId,
+        progressData.contentId,
+        progressData.episodeId
+      );
+      
+      let progress;
+      if (existingProgress) {
+        // Update existing progress
+        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
+      } else {
+        // Create new progress
+        progress = await storage.createWatchProgress(progressData);
+      }
+      
+      res.json(progress);
+    } catch (error) {
+      console.error("Error creating/updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to save watch progress" });
+      }
+    }
+  });
+
+  // Update watch progress
+  app.put("/api/watch-progress/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const progress = await storage.updateWatchProgress(id, progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update watch progress" });
+      }
+    }
+  });
+
+  // Delete watch progress
+  app.delete("/api/watch-progress/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteWatchProgress(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting watch progress:", error);
+      res.status(500).json({ error: "Failed to delete watch progress" });
+    }
+  });
       await storage.deleteContactMessage(id);
       res.json({ success: true });
     } catch (error) {
@@ -3729,6 +3809,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching Frembed video link:", error);
       res.status(500).json({ error: "Failed to fetch video link from Frembed" });
+    }
+  });
+
+  // Get watch progress
+  app.get("/api/watch-progress/:userId", async (req: any, res: any) => {
+    try {
+      const { userId } = req.params;
+      const progress = await storage.getWatchProgress(userId);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching watch progress:", error);
+      res.status(500).json({ error: "Failed to fetch watch progress" });
+    }
+  });
+
+  // Create or update watch progress
+  app.post("/api/watch-progress", async (req: any, res: any) => {
+    try {
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const existingProgress = await storage.getWatchProgressByContent(
+        progressData.userId,
+        progressData.contentId,
+        progressData.episodeId
+      );
+      
+      let progress;
+      if (existingProgress) {
+        // Update existing progress
+        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
+      } else {
+        // Create new progress
+        progress = await storage.createWatchProgress(progressData);
+      }
+      
+      res.json(progress);
+    } catch (error) {
+      console.error("Error creating/updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to save watch progress" });
+      }
+    }
+  });
+
+  // Update watch progress
+  app.put("/api/watch-progress/:id", async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const progress = await storage.updateWatchProgress(id, progressData);
+      res.json(progress);
+    } catch (error) {
+      console.error("Error updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update watch progress" });
+      }
+    }
+  });
+
+  // Delete watch progress
+  app.delete("/api/watch-progress/:id", async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteWatchProgress(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting watch progress:", error);
+      res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });
   
