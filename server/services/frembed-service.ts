@@ -45,7 +45,9 @@ export class FrembedService {
    */
   static async getSeriesEmbedUrl(tmdbId: number, season: number, episode: number): Promise<string | null> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/tv.php`, {
+      // Modification de l'URL pour correspondre à la structure actuelle de l'API
+      // Utilisation de la même structure que pour les films mais avec des paramètres supplémentaires
+      const response = await axios.get(`${this.BASE_URL}/film.php`, {
         params: {
           id: tmdbId,
           s: season,

@@ -1061,8 +1061,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   allowFullScreen: true,
                   webkitallowfullscreen: "true",
                   mozallowfullscreen: "true",
-                  referrerPolicy: "no-referrer",
-                  sandbox: "allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+                  referrerPolicy: "no-referrer"
+                  // Suppression de l'attribut sandbox qui bloque les pubs Frembed
                 })}
               />
               {/* Overlay to prevent download button action - targeted at download button area */}
