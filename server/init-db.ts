@@ -113,7 +113,10 @@ async function initDatabase() {
 async function runMigrations(client: Client) {
   try {
     // Obtenir la liste des fichiers de migration
-    const migrationsDir = join(__dirname, 'migrations');
+    // Utiliser process.cwd() pour obtenir le chemin correct dans l'environnement de production
+    const migrationsDir = join(process.cwd(), 'server', 'migrations');
+    console.log(`📁 Chemin des migrations: ${migrationsDir}`);
+    
     const files = await readdir(migrationsDir);
     
     // Trier les fichiers par ordre alphabétique
