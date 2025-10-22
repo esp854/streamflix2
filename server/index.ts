@@ -38,9 +38,30 @@ async function initializeDatabase() {
   try {
     console.log("🔧 Initialisation de la base de données...");
     
-    // Exécuter les migrations
-    const { runMigrations } = await import("./migrate.js");
-    await runMigrations();
+    // Importer et exécuter les migrations de manière plus robuste
+    const migrationModule = await import("./migrate.js");
+    
+    // Accéder aux propriétés de manière dynamique pour éviter les erreurs de typage
+    if (typeof (migrationModule as any).runMigrations === 'function') {
+      await (migrationModule as any).runMigrations();
+    } else {
+      // Si runMigrations n'existe pas, essayer d'autres approches
+      const moduleKeys = Object.keys(migrationModule);
+      let migrationFunctionFound = false;
+      
+      // Parcourir toutes les propriétés du module
+      for (const key of moduleKeys) {
+        if (typeof (migrationModule as any)[key] === 'function') {
+          await (migrationModule as any)[key]();
+          migrationFunctionFound = true;
+          break;
+        }
+      }
+      
+      if (!migrationFunctionFound) {
+        throw new Error("Aucune fonction de migration trouvée dans le module");
+      }
+    }
     
     console.log("✅ Base de données initialisée avec succès");
   } catch (error) {
