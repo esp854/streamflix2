@@ -8,8 +8,6 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { 
   insertFavoriteSchema, 
-  insertWatchHistorySchema, 
-  insertWatchProgressSchema,
   insertUserPreferencesSchema, 
   insertContactMessageSchema, 
   insertUserSchema,
@@ -23,9 +21,7 @@ import {
   notifications,
   userSessions,
   viewTracking,
-  favorites,
-  watchHistory,
-  watchProgress
+  favorites
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -415,34 +411,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get watch history
-  app.get("/api/watch-history/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const history = await storage.getWatchHistory(userId);
-      res.json(history);
-    } catch (error) {
-      console.error("Error fetching watch history:", error);
-      res.status(500).json({ error: "Failed to fetch watch history" });
-    }
-  });
-
-  // Add to watch history
-  app.post("/api/watch-history", async (req, res) => {
-    try {
-      const historyData = insertWatchHistorySchema.parse(req.body);
-      const history = await storage.addToWatchHistory(historyData);
-      res.json(history);
-    } catch (error) {
-      console.error("Error adding to watch history:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch history data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to add to watch history" });
-      }
-    }
-  });
-
   // Get user preferences
   app.get("/api/user-preferences/:userId", async (req, res) => {
     try {
@@ -508,77 +476,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting contact message:", error);
       res.status(500).json({ error: "Failed to delete contact message" });
-    }
-  });
-
-  // Get watch progress
-  app.get("/api/watch-progress/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const progress = await storage.getWatchProgress(userId);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error fetching watch progress:", error);
-      res.status(500).json({ error: "Failed to fetch watch progress" });
-    }
-  });
-
-  // Create or update watch progress
-  app.post("/api/watch-progress", async (req, res) => {
-    try {
-      const progressData = insertWatchProgressSchema.parse(req.body);
-      const existingProgress = await storage.getWatchProgressByContent(
-        progressData.userId,
-        progressData.contentId,
-        progressData.episodeId
-      );
-      
-      let progress;
-      if (existingProgress) {
-        // Update existing progress
-        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
-      } else {
-        // Create new progress
-        progress = await storage.createWatchProgress(progressData);
-      }
-      
-      res.json(progress);
-    } catch (error) {
-      console.error("Error creating/updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to save watch progress" });
-      }
-    }
-  });
-
-  // Update watch progress
-  app.put("/api/watch-progress/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const progressData = insertWatchProgressSchema.parse(req.body);
-      const progress = await storage.updateWatchProgress(id, progressData);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update watch progress" });
-      }
-    }
-  });
-
-  // Delete watch progress
-  app.delete("/api/watch-progress/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteWatchProgress(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting watch progress:", error);
-      res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });
 
@@ -693,17 +590,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all watch history (admin only)
-  app.get("/api/admin/watch-history", requireAdmin, async (req, res) => {
-    try {
-      const history = await storage.getWatchHistory('all');
-      res.json(history);
-    } catch (error) {
-      console.error("Error fetching all watch history:", error);
-      res.status(500).json({ error: "Failed to fetch all watch history" });
-    }
-  });
-
   // Get all user preferences (admin only)
   app.get("/api/admin/user-preferences", requireAdmin, async (req, res) => {
     try {
@@ -796,22 +682,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid favorite data", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to create favorite" });
-      }
-    }
-  });
-
-  // Create watch history (admin only)
-  app.post("/api/admin/watch-history", requireAdmin, async (req, res) => {
-    try {
-      const historyData = insertWatchHistorySchema.parse(req.body);
-      const history = await storage.addToWatchHistory(historyData);
-      res.json(history);
-    } catch (error) {
-      console.error("Error creating watch history:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch history data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to create watch history" });
       }
     }
   });
@@ -959,24 +829,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ error: "Invalid favorite data", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to update favorite" });
-      }
-    }
-  });
-
-  // Update watch history (admin only)
-  app.put("/api/admin/watch-history/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      const historyData = insertWatchHistorySchema.parse(req.body);
-      // updateWatchHistory doesn't exist, using addToWatchHistory instead
-      const history = await storage.addToWatchHistory(historyData);
-      res.json(history);
-    } catch (error) {
-      console.error("Error updating watch history:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch history data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update watch history" });
       }
     }
   });
@@ -1130,19 +982,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting favorite:", error);
       res.status(500).json({ error: "Failed to delete favorite" });
-    }
-  });
-
-  // Delete watch history (admin only)
-  app.delete("/api/admin/watch-history/:id", requireAdmin, async (req, res) => {
-    try {
-      const { id } = req.params;
-      // deleteWatchHistory doesn't exist, using a custom delete approach
-      await db.delete(watchHistory).where(eq(watchHistory.id, id));
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting watch history:", error);
-      res.status(500).json({ error: "Failed to delete watch history" });
     }
   });
 
@@ -3805,77 +3644,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get watch progress
-  app.get("/api/watch-progress/:userId", async (req: any, res: any) => {
-    try {
-      const { userId } = req.params;
-      const progress = await storage.getWatchProgress(userId);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error fetching watch progress:", error);
-      res.status(500).json({ error: "Failed to fetch watch progress" });
-    }
-  });
-
-  // Create or update watch progress
-  app.post("/api/watch-progress", async (req: any, res: any) => {
-    try {
-      const progressData = insertWatchProgressSchema.parse(req.body);
-      const existingProgress = await storage.getWatchProgressByContent(
-        progressData.userId,
-        progressData.contentId !== null ? progressData.contentId : undefined,
-        progressData.episodeId !== null ? progressData.episodeId : undefined
-      );
-      
-      let progress;
-      if (existingProgress) {
-        // Update existing progress
-        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
-      } else {
-        // Create new progress
-        progress = await storage.createWatchProgress(progressData);
-      }
-      
-      res.json(progress);
-    } catch (error) {
-      console.error("Error creating/updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to save watch progress" });
-      }
-    }
-  });
-
-  // Update watch progress
-  app.put("/api/watch-progress/:id", async (req: any, res: any) => {
-    try {
-      const { id } = req.params;
-      const progressData = insertWatchProgressSchema.parse(req.body);
-      const progress = await storage.updateWatchProgress(id, progressData);
-      res.json(progress);
-    } catch (error) {
-      console.error("Error updating watch progress:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update watch progress" });
-      }
-    }
-  });
-
-  // Delete watch progress
-  app.delete("/api/watch-progress/:id", async (req: any, res: any) => {
-    try {
-      const { id } = req.params;
-      await storage.deleteWatchProgress(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting watch progress:", error);
-      res.status(500).json({ error: "Failed to delete watch progress" });
-    }
-  });
-  
   return server;
 }
 
