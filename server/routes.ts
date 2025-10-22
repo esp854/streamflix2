@@ -8,6 +8,8 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { 
   insertFavoriteSchema, 
+  insertWatchHistorySchema, 
+  insertWatchProgressSchema,
   insertUserPreferencesSchema, 
   insertContactMessageSchema, 
   insertUserSchema,
@@ -21,7 +23,9 @@ import {
   notifications,
   userSessions,
   viewTracking,
-  favorites
+  favorites,
+  watchHistory,
+  watchProgress
 } from "@shared/schema";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -411,6 +415,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get watch history
+  app.get("/api/watch-history/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const history = await storage.getWatchHistory(userId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching watch history:", error);
+      res.status(500).json({ error: "Failed to fetch watch history" });
+    }
+  });
+
+  // Add to watch history
+  app.post("/api/watch-history", async (req, res) => {
+    try {
+      const historyData = insertWatchHistorySchema.parse(req.body);
+      const history = await storage.addToWatchHistory(historyData);
+      res.json(history);
+    } catch (error) {
+      console.error("Error adding to watch history:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch history data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to add to watch history" });
+      }
+    }
+  });
+
   // Get user preferences
   app.get("/api/user-preferences/:userId", async (req, res) => {
     try {
@@ -479,122 +511,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all users (admin only)
-  app.get("/api/admin/users", requireAdmin, async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      // Remove passwords from response
-      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
-      res.json(usersWithoutPasswords);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
-
-  // Ban user (admin only)
-  app.post("/api/admin/users/:userId/ban", requireAdmin, async (req, res) => {
+  // Get watch progress
+  app.get("/api/watch-progress/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
-      
-      // Validate user ID
-      if (!userId) {
-        return res.status(400).json({ error: "User ID is required" });
-      }
-      
-      // Check if user exists
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      // Prevent banning admin users
-      if (user.role === "admin") {
-        return res.status(403).json({ error: "Cannot ban admin users" });
-      }
-      
-      // Ban the user
-      const bannedUser = await storage.banUser(userId);
-      
-      // Log the action
-      securityLogger.logEvent({
-        timestamp: new Date(),
-        eventType: 'ADMIN_ACCESS',
-        userId: req.user?.userId,
-        ipAddress: req.ip || 'unknown',
-        details: `User ${user.username} (${user.id}) banned by admin ${req.user?.userId}`,
-        severity: 'MEDIUM'
-      });
-      
-      // Remove password from response
-      const { password, ...userWithoutPassword } = bannedUser;
-      res.json({ 
-        message: "User banned successfully", 
-        user: userWithoutPassword 
-      });
+      const progress = await storage.getWatchProgress(userId);
+      res.json(progress);
     } catch (error) {
-      console.error("Error banning user:", error);
-      res.status(500).json({ error: "Failed to ban user" });
+      console.error("Error fetching watch progress:", error);
+      res.status(500).json({ error: "Failed to fetch watch progress" });
     }
   });
 
-  // Unban user (admin only)
-  app.post("/api/admin/users/:userId/unban", requireAdmin, async (req, res) => {
+  // Create or update watch progress
+  app.post("/api/watch-progress", async (req, res) => {
     try {
-      const { userId } = req.params;
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const existingProgress = await storage.getWatchProgressByContent(
+        progressData.userId,
+        progressData.contentId,
+        progressData.episodeId
+      );
       
-      // Validate user ID
-      if (!userId) {
-        return res.status(400).json({ error: "User ID is required" });
+      let progress;
+      if (existingProgress) {
+        // Update existing progress
+        progress = await storage.updateWatchProgress(existingProgress.id, progressData);
+      } else {
+        // Create new progress
+        progress = await storage.createWatchProgress(progressData);
       }
       
-      // Check if user exists
-      const user = await storage.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      // Unban the user
-      const unbannedUser = await storage.unbanUser(userId);
-      
-      // Log the action
-      securityLogger.logEvent({
-        timestamp: new Date(),
-        eventType: 'ADMIN_ACCESS',
-        userId: req.user?.userId,
-        ipAddress: req.ip || 'unknown',
-        details: `User ${user.username} (${user.id}) unbanned by admin ${req.user?.userId}`,
-        severity: 'MEDIUM'
-      });
-      
-      // Remove password from response
-      const { password, ...userWithoutPassword } = unbannedUser;
-      res.json({ 
-        message: "User unbanned successfully", 
-        user: userWithoutPassword 
-      });
+      res.json(progress);
     } catch (error) {
-      console.error("Error unbanning user:", error);
-      res.status(500).json({ error: "Failed to unban user" });
+      console.error("Error creating/updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to save watch progress" });
+      }
     }
   });
 
-  // Get all favorites (admin only)
-  app.get("/api/admin/favorites", requireAdmin, async (req, res) => {
+  // Update watch progress
+  app.put("/api/watch-progress/:id", async (req, res) => {
     try {
-      const favorites = await storage.getAllFavorites();
-      res.json(favorites);
+      const { id } = req.params;
+      const progressData = insertWatchProgressSchema.parse(req.body);
+      const progress = await storage.updateWatchProgress(id, progressData);
+      res.json(progress);
     } catch (error) {
-      console.error("Error fetching all favorites:", error);
-      res.status(500).json({ error: "Failed to fetch all favorites" });
+      console.error("Error updating watch progress:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid watch progress data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update watch progress" });
+      }
     }
   });
 
-  return server;
-}
-
-}
-
+  // Delete watch progress
+  app.delete("/api/watch-progress/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteWatchProgress(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting watch progress:", error);
       res.status(500).json({ error: "Failed to delete watch progress" });
     }
   });

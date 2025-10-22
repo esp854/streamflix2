@@ -26,6 +26,7 @@ async function resetDatabase() {
     
     const dropQueries = [
       'DROP TABLE IF EXISTS user_preferences CASCADE;',
+      'DROP TABLE IF EXISTS watch_history CASCADE;', 
       'DROP TABLE IF EXISTS favorites CASCADE;',
       'DROP TABLE IF EXISTS contact_messages CASCADE;',
       'DROP TABLE IF EXISTS users CASCADE;'

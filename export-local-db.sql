@@ -1,11 +1,22 @@
--- Export de la base de données StreamFlix
--- Ce script exporte toutes les tables dans des fichiers CSV
+-- Export script for local Streamflix database
+-- Run this to export all data from local database
+
+-- Connect to local database first, then run:
+-- pg_dump -h localhost -U postgres -d streamkji --no-owner --no-privileges --clean --if-exists --inserts > streamflix_data.sql
+
+-- Or use this SQL to export data manually:
 
 -- Export users
 COPY users TO '/tmp/users.csv' WITH CSV HEADER;
 
 -- Export favorites
 COPY favorites TO '/tmp/favorites.csv' WITH CSV HEADER;
+
+-- Export watch_history
+COPY watch_history TO '/tmp/watch_history.csv' WITH CSV HEADER;
+
+-- Export watch_progress
+COPY watch_progress TO '/tmp/watch_progress.csv' WITH CSV HEADER;
 
 -- Export user_preferences
 COPY user_preferences TO '/tmp/user_preferences.csv' WITH CSV HEADER;

@@ -8,4 +8,4 @@ export * from './usePWA';
 export * from './usePlanFeatures';
 export * from './useSubscriptionCheck';
 export * from './useFrembedSources';
-// use-watch-history.ts supprimé
+export * from './use-watch-history';

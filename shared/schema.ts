@@ -24,6 +24,16 @@ export const favorites = pgTable("favorites", {
   addedAt: timestamp("added_at").defaultNow().notNull(),
 });
 
+export const watchHistory = pgTable("watch_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  movieId: integer("movie_id").notNull(), // TMDB movie ID
+  movieTitle: text("movie_title").notNull(),
+  moviePoster: text("movie_poster"),
+  watchedAt: timestamp("watched_at").defaultNow().notNull(),
+  watchDuration: integer("watch_duration").default(0), // in minutes
+});
+
 export const userPreferences = pgTable("user_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -157,6 +167,21 @@ export const viewTracking = pgTable("view_tracking", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Watch progress tracking for "Continue Watching" feature
+export const watchProgress = pgTable("watch_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contentId: varchar("content_id").references(() => content.id, { onDelete: "cascade" }), // For series episodes
+  episodeId: varchar("episode_id").references(() => episodes.id, { onDelete: "cascade" }), // For specific episodes
+  movieId: integer("movie_id"), // TMDB movie ID for backward compatibility
+  currentTime: integer("current_time").notNull(), // in seconds
+  duration: integer("duration"), // total duration in seconds
+  completed: boolean("completed").default(false).notNull(),
+  lastWatchedAt: timestamp("last_watched_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Comments table for user comments on content
 export const comments = pgTable("comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -172,18 +197,27 @@ export const comments = pgTable("comments", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   favorites: many(favorites),
+  watchHistory: many(watchHistory),
   preferences: many(userPreferences),
   subscriptions: many(subscriptions),
   payments: many(payments),
   notifications: many(notifications),
   sessions: many(userSessions),
   views: many(viewTracking),
+  watchProgress: many(watchProgress),
   comments: many(comments),
 }));
 
 export const favoritesRelations = relations(favorites, ({ one }) => ({
   user: one(users, {
     fields: [favorites.userId],
+    references: [users.id],
+  }),
+}));
+
+export const watchHistoryRelations = relations(watchHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [watchHistory.userId],
     references: [users.id],
   }),
 }));
@@ -240,6 +274,21 @@ export const viewTrackingRelations = relations(viewTracking, ({ one }) => ({
   }),
 }));
 
+export const watchProgressRelations = relations(watchProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [watchProgress.userId],
+    references: [users.id],
+  }),
+  content: one(content, {
+    fields: [watchProgress.contentId],
+    references: [content.id],
+  }),
+  episode: one(episodes, {
+    fields: [watchProgress.episodeId],
+    references: [episodes.id],
+  }),
+}));
+
 export const commentsRelations = relations(comments, ({ one }) => ({
   user: one(users, {
     fields: [comments.userId],
@@ -273,6 +322,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertFavoriteSchema = createInsertSchema(favorites).omit({
   id: true,
   addedAt: true,
+});
+
+export const insertWatchHistorySchema = createInsertSchema(watchHistory).omit({
+  id: true,
+  watchedAt: true,
 });
 
 export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
@@ -319,6 +373,12 @@ export const insertViewTrackingSchema = createInsertSchema(viewTracking).omit({
   createdAt: true,
 });
 
+export const insertWatchProgressSchema = createInsertSchema(watchProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertContentSchema = createInsertSchema(content).omit({
   id: true,
   createdAt: true,
@@ -336,6 +396,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Favorite = typeof favorites.$inferSelect;
 export type InsertFavorite = z.infer<typeof insertFavoriteSchema>;
+export type WatchHistory = typeof watchHistory.$inferSelect;
+export type InsertWatchHistory = z.infer<typeof insertWatchHistorySchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type ContactMessage = typeof contactMessages.$inferSelect;
@@ -356,5 +418,7 @@ export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 export type ViewTracking = typeof viewTracking.$inferSelect;
 export type InsertViewTracking = z.infer<typeof insertViewTrackingSchema>;
+export type WatchProgress = typeof watchProgress.$inferSelect;
+export type InsertWatchProgress = z.infer<typeof insertWatchProgressSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;

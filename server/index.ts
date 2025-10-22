@@ -6,7 +6,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { storage } from "./storage.js";
-import { runAllMigrations } from "./migrations/run-migrations.js";
 
 // Alternative approach for getting __dirname in both ESM and CommonJS
 const getCurrentDir = (): string => {
@@ -34,6 +33,22 @@ const getPublicPath = (): string => {
   return publicPath;
 };
 
+// Initialisation de la base de données
+async function initializeDatabase() {
+  try {
+    console.log("🔧 Initialisation de la base de données...");
+    
+    // Exécuter les migrations
+    const { runMigrations } = await import("./migrate.js");
+    await runMigrations();
+    
+    console.log("✅ Base de données initialisée avec succès");
+  } catch (error) {
+    console.error("❌ Erreur lors de l'initialisation de la base de données:", error);
+    process.exit(1);
+  }
+}
+
 const app = express();
 const server = createServer(app);
 
@@ -44,12 +59,6 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"],
     credentials: true
   }
-});
-
-// Exécuter les migrations au démarrage
-runAllMigrations().catch((error: any) => {
-  console.error('Erreur lors de l\'exécution des migrations:', error);
-  // Ne pas arrêter le serveur en cas d'erreur de migration
 });
 
 // Middleware
@@ -504,8 +513,15 @@ io.on('connection', (socket: Socket) => {
 
 // Démarrer le serveur
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Subscription plans route registered`);
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`🌐 Socket.IO activé pour Watch Party`);
+
+// Initialiser la base de données avant de démarrer le serveur
+initializeDatabase().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Subscription plans route registered`);
+    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+    console.log(`🌐 Socket.IO activé pour Watch Party`);
+  });
+}).catch(error => {
+  console.error("❌ Impossible de démarrer le serveur:", error);
+  process.exit(1);
 });
