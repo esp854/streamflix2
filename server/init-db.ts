@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 
 // Obtenir __dirname dans un module ES
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = pathToFileURL(__filename).pathname;
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // Charger les variables d'environnement
 config();
@@ -130,9 +130,10 @@ async function runMigrations(client: Client) {
         console.log(`⏳ Exécution de la migration: ${file}`);
         
         try {
-          // Importer dynamiquement le script de migration
+          // Importer dynamiquement le script de migration en utilisant pathToFileURL pour éviter les problèmes Windows
           const migrationPath = join(migrationsDir, file);
-          const migration = await import(migrationPath);
+          const migrationUrl = pathToFileURL(migrationPath).href;
+          const migration = await import(migrationUrl);
           
           // Exécuter la fonction up si elle existe
           if (typeof migration.up === 'function') {
@@ -148,100 +149,7 @@ async function runMigrations(client: Client) {
       }
     }
     
-    // Création des tables manquantes si nécessaire
-    console.log("⏳ Vérification et création des tables manquantes...");
-    
-    // Création de la table content
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS content (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tmdb_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        poster_path TEXT,
-        backdrop_path TEXT,
-        release_date TEXT,
-        genres JSONB,
-        odysee_url TEXT,
-        mux_playback_id TEXT,
-        mux_url TEXT,
-        language TEXT NOT NULL,
-        quality TEXT NOT NULL,
-        media_type TEXT NOT NULL,
-        rating INTEGER,
-        active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Création de la table episodes
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS episodes (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        content_id UUID NOT NULL,
-        season_number INTEGER NOT NULL,
-        episode_number INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        odysee_url TEXT,
-        mux_playback_id TEXT,
-        mux_url TEXT,
-        duration INTEGER,
-        release_date TEXT,
-        active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Création de la table watch_progress
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS watch_progress (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        content_id UUID REFERENCES content(id) ON DELETE CASCADE,
-        episode_id UUID REFERENCES episodes(id) ON DELETE CASCADE,
-        movie_id INTEGER,
-        current_time INTEGER NOT NULL,
-        duration INTEGER,
-        completed BOOLEAN NOT NULL DEFAULT false,
-        last_watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Création de la table watch_history
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS watch_history (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        movie_id INTEGER NOT NULL,
-        movie_title TEXT NOT NULL,
-        movie_poster TEXT,
-        watched_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        watch_duration INTEGER,
-        session_id UUID REFERENCES user_sessions(id),
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Ajout des index
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS content_tmdb_id_idx ON content(tmdb_id);
-      CREATE INDEX IF NOT EXISTS episodes_content_id_idx ON episodes(content_id);
-      CREATE INDEX IF NOT EXISTS episodes_season_episode_idx ON episodes(season_number, episode_number);
-      CREATE INDEX IF NOT EXISTS watch_progress_user_id_idx ON watch_progress(user_id);
-      CREATE INDEX IF NOT EXISTS watch_progress_content_id_idx ON watch_progress(content_id);
-      CREATE INDEX IF NOT EXISTS watch_progress_episode_id_idx ON watch_progress(episode_id);
-      CREATE INDEX IF NOT EXISTS watch_progress_movie_id_idx ON watch_progress(movie_id);
-      CREATE INDEX IF NOT EXISTS watch_history_user_id_idx ON watch_history(user_id);
-      CREATE INDEX IF NOT EXISTS watch_history_movie_id_idx ON watch_history(movie_id);
-    `);
-
-    console.log("✅ Toutes les tables ont été vérifiées/créées avec succès!");
-    
+    console.log("✅ Toutes les migrations ont été exécutées avec succès!");
   } catch (error) {
     console.error("❌ Erreur lors des migrations:", error);
     throw error;

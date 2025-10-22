@@ -1,8 +1,6 @@
 import {
    users,
    favorites,
-   watchHistory,
-   watchProgress,
    userPreferences,
    contactMessages,
    subscriptions,
@@ -14,40 +12,38 @@ import {
    userSessions,
    viewTracking,
    episodes,
-   comments,
-   type User,
-   type InsertUser,
-   type Favorite,
-   type InsertFavorite,
-   type WatchHistory,
-   type InsertWatchHistory,
-   type WatchProgress,
-   type InsertWatchProgress,
-   type UserPreferences,
-   type InsertUserPreferences,
-   type ContactMessage,
-   type InsertContactMessage,
-   type Subscription,
-   type InsertSubscription,
-   type Payment,
-   type InsertPayment,
-   type Banner,
-   type InsertBanner,
-   type Collection,
-   type InsertCollection,
-   type Content,
-   type InsertContent,
-   type Notification,
-   type InsertNotification,
-   type UserSession,
-   type InsertUserSession,
-   type ViewTracking,
-   type InsertViewTracking,
-   type Comment,
-   type InsertComment
+   comments
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
+
+// Inférer les types à partir des tables
+type User = typeof users.$inferSelect;
+type InsertUser = typeof users.$inferInsert;
+type Favorite = typeof favorites.$inferSelect;
+type InsertFavorite = typeof favorites.$inferInsert;
+type UserPreferences = typeof userPreferences.$inferSelect;
+type InsertUserPreferences = typeof userPreferences.$inferInsert;
+type ContactMessage = typeof contactMessages.$inferSelect;
+type InsertContactMessage = typeof contactMessages.$inferInsert;
+type Subscription = typeof subscriptions.$inferSelect;
+type InsertSubscription = typeof subscriptions.$inferInsert;
+type Payment = typeof payments.$inferSelect;
+type InsertPayment = typeof payments.$inferInsert;
+type Banner = typeof banners.$inferSelect;
+type InsertBanner = typeof banners.$inferInsert;
+type Collection = typeof collections.$inferSelect;
+type InsertCollection = typeof collections.$inferInsert;
+type Content = typeof content.$inferSelect;
+type InsertContent = typeof content.$inferInsert;
+type Notification = typeof notifications.$inferSelect;
+type InsertNotification = typeof notifications.$inferInsert;
+type UserSession = typeof userSessions.$inferSelect;
+type InsertUserSession = typeof userSessions.$inferInsert;
+type ViewTracking = typeof viewTracking.$inferSelect;
+type InsertViewTracking = typeof viewTracking.$inferInsert;
+type Comment = typeof comments.$inferSelect;
+type InsertComment = typeof comments.$inferInsert;
 
 export interface IStorage {
   // Users
@@ -67,16 +63,8 @@ export interface IStorage {
   removeFavorite(userId: string, movieId: number): Promise<void>;
   isFavorite(userId: string, movieId: number): Promise<boolean>;
   
-  // Watch History
-  getWatchHistory(userId: string): Promise<WatchHistory[]>;
-  addToWatchHistory(history: InsertWatchHistory): Promise<WatchHistory>;
-
-  // Watch Progress
-  getWatchProgress(userId: string): Promise<WatchProgress[]>;
-  createWatchProgress(progress: InsertWatchProgress): Promise<WatchProgress>;
-  updateWatchProgress(progressId: string, data: Partial<InsertWatchProgress>): Promise<WatchProgress>;
-  deleteWatchProgress(progressId: string): Promise<void>;
-  getWatchProgressByContent(userId: string, contentId?: string, episodeId?: string): Promise<WatchProgress | undefined>;
+  // Watch History - REMOVED
+  // Watch Progress - REMOVED
   
   // User Preferences
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
@@ -161,15 +149,6 @@ export interface IStorage {
   updateCommentApproval(commentId: string, approved: boolean): Promise<Comment>;
   deleteComment(commentId: string): Promise<void>;
   getAllComments(): Promise<Comment[]>;
-  
-  // Notifications
-  createNotification(notification: InsertNotification): Promise<Notification>;
-  getUserNotifications(userId: string): Promise<Notification[]>;
-  getAllNotifications(): Promise<Notification[]>;
-  markNotificationAsRead(notificationId: string): Promise<Notification>;
-  deleteNotification(notificationId: string): Promise<void>;
-  sendNotificationToUser(userId: string, title: string, message: string, type?: string): Promise<Notification>;
-  sendAnnouncementToAllUsers(title: string, message: string): Promise<Notification[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -332,71 +311,71 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(favorites).orderBy(desc(favorites.addedAt));
   }
 
-  // Watch History
-  async getWatchHistory(userId: string): Promise<WatchHistory[]> {
-    return await db
-      .select()
-      .from(watchHistory)
-      .where(eq(watchHistory.userId, userId))
-      .orderBy(desc(watchHistory.watchedAt));
-  }
+  // Watch History - REMOVED
+  // async getWatchHistory(userId: string): Promise<WatchHistory[]> {
+  //   return await db
+  //     .select()
+  //     .from(watchHistory)
+  //     .where(eq(watchHistory.userId, userId))
+  //     .orderBy(desc(watchHistory.watchedAt));
+  // }
 
-  async addToWatchHistory(history: InsertWatchHistory): Promise<WatchHistory> {
-    const [newHistory] = await db.insert(watchHistory).values(history).returning();
-    return newHistory;
-  }
+  // async addToWatchHistory(history: InsertWatchHistory): Promise<WatchHistory> {
+  //   const [newHistory] = await db.insert(watchHistory).values(history).returning();
+  //   return newHistory;
+  // }
 
-  // Watch Progress
-  async getWatchProgress(userId: string): Promise<WatchProgress[]> {
-    return await db
-      .select()
-      .from(watchProgress)
-      .where(eq(watchProgress.userId, userId))
-      .orderBy(desc(watchProgress.lastWatchedAt));
-  }
+  // Watch Progress - REMOVED
+  // async getWatchProgress(userId: string): Promise<WatchProgress[]> {
+  //   return await db
+  //     .select()
+  //     .from(watchProgress)
+  //     .where(eq(watchProgress.userId, userId))
+  //     .orderBy(desc(watchProgress.lastWatchedAt));
+  // }
 
-  async createWatchProgress(progress: InsertWatchProgress): Promise<WatchProgress> {
-    const [newProgress] = await db.insert(watchProgress).values(progress as any).returning();
-    return newProgress;
-  }
+  // async createWatchProgress(progress: InsertWatchProgress): Promise<WatchProgress> {
+  //   const [newProgress] = await db.insert(watchProgress).values(progress as any).returning();
+  //   return newProgress;
+  // }
 
-  async updateWatchProgress(progressId: string, data: Partial<InsertWatchProgress>): Promise<WatchProgress> {
-    const [updated] = await db
-      .update(watchProgress)
-      .set({ ...data, updatedAt: new Date() } as any)
-      .where(eq(watchProgress.id, progressId))
-      .returning();
-    return updated;
-  }
+  // async updateWatchProgress(progressId: string, data: Partial<InsertWatchProgress>): Promise<WatchProgress> {
+  //   const [updated] = await db
+  //     .update(watchProgress)
+  //     .set({ ...data, updatedAt: new Date() } as any)
+  //     .where(eq(watchProgress.id, progressId))
+  //     .returning();
+  //   return updated;
+  // }
 
-  async deleteWatchProgress(progressId: string): Promise<void> {
-    await db.delete(watchProgress).where(eq(watchProgress.id, progressId));
-  }
+  // async deleteWatchProgress(progressId: string): Promise<void> {
+  //   await db.delete(watchProgress).where(eq(watchProgress.id, progressId));
+  // }
 
-  async getWatchProgressByContent(userId: string, contentId?: string, episodeId?: string): Promise<WatchProgress | undefined> {
-    if (episodeId) {
-      const [progress] = await db
-        .select()
-        .from(watchProgress)
-        .where(and(eq(watchProgress.userId, userId), eq(watchProgress.episodeId, episodeId)))
-        .limit(1);
-      return progress || undefined;
-    } else if (contentId) {
-      const [progress] = await db
-        .select()
-        .from(watchProgress)
-        .where(and(eq(watchProgress.userId, userId), eq(watchProgress.contentId, contentId), sql`${watchProgress.episodeId} IS NULL`))
-        .limit(1);
-      return progress || undefined;
-    } else {
-      const [progress] = await db
-        .select()
-        .from(watchProgress)
-        .where(eq(watchProgress.userId, userId))
-        .limit(1);
-      return progress || undefined;
-    }
-  }
+  // async getWatchProgressByContent(userId: string, contentId?: string, episodeId?: string): Promise<WatchProgress | undefined> {
+  //   if (episodeId) {
+  //     const [progress] = await db
+  //       .select()
+  //       .from(watchProgress)
+  //       .where(and(eq(watchProgress.userId, userId), eq(watchProgress.episodeId, episodeId)))
+  //       .limit(1);
+  //     return progress || undefined;
+  //   } else if (contentId) {
+  //     const [progress] = await db
+  //       .select()
+  //       .from(watchProgress)
+  //       .where(and(eq(watchProgress.userId, userId), eq(watchProgress.contentId, contentId), sql`${watchProgress.episodeId} IS NULL`))
+  //       .limit(1);
+  //     return progress || undefined;
+  //   } else {
+  //     const [progress] = await db
+  //       .select()
+  //       .from(watchProgress)
+  //       .where(eq(watchProgress.userId, userId))
+  //       .limit(1);
+  //     return progress || undefined;
+  //   }
+  // }
 
   // User Preferences
   async getUserPreferences(userId: string): Promise<UserPreferences | undefined> {
@@ -649,6 +628,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNotification(notificationId: string): Promise<void> {
     await db.delete(notifications).where(eq(notifications.id, notificationId));
+  }
+
+  async sendNotificationToUser(userId: string, title: string, message: string, type?: string): Promise<Notification> {
+    return await this.createNotification({
+      userId,
+      title,
+      message,
+      type: type || 'info',
+    });
+  }
+
+  async sendAnnouncementToAllUsers(title: string, message: string): Promise<Notification[]> {
+    // Get all users
+    const users = await this.getAllUsers();
+    
+    // Create notifications for all users
+    const notifications: Notification[] = [];
+    for (const user of users) {
+      const notification = await this.createNotification({
+        userId: user.id,
+        title,
+        message,
+        type: 'announcement',
+      });
+      notifications.push(notification);
+    }
+    
+    return notifications;
   }
 
   // Add missing delete functions
@@ -999,14 +1006,16 @@ export class DatabaseStorage implements IStorage {
   async updateCommentApproval(commentId: string, approved: boolean): Promise<Comment> {
     const [updated] = await db
       .update(comments)
-      .set({ approved, updatedAt: new Date() } as any)
+      .set({ approved } as any)
       .where(eq(comments.id, commentId))
       .returning();
     return updated;
   }
 
   async deleteComment(commentId: string): Promise<void> {
-    await db.delete(comments).where(eq(comments.id, commentId));
+    await db
+      .delete(comments)
+      .where(eq(comments.id, commentId));
   }
 
   async getAllComments(): Promise<Comment[]> {
@@ -1016,27 +1025,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(comments.createdAt));
   }
 
-  async sendNotificationToUser(userId: string, title: string, message: string, type: string = "info"): Promise<Notification> {
-    const notification: InsertNotification = {
-      userId,
-      title,
-      message,
-      type,
-      read: false
-    };
-    return await this.createNotification(notification);
+  async getCommentsByUserId(userId: string): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(eq(comments.userId, userId))
+      .orderBy(desc(comments.createdAt));
   }
 
-  async sendAnnouncementToAllUsers(title: string, message: string): Promise<Notification[]> {
-    // Get all users
-    const allUsers = await this.getAllUsers();
-    
-    // Create notifications for all users
-    const notificationPromises = allUsers.map(user => 
-      this.sendNotificationToUser(user.id, title, message, "announcement")
-    );
-    
-    return await Promise.all(notificationPromises);
+  async getUnapprovedComments(): Promise<Comment[]> {
+    return await db
+      .select()
+      .from(comments)
+      .where(eq(comments.approved, false))
+      .orderBy(desc(comments.createdAt));
   }
 }
 
