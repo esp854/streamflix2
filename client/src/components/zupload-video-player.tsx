@@ -23,6 +23,7 @@ interface ZuploadVideoPlayerProps {
   currentEpisode?: number;
   totalSeasons?: number;
   totalEpisodes?: number;
+  seasonEpisodes?: number; // Add this line
   onSeasonChange?: (season: number) => void;
   onEpisodeChange?: (episode: number) => void;
   onPreviousEpisode?: () => void;
@@ -43,6 +44,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   currentEpisode = 1,
   totalSeasons = 1,
   totalEpisodes = 10,
+  seasonEpisodes, // Add this line
   onSeasonChange,
   onEpisodeChange,
   onPreviousEpisode,
@@ -674,14 +676,21 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
       return;
     }
     
-    if (elem?.requestFullscreen) {
-      elem.requestFullscreen();
-    } else if ((elem as any)?.webkitRequestFullscreen) {
-      (elem as any).webkitRequestFullscreen();
-    } else if ((elem as any)?.mozRequestFullScreen) {
-      (elem as any).mozRequestFullScreen();
-    } else if ((elem as any)?.msRequestFullscreen) {
-      (elem as any).msRequestFullscreen();
+    if (!elem) return;
+    
+    try {
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).mozRequestFullScreen) {
+        (elem as any).mozRequestFullScreen();
+      } else if ((elem as any).msRequestFullscreen) {
+        (elem as any).msRequestFullscreen();
+      }
+    } catch (err) {
+      console.error('Erreur lors de la demande de plein écran:', err);
+      setError("Impossible d'activer le plein écran. Veuillez utiliser le bouton intégré dans la vidéo.");
     }
   };
 
@@ -850,7 +859,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                     <SelectValue placeholder="E" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                    {Array.from({ length: seasonEpisodes || totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
                       <SelectItem key={episodeNum} value={episodeNum.toString()}>
                         E{episodeNum}
                       </SelectItem>
@@ -906,7 +915,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 onClick={enterFullscreen}
                 className="bg-black/70 text-white px-2 py-1 rounded-md hover:bg-black/90 transition-colors flex items-center text-xs font-medium"
               >
-                <Maximize className="w-3 h-3 mr-1" />
+                <Maximize className="w-33 h-3 mr-1" />
                 <span className="hidden xs:inline">Plein écran</span>
               </button>
               
@@ -957,7 +966,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   variant="ghost"
                   size="icon"
                   className="bg-black/70 text-white hover:bg-black/90 w-10 h-10 rounded-full"
-                  disabled={currentEpisode >= totalEpisodes}
+                  disabled={currentEpisode >= (seasonEpisodes || totalEpisodes)}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </Button>
@@ -1008,13 +1017,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 src={currentSource.url}
                 className="w-full h-full touch-manipulation"
                 frameBorder="0"
-                // Attributs par défaut pour les iframes
-                {...!(currentSource.name === 'Frembed') && {
-                  allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen",
-                  allowFullScreen: true,
-                  webkitallowfullscreen: "true",
-                  mozallowfullscreen: "true"
-                }}
+                // Attributs améliorés pour les permissions
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
+                allowFullScreen
+                webkitallowfullscreen="true"
+                mozallowfullscreen="true"
                 title={`${title} - ${currentSource.name}`}
                 loading="lazy"
                 onLoad={() => {
@@ -1050,7 +1057,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 }}
                 // Pour Frembed, utiliser la configuration optimale corrigée
                 {...(currentSource.name === 'Frembed' && {
-                  allow: "autoplay; fullscreen; picture-in-picture; encrypted-media",
+                  allow: "autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write",
                   allowFullScreen: true,
                   webkitallowfullscreen: "true",
                   mozallowfullscreen: "true",
@@ -1095,7 +1102,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               {currentSource.name === 'Frembed' && !isFullscreen && (
                 <button
                   onClick={enterFullscreen}
-                  className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-lg z-40"
+                  className="absolute bottom-4 right-4 bg-black/70 text-white px-4 py-2 rounded-lg z-40 hover:bg-black/90 transition-colors"
                 >
                   Plein écran
                 </button>

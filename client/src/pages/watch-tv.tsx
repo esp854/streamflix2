@@ -14,6 +14,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import ZuploadVideoPlayer from "@/components/zupload-video-player"; // Import ZuploadVideoPlayer
 import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { TVSeasonDetails } from "@/types/movie"; // Add this import
 
 export default function WatchTV() {
     const { shouldShowAds } = useAuthCheck();
@@ -91,10 +92,11 @@ export default function WatchTV() {
   });
 
   // Fetch season details for accurate episode count
-  const { data: seasonDetails } = useQuery({
+  const { data: seasonDetails } = useQuery<TVSeasonDetails>({
     queryKey: [`/api/tmdb/tv/${tvId}/season/${currentSeason}`],
     queryFn: () => tmdbService.getTVSeasonDetails(tvId, currentSeason),
     enabled: !!tvId && !!tvDetails, // Only fetch when TV details are loaded
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch episode data for series
@@ -591,7 +593,10 @@ export default function WatchTV() {
     if (!isMountedRef.current || currentEpisode <= 1) return;
 
     const newEpisode = currentEpisode - 1;
-    const newUrl = `/watch/tv/${tvId}/${currentSeason}/${newEpisode}`;
+    const newSeason = currentSeason;
+
+    // Navigate to previous episode
+    const newUrl = `/watch/tv/${tvId}/${newSeason}/${newEpisode}`;
     window.location.href = newUrl;
   }, [tvId, currentSeason, currentEpisode]);
 
@@ -599,7 +604,7 @@ export default function WatchTV() {
     if (!isMountedRef.current) return;
 
     // Use actual episode count from season details, fallback to 10
-    const maxEpisodes = seasonDetails?.episodes?.length || 10;
+    const maxEpisodes = seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 10;
     let newEpisode = currentEpisode + 1;
     let newSeason = currentSeason;
 
@@ -608,9 +613,10 @@ export default function WatchTV() {
       newSeason = currentSeason + 1;
     }
 
+    // Navigate to next episode
     const newUrl = `/watch/tv/${tvId}/${newSeason}/${newEpisode}`;
     window.location.href = newUrl;
-  }, [tvId, currentSeason, currentEpisode, seasonDetails]);
+  }, [tvId, currentSeason, currentEpisode, seasonDetails, tvDetails?.number_of_episodes]);
 
   const handleGoHome = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -821,15 +827,16 @@ export default function WatchTV() {
           <div className="w-full h-full">
             <ZuploadVideoPlayer
               videoUrl={videoUrl}
-              title={tvDetails?.tv?.name || "Série sans titre"}
+              title={tvDetails?.name || "Série sans titre"}
               onVideoError={handleVideoError}
               onVideoEnd={() => console.log("Vidéo terminée")}
               onNextEpisode={goToNextEpisode}
               onPreviousEpisode={goToPreviousEpisode}
               currentSeason={currentSeason}
               currentEpisode={currentEpisode}
-              totalSeasons={tvDetails?.tv?.number_of_seasons || 1}
-              totalEpisodes={seasonDetails?.episodes?.length || 10}
+              totalSeasons={tvDetails?.number_of_seasons || 1}
+              totalEpisodes={seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 10}
+              seasonEpisodes={seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 10}
               onSeasonChange={(season) => {
                 const newUrl = `/watch/tv/${tvId}/${season}/1`;
                 window.location.href = newUrl;
@@ -990,7 +997,7 @@ export default function WatchTV() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: seasonDetails?.episodes?.length || 10 }, (_, i) => i + 1).map(episodeNum => (
+                    {Array.from({ length: seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 10 }, (_, i) => i + 1).map(episodeNum => (
                       <SelectItem key={episodeNum} value={episodeNum.toString()}>
                         E{episodeNum}
                       </SelectItem>
@@ -1051,7 +1058,7 @@ export default function WatchTV() {
                 variant="ghost"
                 size={isMobile ? "icon" : "lg"}
                 className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                disabled={currentEpisode >= (seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 1)}
+                disabled={currentEpisode >= (seasonDetails?.episodes?.length || tvDetails?.number_of_episodes || 10)}
               >
                 <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
               </Button>

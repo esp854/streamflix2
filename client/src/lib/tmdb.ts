@@ -1,4 +1,17 @@
-import { TMDBMovie, TMDBResponse, MovieDetails, TMDBTVSeries, TVResponse, TVDetails, TMDB_IMAGE_BASE_URL, TMDB_POSTER_SIZE, TMDB_BACKDROP_SIZE, TMDB_PROFILE_SIZE, Videos } from "@/types/movie";
+import { 
+  TMDBMovie, 
+  TMDBResponse, 
+  TMDBTVSeries, 
+  TVDetails, 
+  TVResponse,
+  TVSeasonDetails,
+  MovieDetails,
+  Videos,
+  TMDB_IMAGE_BASE_URL,
+  TMDB_POSTER_SIZE,
+  TMDB_BACKDROP_SIZE,
+  TMDB_PROFILE_SIZE
+} from "@/types/movie";
 
 // Simple in-memory cache
 class Cache {
@@ -550,7 +563,7 @@ class TMDBService {
     }
   }
 
-  async getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<any> {
+  async getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<TVSeasonDetails> {
     const cacheKey = `tv-${tvId}-season-${seasonNumber}`;
     const cached = this.cache.get(cacheKey);
     if (cached) {
@@ -564,9 +577,9 @@ class TMDBService {
       if (!response.ok) {
         console.log(`[DEBUG] TMDB season response not ok, status: ${response.status}`);
         // Return empty object instead of throwing error to prevent complete failure
-        return {};
+        return {} as TVSeasonDetails;
       }
-      const data = await response.json();
+      const data: TVSeasonDetails = await response.json();
       console.log(`[DEBUG] TMDB season data received:`, data);
 
       // Cache the result
@@ -575,7 +588,7 @@ class TMDBService {
     } catch (error) {
       console.error("Error fetching TV season details:", error);
       // Return empty object instead of throwing error to prevent complete failure
-      return {};
+      return {} as TVSeasonDetails;
     }
   }
 

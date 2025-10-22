@@ -114,6 +114,37 @@ export interface TMDBTVSeries {
   production_companies?: ProductionCompany[];
 }
 
+// Interface for TV episode
+export interface TVSeasonEpisode {
+  air_date: string;
+  episode_number: number;
+  id: number;
+  name: string;
+  overview: string;
+  production_code: string;
+  runtime: number | null;
+  season_number: number;
+  show_id: number;
+  still_path: string | null;
+  vote_average: number;
+  vote_count: number;
+  crew: CrewMember[];
+  guest_stars: CastMember[];
+}
+
+// Interface for TV season details
+export interface TVSeasonDetails {
+  _id: string;
+  air_date: string;
+  episodes: TVSeasonEpisode[];
+  name: string;
+  overview: string;
+  id: number;
+  poster_path: string | null;
+  season_number: number;
+  vote_average: number;
+}
+
 export interface TVResponse {
   page: number;
   results: TMDBTVSeries[];
