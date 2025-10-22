@@ -34,6 +34,10 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
    ```bash
    npx drizzle-kit push
    ```
+6. Exécuter les migrations personnalisées (si nécessaire) :
+   ```bash
+   npm run migrate
+   ```
 
 ## Configuration PayPal
 

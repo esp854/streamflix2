@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { storage } from "./storage.js";
+import { runAllMigrations } from "./migrations/run-migrations.js";
 
 // Alternative approach for getting __dirname in both ESM and CommonJS
 const getCurrentDir = (): string => {
@@ -43,6 +44,12 @@ const io = new SocketIOServer(server, {
     methods: ["GET", "POST"],
     credentials: true
   }
+});
+
+// Exécuter les migrations au démarrage
+runAllMigrations().catch((error: any) => {
+  console.error('Erreur lors de l\'exécution des migrations:', error);
+  // Ne pas arrêter le serveur en cas d'erreur de migration
 });
 
 // Middleware
