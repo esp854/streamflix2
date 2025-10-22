@@ -30,7 +30,10 @@ StreamFlix est une plateforme de streaming de films et séries avec système d'a
    ```
 3. Configurer la base de données PostgreSQL
 4. Configurer les variables d'environnement (voir `.env.example`)
-5. L'initialisation de la base de données se fait automatiquement au démarrage du serveur
+5. Exécuter les migrations Drizzle :
+   ```bash
+   npx drizzle-kit push
+   ```
 
 ## Configuration PayPal
 
@@ -99,16 +102,6 @@ Pour télécharger les génériques officiels :
 2. Ou suivez le guide détaillé : `scripts/download-universe-trailers.md`
 
 Les vidéos seront automatiquement intégrées dans l'interface utilisateur.
-
-## Initialisation automatique de la base de données
-
-StreamFlix inclut désormais un système d'initialisation automatique de la base de données qui s'exécute au démarrage du serveur. Ce système :
-
-1. Exécute automatiquement toutes les migrations du dossier `server/migrations/`
-2. Crée les tables nécessaires si elles n'existent pas
-3. Assure la compatibilité avec les environnements de déploiement comme Render
-
-Les migrations sont exécutées dans l'ordre alphabétique de leurs noms de fichiers.
 
 ## Démarrage
 

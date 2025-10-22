@@ -6,6 +6,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { storage } from "./storage.js";
+import { config } from "dotenv";
+
+// Charger les variables d'environnement
+config();
 
 // Alternative approach for getting __dirname in both ESM and CommonJS
 const getCurrentDir = (): string => {
@@ -38,30 +42,11 @@ async function initializeDatabase() {
   try {
     console.log("🔧 Initialisation de la base de données...");
     
-    // Importer et exécuter les migrations de manière plus robuste
-    const migrationModule = await import("./migrate.js");
+    // Exécuter le script d'initialisation existant
+    const { execSync } = await import("child_process");
     
-    // Accéder aux propriétés de manière dynamique pour éviter les erreurs de typage
-    if (typeof (migrationModule as any).runMigrations === 'function') {
-      await (migrationModule as any).runMigrations();
-    } else {
-      // Si runMigrations n'existe pas, essayer d'autres approches
-      const moduleKeys = Object.keys(migrationModule);
-      let migrationFunctionFound = false;
-      
-      // Parcourir toutes les propriétés du module
-      for (const key of moduleKeys) {
-        if (typeof (migrationModule as any)[key] === 'function') {
-          await (migrationModule as any)[key]();
-          migrationFunctionFound = true;
-          break;
-        }
-      }
-      
-      if (!migrationFunctionFound) {
-        throw new Error("Aucune fonction de migration trouvée dans le module");
-      }
-    }
+    // Exécuter le script d'initialisation avec npx tsx
+    execSync("npx tsx server/init-db.ts", { stdio: "inherit" });
     
     console.log("✅ Base de données initialisée avec succès");
   } catch (error) {
