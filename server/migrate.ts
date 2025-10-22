@@ -52,8 +52,13 @@ async function runMigrations() {
           
           // Exécuter la fonction up si elle existe
           if (typeof migration.up === 'function') {
-            await migration.up(pool);
-            console.log(`✅ Migration ${file} terminée avec succès`);
+            const client = await pool.connect();
+            try {
+              await migration.up(client);
+              console.log(`✅ Migration ${file} terminée avec succès`);
+            } finally {
+              client.release();
+            }
           } else {
             console.log(`⚠️  Aucune fonction 'up' trouvée dans ${file}`);
           }
@@ -63,70 +68,6 @@ async function runMigrations() {
         }
       }
     }
-    
-    // Ajout spécifique pour créer les tables content et episodes si elles n'existent pas
-    console.log("⏳ Vérification et création des tables content et episodes...");
-    
-    // Création de la table content
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS content (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tmdb_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        poster_path TEXT,
-        backdrop_path TEXT,
-        release_date TEXT,
-        genres JSONB,
-        odysee_url TEXT,
-        mux_playback_id TEXT,
-        mux_url TEXT,
-        language TEXT NOT NULL,
-        quality TEXT NOT NULL,
-        media_type TEXT NOT NULL,
-        rating INTEGER,
-        active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Création de la table episodes
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS episodes (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        content_id UUID NOT NULL,
-        season_number INTEGER NOT NULL,
-        episode_number INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        description TEXT,
-        odysee_url TEXT,
-        mux_playback_id TEXT,
-        mux_url TEXT,
-        duration INTEGER,
-        release_date TEXT,
-        active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-      );
-    `);
-
-    // Ajout de l'index sur tmdb_id pour la table content
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS content_tmdb_id_idx ON content(tmdb_id);
-    `);
-
-    // Ajout de l'index sur content_id pour la table episodes
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS episodes_content_id_idx ON episodes(content_id);
-    `);
-
-    // Ajout de l'index sur season_number et episode_number pour la table episodes
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS episodes_season_episode_idx ON episodes(season_number, episode_number);
-    `);
-
-    console.log("✅ Tables 'content' et 'episodes' vérifiées/créées avec succès!");
     
     console.log("🎉 Toutes les migrations ont été exécutées avec succès!");
   } catch (error) {

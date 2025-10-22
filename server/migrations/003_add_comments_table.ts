@@ -5,23 +5,11 @@ import * as schema from '@shared/schema';
 
 config();
 
-async function addCommentsTable() {
+// Fonction principale de migration
+export async function up(client: Client) {
   console.log('🔧 Creating comments table...');
 
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error('❌ DATABASE_URL is not defined in .env');
-    process.exit(1);
-  }
-
-  const client = new Client({
-    connectionString: databaseUrl,
-  });
-
   try {
-    await client.connect();
-    console.log('✅ Connected to database');
-
     const db = drizzle(client, { schema });
 
     // Check if comments table already exists
@@ -34,7 +22,6 @@ async function addCommentsTable() {
 
     if (tableCheck.rows && tableCheck.rows.length > 0) {
       console.log('ℹ️  Comments table already exists');
-      await client.end();
       return;
     }
 
@@ -72,14 +59,41 @@ async function addCommentsTable() {
     `);
 
     console.log('✅ Comments table created successfully');
-
-    await client.end();
     console.log('✅ Migration completed successfully!');
 
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
+    throw error;
+  }
+}
+
+// Pour exécution directe
+async function addCommentsTable() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error('❌ DATABASE_URL is not defined in .env');
+    process.exit(1);
+  }
+
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: {
+      rejectUnauthorized: false // Nécessaire pour Render
+    }
+  });
+
+  try {
+    await client.connect();
+    console.log('✅ Connected to database');
+    await up(client);
+    await client.end();
   } catch (error) {
     console.error('❌ Error during migration:', error);
     process.exit(1);
   }
 }
 
-addCommentsTable().catch(console.error);
+// Exécuter si appelé directement
+if (import.meta.url === `file://${process.argv[1]}`) {
+  addCommentsTable().catch(console.error);
+}

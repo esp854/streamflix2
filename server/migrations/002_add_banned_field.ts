@@ -5,23 +5,11 @@ import * as schema from '@shared/schema';
 
 config();
 
-async function addBannedField() {
+// Fonction principale de migration
+export async function up(client: Client) {
   console.log('🔧 Adding banned field to users table...');
   
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error('❌ DATABASE_URL is not defined in .env');
-    process.exit(1);
-  }
-  
-  const client = new Client({
-    connectionString: databaseUrl,
-  });
-  
   try {
-    await client.connect();
-    console.log('✅ Connected to database');
-    
     const db = drizzle(client, { schema });
     
     // Add banned column to users table
@@ -42,13 +30,41 @@ async function addBannedField() {
       console.log('ℹ️  banned column already exists');
     }
     
-    await client.end();
     console.log('✅ Migration completed successfully!');
     
+  } catch (error) {
+    console.error('❌ Error during migration:', error);
+    throw error;
+  }
+}
+
+// Pour exécution directe
+async function addBannedField() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error('❌ DATABASE_URL is not defined in .env');
+    process.exit(1);
+  }
+  
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: {
+      rejectUnauthorized: false // Nécessaire pour Render
+    }
+  });
+  
+  try {
+    await client.connect();
+    console.log('✅ Connected to database');
+    await up(client);
+    await client.end();
   } catch (error) {
     console.error('❌ Error during migration:', error);
     process.exit(1);
   }
 }
 
-addBannedField().catch(console.error);
+// Exécuter si appelé directement
+if (import.meta.url === `file://${process.argv[1]}`) {
+  addBannedField().catch(console.error);
+}

@@ -5,24 +5,11 @@ import * as schema from '@shared/schema';
 
 config();
 
-async function addContentTables() {
+// Fonction principale de migration
+export async function up(client: Client) {
   console.log('🔧 Creating content and episodes tables...');
   
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error('❌ DATABASE_URL is not defined in .env');
-    process.exit(1);
-  }
-  
-  const client = new Client({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false }
-  });
-  
   try {
-    await client.connect();
-    console.log('✅ Connected to database');
-    
     const db = drizzle(client, { schema });
     
     // Création de la table content
@@ -110,13 +97,41 @@ async function addContentTables() {
       console.log('ℹ️  Index episodes_season_episode_idx already exists');
     }
     
-    await client.end();
     console.log('✅ Content tables migration completed successfully!');
     
+  } catch (error) {
+    console.error('❌ Error during content tables migration:', error);
+    throw error;
+  }
+}
+
+// Pour exécution directe
+async function addContentTables() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.error('❌ DATABASE_URL is not defined in .env');
+    process.exit(1);
+  }
+
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: {
+      rejectUnauthorized: false // Nécessaire pour Render
+    }
+  });
+
+  try {
+    await client.connect();
+    console.log('✅ Connected to database');
+    await up(client);
+    await client.end();
   } catch (error) {
     console.error('❌ Error during content tables migration:', error);
     process.exit(1);
   }
 }
 
-addContentTables().catch(console.error);
+// Exécuter si appelé directement
+if (import.meta.url === `file://${process.argv[1]}`) {
+  addContentTables().catch(console.error);
+}
