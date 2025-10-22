@@ -40,6 +40,9 @@ async function initDatabase() {
     user: dbUser,
     password: dbPassword,
     database: 'postgres', // Se connecter à la base par défaut
+    ssl: {
+      rejectUnauthorized: false // Nécessaire pour Render
+    }
   });
   
   try {
@@ -65,6 +68,9 @@ async function initDatabase() {
     // Maintenant se connecter à la base de données spécifique
     const dbClient = new Client({
       connectionString: databaseUrl,
+      ssl: {
+        rejectUnauthorized: false // Nécessaire pour Render
+      }
     });
     
     await dbClient.connect();
@@ -92,6 +98,9 @@ async function initDatabase() {
       } else if (error.message.includes("password authentication failed")) {
         console.log("\n💡 Mot de passe incorrect");
         console.log("   Mettez à jour le mot de passe dans .env");
+      } else if (error.message.includes("SSL/TLS required")) {
+        console.log("\n💡 SSL/TLS requis");
+        console.log("   La connexion doit utiliser SSL/TLS");
       } else {
         console.log(`\n💡 ${error.message}`);
       }

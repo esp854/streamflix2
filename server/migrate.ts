@@ -22,7 +22,9 @@ if (!databaseUrl) {
 // Créer la connexion à la base de données
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false }
+  ssl: { 
+    rejectUnauthorized: false // Nécessaire pour Render
+  }
 });
 
 async function runMigrations() {
