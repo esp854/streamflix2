@@ -30,6 +30,20 @@ export default function Home() {
   const { isAuthenticated } = useAuth();
   const [activeSections, setActiveSections] = useState<string[]>([]);
 
+  // Balisage JSON-LD pour la page d'accueil
+  const homeData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "StreamFlix",
+    "url": "https://streamflix2-o7vx.onrender.com/",
+    "description": "Plateforme de streaming légal pour films et séries en haute qualité",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  };
+
   // Stagger the loading of different sections to reduce initial API load
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
@@ -146,6 +160,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json">
+        {JSON.stringify(homeData)}
+      </script>
       {/* Hero Section - Carousel */}
       <HeroCarousel />
       

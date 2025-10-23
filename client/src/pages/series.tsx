@@ -30,6 +30,20 @@ export default function Series() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
+  // Balisage JSON-LD pour la collection de séries
+  const collectionData = {
+    "@context": "https://schema.org",
+    "@type": "MediaGallery",
+    "name": "Séries StreamFlix",
+    "description": "Découvrez notre collection de séries en streaming",
+    "url": "https://streamflix2-o7vx.onrender.com/series",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  };
+
   // Gestion des requêtes avec des options de retry
   const queryOptions = {
     retry: 2, // Augmenter les tentatives de retry
@@ -237,6 +251,9 @@ export default function Series() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="series-page">
+      <script type="application/ld+json">
+        {JSON.stringify(collectionData)}
+      </script>
       {/* Hero Section */}
       <section className="relative h-screen overflow-hidden" data-testid="series-hero">
         {/* Background Images */}

@@ -186,6 +186,35 @@
     }
     </script>
 
+    <!-- Structured Data for Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "StreamFlix",
+      "url": "https://streamflix2-o7vx.onrender.com",
+      "logo": "https://streamflix2-o7vx.onrender.com/manifest-icon-512.maskable.png",
+      "sameAs": [
+        "https://www.facebook.com/streamflix",
+        "https://twitter.com/streamflix",
+        "https://www.instagram.com/streamflix",
+        "https://www.youtube.com/streamflix"
+      ],
+      "description": "Plateforme de streaming légal pour films et séries en haute qualité.",
+      "potentialAction": {
+        "@type": "WatchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://streamflix2-o7vx.onrender.com/watch/{id}"
+        },
+        "actionPlatform": [
+          "https://schema.org/DesktopWebPlatform",
+          "https://schema.org/MobileWebPlatform"
+        ]
+      }
+    }
+    </script>
+
     <!-- Alternate Language Links -->
     <link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/" />
     <link rel="alternate" hreflang="en" href="https://streamflix2-o7vx.onrender.com/en/" />

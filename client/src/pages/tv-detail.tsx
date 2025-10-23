@@ -233,14 +233,40 @@ export default function TVDetail() {
     "creator": tv.created_by?.map((person: any) => person.name),
     "actor": cast.slice(0, 5).map((person: any) => person.name),
     "numberOfSeasons": tv.number_of_seasons,
-    "numberOfEpisodes": tv.number_of_episodes
+    "numberOfEpisodes": tv.number_of_episodes,
+    "potentialAction": {
+      "@type": "WatchAction",
+      "target": `https://streamflix2-o7vx.onrender.com/watch/tv/${tvId}`
+    }
   };
+
+  // Données structurées pour les épisodes (exemple pour le premier épisode)
+  const episodeData = tv.seasons && tv.seasons.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "TVEpisode",
+    "name": `${tv.name} - Saison 1 Épisode 1`,
+    "episodeNumber": 1,
+    "seasonNumber": 1,
+    "partOfSeries": {
+      "@type": "TVSeries",
+      "name": tv.name
+    },
+    "potentialAction": {
+      "@type": "WatchAction",
+      "target": `https://streamflix2-o7vx.onrender.com/watch/tv/${tvId}/1/1`
+    }
+  } : null;
 
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
+      {episodeData && (
+        <script type="application/ld+json">
+          {JSON.stringify(episodeData)}
+        </script>
+      )}
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img

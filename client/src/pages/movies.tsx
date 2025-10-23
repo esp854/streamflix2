@@ -6,6 +6,20 @@ import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
 export default function MoviesPage() {
+  // Balisage JSON-LD pour la collection de films
+  const collectionData = {
+    "@context": "https://schema.org",
+    "@type": "MediaGallery",
+    "name": "Films StreamFlix",
+    "description": "Découvrez notre collection de films en streaming",
+    "url": "https://streamflix2-o7vx.onrender.com/films",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  };
+
   // Fetch popular movies
   const { data: popularMovies, isLoading: popularLoading, isError: popularError } = useQuery({
     queryKey: ['popular-movies'],
@@ -214,6 +228,9 @@ export default function MoviesPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json">
+        {JSON.stringify(collectionData)}
+      </script>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center mb-6">
           <Button variant="ghost" size="sm" asChild className="mr-4">

@@ -134,7 +134,11 @@ export default function MovieDetail() {
     "genre": movie.genres?.map(g => g.name),
     "director": crew.filter(person => person.job === "Director").map(person => person.name),
     "actor": cast.slice(0, 5).map(person => person.name),
-    "duration": movie.runtime ? `PT${movie.runtime}M` : undefined
+    "duration": movie.runtime ? `PT${movie.runtime}M` : undefined,
+    "potentialAction": {
+      "@type": "WatchAction",
+      "target": `https://streamflix2-o7vx.onrender.com/watch/movie/${movieId}`
+    }
   };
 
   return (

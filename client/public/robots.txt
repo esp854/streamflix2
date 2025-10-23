@@ -12,12 +12,35 @@ Host: streamflix2-o7vx.onrender.com
 
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 10
+Crawl-delay: 5
 
 User-agent: Bingbot
 Allow: /
-Crawl-delay: 10
+Crawl-delay: 5
 
 User-agent: Slurp
 Allow: /
-Crawl-delay: 10
+Crawl-delay: 5
+
+# Optimisation pour les moteurs de recherche internationaux
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-Video
+Allow: /
+
+User-agent: *
+Disallow: /watch/
+Disallow: /api/
+Disallow: /admin/
+
+# Internationalisation - permettre l'indexation des versions linguistiques
+Allow: /en/
+Allow: /es/
+Allow: /fr/
+
+# Priorité pour les pages principales
+Allow: /$
+Allow: /films$
+Allow: /series$
+Allow: /tendance$

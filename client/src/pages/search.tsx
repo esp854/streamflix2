@@ -15,60 +15,56 @@ type SearchResult = {
   data: any;
 };
 
+// Fonction de debounce personnalisée
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function Search() {
-  const { shouldShowAds } = useAuthCheck();
+  const [query, setQuery] = useState("");
   const [location, setLocation] = useLocation();
-  
-  // Utilisation sécurisée de useLocation
-  const [path, query] = location.split("?");
-  const urlParams = new URLSearchParams(query || "");
-  const initialQuery = urlParams.get("q") || "";
-  
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const searchRef = useRef<HTMLDivElement>(null);
-  
-  // Détection du desktop pour les overlays
+  const [contentType, setContentType] = useState<"all" | "movie" | "tv">("all");
+  const debouncedQuery = useDebounce(query, 300);
+  const { shouldShowAds } = useAuthCheck();
   const [isDesktop, setIsDesktop] = useState(false);
-  
-  useEffect(() => {
-    // Vérifier si on est côté client avant d'accéder à window
-    if (typeof window !== 'undefined') {
-      setIsDesktop(window.innerWidth > 768);
-      
-      // Ajouter un event listener pour gérer le redimensionnement
-      const handleResize = () => {
-        setIsDesktop(window.innerWidth > 768);
-      };
-      
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+
+  // Balisage JSON-LD pour la fonction de recherche
+  const searchData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "url": "https://streamflix2-o7vx.onrender.com/",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
     }
-  }, []);
-
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Reduce retry attempts and cache time for mobile performance
-  const queryOptions = {
-    retry: 1,
-    gcTime: 0, // désactive le cache pendant les tests
   };
 
-  const { data: movieSearchResults, isLoading: moviesLoading, error: moviesError } = useQuery({
+  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useQuery({
     queryKey: [`/api/tmdb/search`, debouncedQuery],
     queryFn: () => tmdbService.searchMovies(debouncedQuery),
     enabled: debouncedQuery.length > 0,
-    ...queryOptions,
+    retry: 1,
+    gcTime: 0, // désactive le cache pendant les tests
   });
 
-  const { data: tvSearchResults, isLoading: tvLoading, error: tvError } = useQuery({
+  const { data: tv, isLoading: tvLoading, isError: tvError } = useQuery({
     queryKey: [`/api/tmdb/tv/search`, debouncedQuery],
     queryFn: () => {
       // Logs de debug uniquement en développement
@@ -83,46 +79,63 @@ export default function Search() {
       return result;
     },
     enabled: debouncedQuery.length > 0,
-    ...queryOptions,
+    retry: 1,
+    gcTime: 0, // désactive le cache pendant les tests
   });
 
   // Utilisation de useMemo pour optimiser les résultats combinés
   const combinedResults = useMemo(() => {
     const results: SearchResult[] = [];
 
-    if (movieSearchResults?.length) {
-      results.push(...movieSearchResults.map((movie: any) => ({ type: "movie" as const, data: movie })));
+    if (movies?.length) {
+      results.push(...movies.map((movie: any) => ({ type: "movie" as const, data: movie })));
     }
 
-    if (tvSearchResults?.length) {
-      results.push(...tvSearchResults.map((tv: any) => ({ type: "tv" as const, data: tv })));
+    if (tv?.length) {
+      results.push(...tv.map((tv: any) => ({ type: "tv" as const, data: tv })));
     }
 
     return results.sort((a, b) => (b.data.vote_count || 0) - (a.data.vote_count || 0));
-  }, [movieSearchResults, tvSearchResults]);
+  }, [movies, tv]);
 
   // Log de débogage pour diagnostiquer les problèmes de recherche
   console.log("🎬 Debug TMDB:", {
     debouncedQuery,
-    movieSearchResults,
-    tvSearchResults,
+    movies,
+    tv,
     combinedResults,
   });
 
+  // Détection du desktop
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    
+    return () => {
+      window.removeEventListener('resize', checkDesktop);
+    };
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery) {
-      setLocation(`/search?q=${encodeURIComponent(searchQuery)}`);
+    if (query) {
+      setLocation(`/search?q=${encodeURIComponent(query)}`);
     }
   };
 
   const clearSearch = () => {
-    setSearchQuery("");
-    setDebouncedQuery("");
+    setQuery("");
   };
 
   return (
     <div className="min-h-screen bg-background py-8" data-testid="search-page">
+      <script type="application/ld+json">
+        {JSON.stringify(searchData)}
+      </script>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
   
         
@@ -137,13 +150,13 @@ export default function Search() {
             <Input
               type="text"
               placeholder="Rechercher des films et séries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               className="pl-10 pr-10 py-3 text-lg"
               data-testid="search-input"
               aria-label="Recherche de films et séries"
             />
-            {searchQuery && (
+            {query && (
               <Button
                 type="button"
                 variant="ghost"
