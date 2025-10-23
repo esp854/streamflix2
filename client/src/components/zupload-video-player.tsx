@@ -1017,11 +1017,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 src={currentSource.url}
                 className="w-full h-full touch-manipulation"
                 frameBorder="0"
-                // Attributs améliorés pour les permissions
+                // Attributs améliorés pour les permissions - suppression de allowfullscreen pour éviter les conflits
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; web-share"
-                allowFullScreen
-                webkitallowfullscreen="true"
-                mozallowfullscreen="true"
                 title={`${title} - ${currentSource.name}`}
                 loading="lazy"
                 onLoad={() => {
@@ -1058,9 +1055,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                 // Pour Frembed, utiliser la configuration optimale corrigée
                 {...(currentSource.name === 'Frembed' && {
                   allow: "autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope; clipboard-write",
-                  allowFullScreen: true,
-                  webkitallowfullscreen: "true",
-                  mozallowfullscreen: "true",
                   referrerPolicy: "no-referrer"
                   // Suppression de l'attribut sandbox qui bloque les pubs Frembed
                 })}

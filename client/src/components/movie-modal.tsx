@@ -196,7 +196,6 @@ export default function MovieModal({ movieId, open, onClose }: MovieModalProps) 
                       title={trailer.name}
                       className="w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
                     />
                   </div>
                 </div>

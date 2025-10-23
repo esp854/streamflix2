@@ -508,7 +508,6 @@ const TVChannels: React.FC = () => {
                   className="absolute top-0 left-0 w-full h-full"
                   frameBorder="0"
                   allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
                   title={`${selectedChannel.name} - Streaming en direct`}
                   onError={(e) => {
                     console.error('Error loading iframe:', e);
