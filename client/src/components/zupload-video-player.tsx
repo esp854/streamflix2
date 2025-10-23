@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, SkipForward, RotateCcw, Server } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SkipForward, RotateCcw, Server, Maximize, Minimize } from 'lucide-react';
 
 interface VideoSource {
   id: string;
@@ -56,6 +56,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
   const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Handle iframe load
   const handleIframeLoad = () => {
@@ -69,6 +70,38 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     console.error('Video error:', e);
     onVideoError?.('Failed to load video content');
   };
+
+  // Toggle fullscreen mode
+  const toggleFullscreen = () => {
+    const element = iframeRef.current?.parentElement;
+    if (!element) return;
+
+    if (!isFullscreen) {
+      if (element.requestFullscreen) {
+        element.requestFullscreen().catch(err => {
+          console.error('Failed to enter fullscreen:', err);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => {
+          console.error('Failed to exit fullscreen:', err);
+        });
+      }
+    }
+  };
+
+  // Handle fullscreen change event
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Reset loading state when videoUrl changes
   useEffect(() => {
@@ -253,6 +286,14 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           )}
         </div>
         <div className="flex items-center space-x-2">
+          {/* Bouton plein écran */}
+          <Button
+            onClick={toggleFullscreen}
+            className="bg-black/70 text-white hover:bg-black/90 text-xs px-2 py-1 h-8"
+          >
+            {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
+          </Button>
+          
           {/* Bouton Source - Nouveau bouton pour changer de source */}
           {videoSources.length > 1 && (
             <Select 
