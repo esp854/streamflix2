@@ -302,7 +302,7 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         src={modifiedVideoUrl}
         className="w-full h-full"
         frameBorder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; bluetooth; deviceorientation; devicemotion"
         allowFullScreen
         title={`Lecture de ${title}`}
         onLoad={handleIframeLoad}
