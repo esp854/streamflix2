@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import { TMDBMovie } from "@/types/movie";
 import { Link } from "wouter";
-import { useWatchHistory } from "@/hooks/use-watch-history";
 import { useAuth } from "@/contexts/auth-context";
 
 // Add this interface for local content
@@ -29,7 +28,6 @@ interface LocalContent {
 export default function Home() {
   const { shouldShowAds } = useAuthCheck();
   const { isAuthenticated } = useAuth();
-  const { recentlyWatched, isLoading: isWatchHistoryLoading } = useWatchHistory();
   const [activeSections, setActiveSections] = useState<string[]>([]);
 
   // Stagger the loading of different sections to reduce initial API load
@@ -153,34 +151,6 @@ export default function Home() {
       
       {/* PWA Install Banner */}
       <PWAInstallBanner />
-      
-      {/* Recently Watched Section - Only for authenticated users */}
-      {isAuthenticated && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-foreground">Récemment regardés</h2>
-            <Link href="/continue-watching" className="text-primary hover:text-primary/80 text-sm font-medium">
-              Voir tout
-            </Link>
-          </div>
-          
-          {isWatchHistoryLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : recentlyWatched && recentlyWatched.length > 0 ? (
-            <MovieRow
-              title=""
-              movies={recentlyWatched}
-              isLoading={false}
-            />
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Vous n'avez pas encore regardé de contenu</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Telegram Banner */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
