@@ -1,21 +1,61 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, SkipForward, RotateCcw, Server } from 'lucide-react';
+
+interface VideoSource {
+  id: string;
+  name: string;
+  url: string;
+  type: 'embed' | 'direct';
+}
 
 interface ZuploadVideoPlayerProps {
   videoUrl: string;
   title: string;
   onVideoEnd?: () => void;
   onVideoError?: (error: string) => void;
+  onNextEpisode?: () => void;
+  onSkipIntro?: () => void;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+  seasonEpisodes?: number;
+  onSeasonChange?: (season: number) => void;
+  onEpisodeChange?: (episode: number) => void;
+  onPreviousEpisode?: () => void;
+  tmdbId?: number;
+  mediaType?: 'movie' | 'tv';
+  seasonNumber?: number;
+  episodeNumber?: number;
 }
 
 const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({ 
   videoUrl, 
   title,
   onVideoEnd,
-  onVideoError
+  onVideoError,
+  onNextEpisode,
+  onSkipIntro,
+  currentSeason = 1,
+  currentEpisode = 1,
+  totalSeasons = 1,
+  totalEpisodes = 10,
+  seasonEpisodes,
+  onSeasonChange,
+  onEpisodeChange,
+  onPreviousEpisode,
+  tmdbId,
+  mediaType = 'movie',
+  seasonNumber = 1,
+  episodeNumber = 1,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
+  const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
 
   // Handle iframe load
   const handleIframeLoad = () => {
@@ -36,10 +76,73 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
     setError(null);
   }, [videoUrl]);
 
+  // Générer les sources vidéo à partir du TMDB ID
+  useEffect(() => {
+    const sources: VideoSource[] = [];
+    
+    // Source Zupload (prioritaire) - toujours inclure la source fournie
+    if (videoUrl) {
+      sources.push({
+        id: 'zupload',
+        name: 'Zupload',
+        url: videoUrl,
+        type: videoUrl.includes('embed') ? 'embed' : 'direct'
+      });
+    }
+    
+    // Ajouter les sources alternatives seulement si tmdbId est disponible
+    if (tmdbId) {
+      // Source VidSrc
+      if (mediaType === 'movie') {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: 'vidsrc',
+          name: 'VidSrc',
+          url: `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${seasonNumber}&episode=${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+      
+      // Source 2Embed
+      if (mediaType === 'movie') {
+        sources.push({
+          id: '2embed',
+          name: '2Embed',
+          url: `https://www.2embed.cc/embed/${tmdbId}`,
+          type: 'embed'
+        });
+      } else if (mediaType === 'tv' && seasonNumber && episodeNumber) {
+        sources.push({
+          id: '2embed',
+          name: '2Embed',
+          url: `https://www.2embed.cc/embedtv/${tmdbId}/${seasonNumber}/${episodeNumber}`,
+          type: 'embed'
+        });
+      }
+    }
+    
+    setVideoSources(sources);
+    setCurrentSourceIndex(0); // Par défaut, utiliser la première source (Zupload si disponible)
+  }, [tmdbId, mediaType, seasonNumber, episodeNumber, videoUrl]);
+
+  // Changer de source vidéo
+  const changeVideoSource = (index: number) => {
+    setCurrentSourceIndex(index);
+    setIsLoading(true);
+    setError(null);
+  };
+
   // Modified video URL to include branding removal parameters and disable download
-  const modifiedVideoUrl = videoUrl.includes('?') 
-    ? `${videoUrl}&branding=0&show_title=0&show_info=0&disable_download=1&no_download=1` 
-    : `${videoUrl}?branding=0&show_title=0&show_info=0&disable_download=1&no_download=1`;
+  const currentSource = videoSources[currentSourceIndex];
+  const modifiedVideoUrl = currentSource?.url.includes('?') 
+    ? `${currentSource.url}&branding=0&show_title=0&show_info=0&disable_download=1&no_download=1` 
+    : `${currentSource?.url}?branding=0&show_title=0&show_info=0&disable_download=1&no_download=1`;
 
   return (
     <div className="relative w-full h-screen bg-black">
@@ -79,6 +182,120 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         onPointerDown={(e) => e.preventDefault()}
         onDoubleClick={(e) => e.preventDefault()}
       />
+      
+      {/* Top Controls - Season and Episode Selection - Petits boutons */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-30">
+        <div className="flex items-center space-x-2">
+          {onSeasonChange && (
+            <Select 
+              value={currentSeason.toString()} 
+              onValueChange={(value) => onSeasonChange(parseInt(value))}
+            >
+              <SelectTrigger className="w-16 bg-black/70 text-white border-white/20 text-xs px-2 py-1">
+                <SelectValue placeholder="S" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: totalSeasons }, (_, i) => i + 1).map(seasonNum => (
+                  <SelectItem key={seasonNum} value={seasonNum.toString()}>
+                    S{seasonNum}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {onEpisodeChange && (
+            <Select 
+              value={currentEpisode.toString()} 
+              onValueChange={(value) => onEpisodeChange(parseInt(value))}
+            >
+              <SelectTrigger className="w-16 bg-black/70 text-white border-white/20 text-xs px-2 py-1">
+                <SelectValue placeholder="E" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: seasonEpisodes || totalEpisodes }, (_, i) => i + 1).map(episodeNum => (
+                  <SelectItem key={episodeNum} value={episodeNum.toString()}>
+                    E{episodeNum}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          {/* Bouton Source - Nouveau bouton pour changer de source */}
+          {videoSources.length > 1 && (
+            <Select 
+              value={currentSourceIndex.toString()} 
+              onValueChange={(value) => changeVideoSource(parseInt(value))}
+            >
+              <SelectTrigger className="bg-black/70 text-white border-white/20 text-xs px-2 py-1 flex items-center">
+                <Server className="w-3 h-3 mr-1" />
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                {videoSources.map((source, index) => (
+                  <SelectItem key={source.id} value={index.toString()}>
+                    {source.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          {onSkipIntro && (
+            <Button
+              onClick={onSkipIntro}
+              className="bg-black/70 text-white hover:bg-black/90 text-xs px-2 py-1 h-8"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              <span className="hidden sm:inline">Passer l'intro</span>
+            </Button>
+          )}
+          
+          {onNextEpisode && (
+            <Button
+              onClick={onNextEpisode}
+              className="bg-black/70 text-white hover:bg-black/90 text-xs px-2 py-1 h-8"
+            >
+              <SkipForward className="w-3 h-3 mr-1" />
+              <span className="hidden sm:inline">Épisode suivant</span>
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {/* Middle Controls - Previous/Next Episode Navigation - Petits boutons */}
+      <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2 flex justify-between items-center z-30">
+        <div className="flex items-center">
+          {onPreviousEpisode && (
+            <Button
+              onClick={onPreviousEpisode}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 rounded-full"
+              disabled={currentEpisode <= 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        
+        <div className="flex items-center">
+          {onNextEpisode && (
+            <Button
+              onClick={onNextEpisode}
+              variant="ghost"
+              size="icon"
+              className="bg-black/70 text-white hover:bg-black/90 w-8 h-8 rounded-full"
+              disabled={currentEpisode >= (seasonEpisodes || totalEpisodes)}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Direct Zupload iframe integration without custom controls */}
       <iframe
         ref={iframeRef}
@@ -88,8 +305,6 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
         title={`Lecture de ${title}`}
-        // More restrictive sandbox to prevent downloads
-        sandbox="allow-scripts allow-same-origin allow-presentation"
         onLoad={handleIframeLoad}
         onError={handleIframeError}
         loading="lazy"
