@@ -2847,6 +2847,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get TV season details
+  app.get("/api/tmdb/tv/:id/season/:seasonNumber", async (req, res) => {
+    try {
+      const { id, seasonNumber } = req.params;
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/tv/${id}/season/${seasonNumber}?api_key=${apiKey}&language=fr-FR`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`TMDB API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching TV season details:", error);
+      res.status(500).json({ error: "Failed to fetch TV season details" });
+    }
+  });
+
   app.get("/api/tmdb/tv/search", async (req, res) => {
     try {
       const { query } = req.query;
@@ -2874,6 +2899,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const errorText = await response.text();
         console.error(`TMDB API error: ${response.status} ${response.statusText} - ${errorText}`);
         throw new Error(`TMDB API error: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching TV shows by search query:", error);
+      res.status(500).json({ error: "Failed to fetch TV shows by search query" });
+    }
+  });
+
+  app.get("/api/tmdb/tv/popular", async (req, res) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/tv/popular?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+      if (!response.ok) {
+        throw new Error(`TMDB API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching popular TV shows:", error);
+      res.status(500).json({ error: "Failed to fetch popular TV shows" });
+    }
+  });
+
+  app.get("/api/tmdb/tv/top_rated", async (req, res) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/tv/top_rated?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+
+      if (!response.ok) {
+        throw new Error(`TMDB API error: ${response.statusText}`);
       }
 
       const data = await response.json();

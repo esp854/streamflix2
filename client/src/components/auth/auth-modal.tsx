@@ -139,29 +139,29 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md" aria-describedby="auth-dialog-description">
-        <DialogHeader>
-          <DialogTitle id="auth-dialog-title" className="text-center text-2xl font-bold">
+      <DialogContent className="sm:max-w-md w-11/12 max-w-xs p-4 sm:p-6 rounded-lg" aria-describedby="auth-dialog-description">
+        <DialogHeader className="text-center">
+          <DialogTitle id="auth-dialog-title" className="text-center text-xl sm:text-2xl font-bold">
             Bienvenue sur StreamFlix
           </DialogTitle>
-          <DialogDescription id="auth-dialog-description" className="text-center">
+          <DialogDescription id="auth-dialog-description" className="text-center text-sm sm:text-base">
             {currentTab === "login" 
               ? "Connectez-vous pour accéder à vos préférences" 
               : "Créez votre compte pour personnaliser votre expérience"}
           </DialogDescription>
         </DialogHeader>
         
-        {/* Subscription notice for login */}
+        {/* Subscription notice for login - réduit la taille sur mobile */}
         {currentTab === "login" && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800">
             <p className="font-medium">Accès au contenu premium :</p>
             <p>Vous devez être connecté pour vous abonner à un plan et accéder au contenu premium.</p>
           </div>
         )}
         
-        {/* Subscription notice for registration */}
+        {/* Subscription notice for registration - réduit la taille sur mobile */}
         {currentTab === "register" && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-green-800">
             <p className="font-medium">Processus d'abonnement :</p>
             <p>1. Créez votre compte</p>
             <p>2. Connectez-vous</p>
@@ -170,32 +170,32 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
           </div>
         )}
 
-        <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as "login" | "register")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Connexion</TabsTrigger>
-            <TabsTrigger value="register">Inscription</TabsTrigger>
+        <Tabs value={currentTab} onValueChange={(value: string) => setCurrentTab(value as "login" | "register")}>
+          <TabsList className="grid w-full grid-cols-2 h-10">
+            <TabsTrigger value="login" className="text-sm">Connexion</TabsTrigger>
+            <TabsTrigger value="register" className="text-sm">Inscription</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="space-y-4 mt-6">
+          <TabsContent value="login" className="space-y-3 mt-4">
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-3">
                 <FormField
                   control={loginForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="text-sm">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             placeholder="votre@email.com" 
-                            className="pl-10" 
+                            className="pl-10 h-10 text-sm" 
                             {...field} 
                           />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -204,14 +204,14 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mot de passe</FormLabel>
+                      <FormLabel className="text-sm">Mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10" 
+                            className="pl-10 pr-10 h-10 text-sm" 
                             {...field} 
                           />
                           <Button
@@ -229,37 +229,37 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                           </Button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full h-10 text-sm" disabled={isLoading}>
                   {isLoading ? "Connexion..." : "Se connecter"}
                 </Button>
               </form>
             </Form>
           </TabsContent>
 
-          <TabsContent value="register" className="space-y-4 mt-6">
+          <TabsContent value="register" className="space-y-3 mt-4">
             <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3">
                 <FormField
                   control={registerForm.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom d'utilisateur</FormLabel>
+                      <FormLabel className="text-sm">Nom d'utilisateur</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             placeholder="Votre nom d'utilisateur" 
-                            className="pl-10" 
+                            className="pl-10 h-10 text-sm" 
                             {...field} 
                           />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -268,18 +268,18 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="text-sm">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             placeholder="votre@email.com" 
-                            className="pl-10" 
+                            className="pl-10 h-10 text-sm" 
                             {...field} 
                           />
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -288,14 +288,14 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mot de passe</FormLabel>
+                      <FormLabel className="text-sm">Mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10" 
+                            className="pl-10 pr-10 h-10 text-sm" 
                             {...field} 
                           />
                           <Button
@@ -313,7 +313,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                           </Button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -322,14 +322,14 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirmer le mot de passe</FormLabel>
+                      <FormLabel className="text-sm">Confirmer le mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10" 
+                            className="pl-10 pr-10 h-10 text-sm" 
                             {...field} 
                           />
                           <Button
@@ -347,11 +347,11 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                           </Button>
                         </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full h-10 text-sm" disabled={isLoading}>
                   {isLoading ? "Inscription..." : "S'inscrire"}
                 </Button>
               </form>
@@ -359,13 +359,13 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
           </TabsContent>
         </Tabs>
 
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <div className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-muted">
           {currentTab === "login" ? (
             <>
               Pas encore de compte ?{" "}
               <Button
                 variant="link"
-                className="p-0 h-auto font-normal"
+                className="p-0 h-auto font-normal text-xs"
                 onClick={() => setCurrentTab("register")}
               >
                 Inscrivez-vous
@@ -376,7 +376,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
               Déjà un compte ?{" "}
               <Button
                 variant="link"
-                className="p-0 h-auto font-normal"
+                className="p-0 h-auto font-normal text-xs"
                 onClick={() => setCurrentTab("login")}
               >
                 Connectez-vous
@@ -385,8 +385,8 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
           )}
         </div>
         
-        {/* Subscription notice */}
-        <div className="text-center text-xs text-muted-foreground mt-4 pt-4 border-t border-muted">
+        {/* Subscription notice - réduit la taille sur mobile */}
+        <div className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-muted">
           <p>
             ℹ️ Après la création de votre compte, vous pourrez vous abonner à un plan pour accéder au contenu premium.
           </p>

@@ -13,6 +13,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import ZuploadVideoPlayer from "@/components/zupload-video-player";
 import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { VideoSuggestions } from "@/components/video-suggestions";
 
 declare global {
   interface Window {
@@ -52,6 +53,9 @@ export default function WatchMovie() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  
+  // Ajout de l'état pour les suggestions
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   // Watch Party state
   const [isWatchPartyActive, setIsWatchPartyActive] = useState(false);
@@ -142,6 +146,27 @@ export default function WatchMovie() {
   const isOdyseeVideo = useMemo(() => {
     return contentWithVideo?.odyseeUrl && contentWithVideo.odyseeUrl.includes("odysee.com");
   }, [contentWithVideo?.odyseeUrl]);
+
+  // Charger les suggestions de films similaires
+  useEffect(() => {
+    if (movieId) {
+      const fetchSuggestions = async () => {
+        try {
+          // Récupérer les films similaires via l'API TMDB
+          const response = await fetch(`/api/tmdb/movie/${movieId}/recommendations`);
+          if (response.ok) {
+            const data = await response.json();
+            // Limiter à 6 suggestions
+            setSuggestions(data.slice(0, 6));
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des suggestions:', error);
+        }
+      };
+
+      fetchSuggestions();
+    }
+  }, [movieId]);
 
   // Initialize YouTube player API when iframe is loaded
   useEffect(() => {
@@ -621,8 +646,17 @@ export default function WatchMovie() {
 
   return (
     <div className="min-h-screen bg-black text-white relative">
-      {/* Video container */}
-      <div className="relative w-full h-screen">
+      {/* Video container - Ajout de styles pour le format 16:9 sur mobile */}
+      <div 
+        className="relative w-full h-screen"
+        style={{
+          aspectRatio: '16 / 9',
+          maxHeight: '100vh',
+          maxWidth: '100vw',
+          margin: '0 auto',
+          height: 'auto'
+        }}
+      >
         {/* Zupload Video Player - Direct integration with multiple sources */}
         {isZuploadVideo && videoUrl ? (
           <div className="w-full h-full">
@@ -926,7 +960,21 @@ export default function WatchMovie() {
 
       </div>
       
-
+      {/* Suggestions de films similaires */}
+      <VideoSuggestions 
+        suggestions={suggestions.map(movie => ({
+          id: movie.id,
+          title: movie.title,
+          posterPath: movie.poster_path,
+          voteAverage: movie.vote_average,
+          releaseDate: movie.release_date,
+          mediaType: 'movie'
+        }))}
+        title="Vous aimerez aussi"
+        onMediaClick={(media) => {
+          window.location.href = `/watch/movie/${media.id}`;
+        }}
+      />
     </div>
   );
 }

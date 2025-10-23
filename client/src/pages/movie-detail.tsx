@@ -146,7 +146,7 @@ export default function MovieDetail() {
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
-      {/* Hero Section */}
+      {/* Hero Section - Adapté pour mobile */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img
           src={tmdbService.getBackdropUrl(movie.backdrop_path)}
@@ -157,7 +157,7 @@ export default function MovieDetail() {
         <div className="absolute inset-0 bg-black/50"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
 
-        {/* Back button */}
+        {/* Back button - Ajusté pour mobile */}
         <Link href="/">
           <Button
             variant="ghost"
@@ -169,35 +169,35 @@ export default function MovieDetail() {
           </Button>
         </Link>
 
-        {/* Movie info */}
-        <div className="absolute bottom-8 left-4 right-4 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
-          <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold text-white mb-3 sm:mb-4" data-testid="movie-title">
+        {/* Movie info - Optimisé pour mobile */}
+        <div className="absolute bottom-4 left-4 right-4 sm:bottom-8 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
+          <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 md:mb-4" data-testid="movie-title">
             {movie.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-white/80 mb-4 sm:mb-6" data-testid="movie-metadata">
-            <span className="flex items-center space-x-1 text-sm sm:text-base">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 text-white/80 mb-3 sm:mb-4 md:mb-6 text-xs sm:text-sm md:text-base" data-testid="movie-metadata">
+            <span className="flex items-center space-x-1">
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
               <span>Date de sortie: {new Date(movie.release_date).getFullYear()}</span>
             </span>
             {movie.runtime && (
-              <span className="flex items-center space-x-1 text-sm sm:text-base">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="flex items-center space-x-1">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 <span>Durée: {formatRuntime(movie.runtime)}</span>
               </span>
             )}
-            <span className="text-sm sm:text-base">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
-            <div className="flex items-center space-x-1 text-sm sm:text-base">
-              <Star className="w-4 h-4 sm:w-5 sm:h-5 text-accent fill-current" />
+            <span className="text-xs sm:text-sm">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
+            <div className="flex items-center space-x-1">
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-accent fill-current" />
               <span>Note: {movie.vote_average.toFixed(1)}/10</span>
             </div>
           </div>
 
-          <p className="text-base sm:text-lg md:text-xl text-white/90 mb-6 sm:mb-8 leading-relaxed max-w-2xl line-clamp-3 sm:line-clamp-none" data-testid="movie-overview">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 mb-4 sm:mb-6 md:mb-8 leading-relaxed max-w-2xl line-clamp-3 sm:line-clamp-none" data-testid="movie-overview">
             {movie.overview}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="movie-actions">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4" data-testid="movie-actions">
             <Button 
               onClick={() => {
                 // If user should be redirected to payment page, redirect them
@@ -207,96 +207,96 @@ export default function MovieDetail() {
                 }
                 window.location.href = `/watch/movie/${movieId}`;
               }}
-              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
+              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" 
               data-testid="watch-button"
             >
-              <Play className="w-5 h-5" />
-              <span>Regarder</span>
+              <Play className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Regarder</span>
             </Button>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 sm:flex-none">
-              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto" onClick={handleAddToList} data-testid="add-list-button">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 flex-1 sm:flex-none">
+              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" onClick={handleAddToList} data-testid="add-list-button">
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden xs:inline">Ma Liste</span>
-                <span className="xs:hidden">Liste</span>
+                <span className="hidden xs:inline text-sm sm:text-base">Ma Liste</span>
+                <span className="xs:hidden text-sm">Liste</span>
               </Button>
               <Button
-                className={`btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto ${isFavorite ? 'bg-primary text-white' : ''}`}
+                className={`btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12 ${isFavorite ? 'bg-primary text-white' : ''}`}
                 onClick={handleToggleFavorite}
                 disabled={isAddingToFavorites}
                 data-testid="favorite-button"
               >
                 <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                <span className="hidden xs:inline">{isFavorite ? 'Retirer des favoris' : 'Favoris'}</span>
-                <span className="xs:hidden">{isFavorite ? 'Retirer' : 'Favoris'}</span>
+                <span className="hidden xs:inline text-sm sm:text-base">{isFavorite ? 'Retirer des favoris' : 'Favoris'}</span>
+                <span className="xs:hidden text-sm">{isFavorite ? 'Retirer' : 'Favoris'}</span>
               </Button>
-              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto" onClick={handleShare} data-testid="share-button">
+              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" onClick={handleShare} data-testid="share-button">
                 <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden xs:inline">Partager</span>
-                <span className="xs:hidden">Share</span>
+                <span className="hidden xs:inline text-sm sm:text-base">Partager</span>
+                <span className="xs:hidden text-sm">Share</span>
               </Button>
             </div>
           </div>
         </div>
       </div>
       
-      {/* Content sections */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 sm:space-y-12">
-        {/* Additional Movie Information */}
+      {/* Content sections - Adapté pour mobile */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12 space-y-6 sm:space-y-8 md:space-y-12">
+        {/* Additional Movie Information - Optimisé pour mobile */}
         <section data-testid="movie-info-section">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Informations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Informations</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-start">
-                <Globe className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-foreground">Langue originale</h3>
-                  <p className="text-muted-foreground">{movie.original_language?.toUpperCase()}</p>
+                  <h3 className="font-semibold text-foreground text-sm sm:text-base">Langue originale</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm">{movie.original_language?.toUpperCase()}</p>
                 </div>
               </div>
               
               {movie.budget && movie.budget > 0 && (
                 <div className="flex items-start">
-                  <DollarSign className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-foreground">Budget</h3>
-                    <p className="text-muted-foreground">{formatCurrency(movie.budget)}</p>
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Budget</h3>
+                    <p className="text-muted-foreground text-xs sm:text-sm">{formatCurrency(movie.budget)}</p>
                   </div>
                 </div>
               )}
               
               {movie.revenue && movie.revenue > 0 && (
                 <div className="flex items-start">
-                  <DollarSign className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-foreground">Revenus</h3>
-                    <p className="text-muted-foreground">{formatCurrency(movie.revenue)}</p>
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Revenus</h3>
+                    <p className="text-muted-foreground text-xs sm:text-sm">{formatCurrency(movie.revenue)}</p>
                   </div>
                 </div>
               )}
               
               {movie.status && (
                 <div className="flex items-start">
-                  <Users className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-foreground">Statut</h3>
-                    <p className="text-muted-foreground">{movie.status}</p>
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Statut</h3>
+                    <p className="text-muted-foreground text-xs sm:text-sm">{movie.status}</p>
                   </div>
                 </div>
               )}
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {movie.tagline && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-2">Slogan</h3>
-                  <p className="text-muted-foreground italic">"{movie.tagline}"</p>
+                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Slogan</h3>
+                  <p className="text-muted-foreground italic text-xs sm:text-sm">"{movie.tagline}"</p>
                 </div>
               )}
               
               {movie.production_companies && movie.production_companies.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-2">Sociétés de production</h3>
-                  <p className="text-muted-foreground">
+                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Sociétés de production</h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm">
                     {movie.production_companies.map((company: any) => company.name).join(", ")}
                   </p>
                 </div>
@@ -305,17 +305,17 @@ export default function MovieDetail() {
           </div>
         </section>
 
-        {/* Cast */}
+        {/* Cast - Optimisé pour mobile */}
         {cast.length > 0 && (
           <section data-testid="cast-section">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Distribution</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 sm:gap-6" data-testid="cast-grid">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Distribution</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 md:gap-4 lg:gap-6" data-testid="cast-grid">
               {cast.map((actor) => (
                 <div key={actor.id} className="text-center" data-testid={`cast-member-${actor.id}`}>
                   <img
                     src={tmdbService.getProfileUrl(actor.profile_path)}
                     alt={actor.name}
-                    className="w-full aspect-square rounded-lg object-cover mb-2"
+                    className="w-full aspect-square rounded-lg object-cover mb-1 sm:mb-2"
                     onError={(e) => {
                       e.currentTarget.src = "/placeholder-profile.jpg";
                     }}
@@ -328,23 +328,23 @@ export default function MovieDetail() {
           </section>
         )}
 
-        {/* Crew */}
+        {/* Crew - Optimisé pour mobile */}
         {crew.length > 0 && (
           <section data-testid="crew-section">
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 text-foreground">Équipe technique</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="crew-grid">
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Équipe technique</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4" data-testid="crew-grid">
               {crew.map((member) => (
-                <div key={member.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
+                <div key={member.id} className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
                   <img
                     src={tmdbService.getProfileUrl(member.profile_path)}
                     alt={member.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = "/placeholder-profile.jpg";
                     }}
                   />
                   <div>
-                    <h3 className="font-medium text-foreground text-sm">{member.name}</h3>
+                    <h3 className="font-medium text-foreground text-xs sm:text-sm">{member.name}</h3>
                     <p className="text-xs text-muted-foreground">{member.job}</p>
                   </div>
                 </div>

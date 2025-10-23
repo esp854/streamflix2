@@ -14,6 +14,7 @@ import { useFavorites } from "@/hooks/use-favorites";
 import ZuploadVideoPlayer from "@/components/zupload-video-player"; // Import ZuploadVideoPlayer
 import WatchPartyEnhanced from "@/components/watch-party-enhanced";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { VideoSuggestions } from "@/components/video-suggestions";
 import { TVSeasonDetails } from "@/types/movie"; // Add this import
 
 export default function WatchTV() {
@@ -48,6 +49,7 @@ export default function WatchTV() {
   const [isZuploadVideo, setIsZuploadVideo] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // Add videoUrl state
   const [videoError, setVideoError] = useState<string | null>(null); // Add videoError state
+  const [suggestions, setSuggestions] = useState<any[]>([]); // Ajout de l'état pour les suggestions
 
   // Watch Party state
   const [isWatchPartyActive, setIsWatchPartyActive] = useState(false);
@@ -231,6 +233,27 @@ export default function WatchTV() {
     const videoData = episodeData?.episode || contentWithVideo;
     return videoData?.odyseeUrl && videoData.odyseeUrl.includes("odysee.com");
   }, [episodeData, contentWithVideo]);
+
+  // Charger les suggestions de séries similaires
+  useEffect(() => {
+    if (tvId) {
+      const fetchSuggestions = async () => {
+        try {
+          // Récupérer les séries similaires via l'API TMDB
+          const response = await fetch(`/api/tmdb/tv/${tvId}/recommendations`);
+          if (response.ok) {
+            const data = await response.json();
+            // Limiter à 6 suggestions
+            setSuggestions(data.slice(0, 6));
+          }
+        } catch (error) {
+          console.error('Erreur lors du chargement des suggestions:', error);
+        }
+      };
+
+      fetchSuggestions();
+    }
+  }, [tvId]);
 
   // Initialize YouTube player API when iframe is loaded
   useEffect(() => {
@@ -820,8 +843,17 @@ export default function WatchTV() {
 
   return (
     <div className="min-h-screen bg-black text-white relative">
-      {/* Video container */}
-      <div className="relative w-full h-screen">
+      {/* Video container - Ajout de styles pour le format 16:9 sur mobile */}
+      <div 
+        className="relative w-full h-screen"
+        style={{
+          aspectRatio: '16 / 9',
+          maxHeight: '100vh',
+          maxWidth: '100vw',
+          margin: '0 auto',
+          height: 'auto'
+        }}
+      >
         {/* Zupload Video Player - Direct integration with multiple sources */}
         {isZuploadVideo && videoUrl ? (
           <div className="w-full h-full">
@@ -1206,6 +1238,22 @@ export default function WatchTV() {
         )}
 
       </div>
+      
+      {/* Suggestions de séries similaires */}
+      <VideoSuggestions 
+        suggestions={suggestions.map(show => ({
+          id: show.id,
+          title: show.name,
+          posterPath: show.poster_path,
+          voteAverage: show.vote_average,
+          firstAirDate: show.first_air_date,
+          mediaType: 'tv'
+        }))}
+        title="Vous aimerez aussi"
+        onMediaClick={(media) => {
+          window.location.href = `/watch/tv/${media.id}/1/1`;
+        }}
+      />
     </div>
   );
 }

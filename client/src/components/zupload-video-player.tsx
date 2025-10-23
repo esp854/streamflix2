@@ -713,6 +713,17 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
           }
         }
       }}
+      // Ajout de styles pour forcer le format 16:9 sur mobile
+      style={{
+        aspectRatio: '16 / 9',
+        maxHeight: '100vh',
+        maxWidth: '100vw',
+        margin: '0 auto',
+        ...(isMobileDevice && {
+          height: 'auto',
+          minHeight: 'unset'
+        })
+      }}
     >
       {/* Ad for non-authenticated users - HilltopAds VAST integration */}
       {showAd && (
@@ -1050,7 +1061,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   height: '100%',
                   minHeight: isMobileDevice ? '200px' : 'auto',
                   border: 'none',
-                  backgroundColor: 'black'
+                  backgroundColor: 'black',
+                  aspectRatio: '16 / 9', // Forcer le format 16:9
+                  objectFit: 'contain',   // S'assurer que la vidéo s'adapte correctement
+                  maxWidth: '100%',
+                  maxHeight: '100vh'
                 }}
                 // Pour Frembed, utiliser la configuration optimale corrigée
                 {...(currentSource.name === 'Frembed' && {
@@ -1134,7 +1149,8 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
               style={{ 
                 width: '100%', 
                 height: '100%',
-                objectFit: 'cover'
+                objectFit: 'contain',
+                aspectRatio: '16 / 9' // Forcer le format 16:9
               }}
               // Sur mobile, on tente de forcer le chargement
               {...(isMobileDevice && { autoPlay: true, muted: true })}

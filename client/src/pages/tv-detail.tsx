@@ -10,6 +10,7 @@ import { useShare } from "@/hooks/use-share";
 import TVRow from "@/components/tv-row";
 import CommentsSection from "@/components/CommentsSection";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import { EpisodeCard } from "@/components/episode-card";
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +67,51 @@ export default function TVDetail() {
     },
     enabled: !!contentData?.id,
   });
+
+  // Get season details from TMDB to get episode images
+  const { data: seasonDetails } = useQuery({
+    queryKey: [`/api/tmdb/tv/${tvId}/season-details`],
+    queryFn: async () => {
+      if (!tvDetails?.seasons) return null;
+      
+      // Fetch details for all seasons
+      const seasonPromises = tvDetails.seasons.map(async (season: any) => {
+        if (season.season_number > 0) { // Skip season 0 (specials)
+          try {
+            const response = await fetch(`/api/tmdb/tv/${tvId}/season/${season.season_number}`);
+            if (response.ok) {
+              return await response.json();
+            }
+          } catch (error) {
+            console.error(`Error fetching season ${season.season_number} details:`, error);
+          }
+        }
+        return null;
+      });
+      
+      const seasonData = await Promise.all(seasonPromises);
+      return seasonData.filter(Boolean); // Remove null values
+    },
+    enabled: !!tvId && tvId > 0 && !!tvDetails?.seasons,
+  });
+
+  // Create a map of episode images by season and episode number
+  const episodeImages = useMemo(() => {
+    if (!seasonDetails) return {};
+    
+    const images: { [key: string]: string | null } = {};
+    
+    seasonDetails.forEach((season: any) => {
+      if (season && season.episodes) {
+        season.episodes.forEach((episode: any) => {
+          const key = `${season.season_number}-${episode.episode_number}`;
+          images[key] = episode.still_path;
+        });
+      }
+    });
+    
+    return images;
+  }, [seasonDetails]);
 
   const { data: similarShows } = useQuery({
     queryKey: [`/api/tmdb/tv/similar/${tvId}`],
@@ -563,46 +609,66 @@ export default function TVDetail() {
                       <div className="border-t border-gray-700">
                         <div className="p-3 sm:p-4 space-y-2">
                           {seasonEpisodes.length > 0 ? (
-                            seasonEpisodes.map((episode: any) => (
-                              <div key={`${season.season_number}-${episode.episodeNumber}`} className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors">
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
-                                  {episode.episodeNumber}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-sm sm:text-base line-clamp-1">{episode.title}</h5>
-                                  <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">{episode.description}</p>
-                                </div>
-                                <div className="flex space-x-2">
-                                  <Link
-                                    href={`/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber}`}
-                                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-primary hover:bg-primary/90 rounded-full transition-colors"
-                                  >
-                                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
-                                  </Link>
-                                </div>
-                              </div>
-                            ))
+                            seasonEpisodes.map((episode: any) => {
+                              const episodeKey = `${season.season_number}-${episode.episodeNumber}`;
+                              const episodeImage = episodeImages[episodeKey] || null;
+                              
+                              return (
+                                <EpisodeCard
+                                  key={`${season.season_number}-${episode.episodeNumber}`}
+                                  episode={{
+                                    air_date: episode.releaseDate || '',
+                                    episode_number: episode.episodeNumber,
+                                    id: episode.id || 0,
+                                    name: episode.title,
+                                    overview: episode.description || '',
+                                    production_code: '',
+                                    runtime: null,
+                                    season_number: season.season_number,
+                                    show_id: tv.id,
+                                    still_path: null,
+                                    vote_average: 0,
+                                    vote_count: 0,
+                                    crew: [],
+                                    guest_stars: []
+                                  }}
+                                  tvId={tv.id}
+                                  seasonNumber={season.season_number}
+                                  episodeImage={episodeImage}
+                                />
+                              );
+                            })
                           ) : (
                             // Fallback to placeholder episodes if no real episodes in DB
-                            Array.from({ length: season.episode_count }, (_, i) => (
-                              <div key={`${season.season_number}-${i + 1}`} className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-700 transition-colors">
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gray-600 rounded flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0">
-                                  {i + 1}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h5 className="font-medium text-sm sm:text-base line-clamp-1">Épisode {i + 1}</h5>
-                                  <p className="text-xs sm:text-sm text-gray-400 line-clamp-2">Résumé de l'épisode à venir...</p>
-                                </div>
-                                <div className="flex space-x-2">
-                                  <Link
-                                    href={`/watch/tv/${tv.id}/${season.season_number}/${i + 1}`}
-                                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-primary hover:bg-primary/90 rounded-full transition-colors"
-                                  >
-                                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-white flex-shrink-0" />
-                                  </Link>
-                                </div>
-                              </div>
-                            ))
+                            Array.from({ length: season.episode_count }, (_, i) => {
+                              const episodeKey = `${season.season_number}-${i + 1}`;
+                              const episodeImage = episodeImages[episodeKey] || null;
+                              
+                              return (
+                                <EpisodeCard
+                                  key={`${season.season_number}-${i + 1}`}
+                                  episode={{
+                                    air_date: season.air_date || '',
+                                    episode_number: i + 1,
+                                    id: 0,
+                                    name: `Épisode ${i + 1}`,
+                                    overview: 'Résumé de l\'épisode à venir...',
+                                    production_code: '',
+                                    runtime: null,
+                                    season_number: season.season_number,
+                                    show_id: tv.id,
+                                    still_path: null,
+                                    vote_average: 0,
+                                    vote_count: 0,
+                                    crew: [],
+                                    guest_stars: []
+                                  }}
+                                  tvId={tv.id}
+                                  seasonNumber={season.season_number}
+                                  episodeImage={episodeImage}
+                                />
+                              );
+                            })
                           )}
                         </div>
                       </div>
