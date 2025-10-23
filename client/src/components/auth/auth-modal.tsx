@@ -139,58 +139,59 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md w-11/12 max-w-xs p-4 sm:p-6 rounded-lg" aria-describedby="auth-dialog-description">
+      <DialogContent className="sm:max-w-md w-11/12 max-w-xs p-3 sm:p-4 rounded-lg" aria-describedby="auth-dialog-description">
         <DialogHeader className="text-center">
-          <DialogTitle id="auth-dialog-title" className="text-center text-xl sm:text-2xl font-bold">
-            Bienvenue sur StreamFlix
+          <DialogTitle id="auth-dialog-title" className="text-center text-lg sm:text-xl font-bold">
+            StreamFlix
           </DialogTitle>
-          <DialogDescription id="auth-dialog-description" className="text-center text-sm sm:text-base">
+          <DialogDescription id="auth-dialog-description" className="text-center text-xs sm:text-sm">
             {currentTab === "login" 
-              ? "Connectez-vous pour accéder à vos préférences" 
-              : "Créez votre compte pour personnaliser votre expérience"}
+              ? "Connectez-vous" 
+              : "Créez votre compte"}
           </DialogDescription>
         </DialogHeader>
         
         {/* Subscription notice for login - réduit la taille sur mobile */}
         {currentTab === "login" && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800">
-            <p className="font-medium">Accès au contenu premium :</p>
-            <p>Vous devez être connecté pour vous abonner à un plan et accéder au contenu premium.</p>
+          <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-800">
+            <p className="font-medium hidden sm:block">Accès au contenu premium :</p>
+            <p className="hidden sm:block">Vous devez être connecté pour vous abonner à un plan et accéder au contenu premium.</p>
+            <p className="sm:hidden">Connectez-vous pour accéder au contenu</p>
           </div>
         )}
         
         {/* Subscription notice for registration - réduit la taille sur mobile */}
         {currentTab === "register" && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-green-800">
-            <p className="font-medium">Processus d'abonnement :</p>
-            <p>1. Créez votre compte</p>
-            <p>2. Connectez-vous</p>
-            <p>3. Choisissez un plan d'abonnement</p>
-            <p>4. Procédez au paiement sécurisé</p>
+          <div className="bg-green-50 border border-green-200 rounded p-2 text-xs text-green-800">
+            <p className="font-medium hidden sm:block">Processus d'abonnement :</p>
+            <p className="hidden sm:block">1. Créez votre compte</p>
+            <p className="hidden sm:block">2. Connectez-vous</p>
+            <p className="hidden sm:block">3. Choisissez un plan</p>
+            <p className="sm:hidden">Créez votre compte pour accéder au contenu</p>
           </div>
         )}
 
         <Tabs value={currentTab} onValueChange={(value: string) => setCurrentTab(value as "login" | "register")}>
-          <TabsList className="grid w-full grid-cols-2 h-10">
-            <TabsTrigger value="login" className="text-sm">Connexion</TabsTrigger>
-            <TabsTrigger value="register" className="text-sm">Inscription</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 h-8 sm:h-10">
+            <TabsTrigger value="login" className="text-xs sm:text-sm">Connexion</TabsTrigger>
+            <TabsTrigger value="register" className="text-xs sm:text-sm">Inscription</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="space-y-3 mt-4">
+          <TabsContent value="login" className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-3">
+              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-2 sm:space-y-3">
                 <FormField
                   control={loginForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Email</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Mail className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             placeholder="votre@email.com" 
-                            className="pl-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                         </div>
@@ -204,27 +205,27 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Mot de passe</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Lock className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 pr-7 sm:pr-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            className="absolute right-0 top-0 h-full px-2 sm:px-3 py-0 hover:bg-transparent"
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             )}
                           </Button>
                         </div>
@@ -233,28 +234,28 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full h-10 text-sm" disabled={isLoading}>
+                <Button type="submit" className="w-full h-8 sm:h-10 text-xs sm:text-sm" disabled={isLoading}>
                   {isLoading ? "Connexion..." : "Se connecter"}
                 </Button>
               </form>
             </Form>
           </TabsContent>
 
-          <TabsContent value="register" className="space-y-3 mt-4">
+          <TabsContent value="register" className="space-y-2 sm:space-y-3 mt-3 sm:mt-4">
             <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-3">
+              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-2 sm:space-y-3">
                 <FormField
                   control={registerForm.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Nom d'utilisateur</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Nom d'utilisateur</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <User className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             placeholder="Votre nom d'utilisateur" 
-                            className="pl-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                         </div>
@@ -268,13 +269,13 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Email</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Email</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Mail className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             placeholder="votre@email.com" 
-                            className="pl-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                         </div>
@@ -288,27 +289,27 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Mot de passe</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Lock className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             type={showPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 pr-7 sm:pr-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            className="absolute right-0 top-0 h-full px-2 sm:px-3 py-0 hover:bg-transparent"
                             onClick={() => setShowPassword(!showPassword)}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             )}
                           </Button>
                         </div>
@@ -322,27 +323,27 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm">Confirmer le mot de passe</FormLabel>
+                      <FormLabel className="text-xs sm:text-sm">Confirmer le mot de passe</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Lock className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                           <Input 
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder="••••••••" 
-                            className="pl-10 pr-10 h-10 text-sm" 
+                            className="pl-7 sm:pl-10 pr-7 sm:pr-10 h-8 sm:h-10 text-xs sm:text-sm" 
                             {...field} 
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            className="absolute right-0 top-0 h-full px-2 sm:px-3 py-0 hover:bg-transparent"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                             )}
                           </Button>
                         </div>
@@ -351,7 +352,7 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full h-10 text-sm" disabled={isLoading}>
+                <Button type="submit" className="w-full h-8 sm:h-10 text-xs sm:text-sm" disabled={isLoading}>
                   {isLoading ? "Inscription..." : "S'inscrire"}
                 </Button>
               </form>
@@ -359,34 +360,34 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login", onLog
           </TabsContent>
         </Tabs>
 
-        <div className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-muted">
+        <div className="text-center text-xs text-muted-foreground mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-muted">
           {currentTab === "login" ? (
             <>
-              Pas encore de compte ?{" "}
+              Pas de compte ?{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal text-xs"
                 onClick={() => setCurrentTab("register")}
               >
-                Inscrivez-vous
+                S'inscrire
               </Button>
             </>
           ) : (
             <>
-              Déjà un compte ?{" "}
+              Déjà inscrit ?{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto font-normal text-xs"
                 onClick={() => setCurrentTab("login")}
               >
-                Connectez-vous
+                Se connecter
               </Button>
             </>
           )}
         </div>
         
         {/* Subscription notice - réduit la taille sur mobile */}
-        <div className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-muted">
+        <div className="text-center text-xs text-muted-foreground mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-muted hidden sm:block">
           <p>
             ℹ️ Après la création de votre compte, vous pourrez vous abonner à un plan pour accéder au contenu premium.
           </p>
