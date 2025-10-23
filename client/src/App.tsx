@@ -28,6 +28,8 @@ import Favorites from "./pages/favorites";
 import MoviesPage from "./pages/movies";
 import Category from "./pages/category";
 import TVChannelsPage from "./pages/tv-channels-page"; // Ajout de l'import
+import BlogPage from "./pages/blog";
+import BlogPostPage from "./pages/blog-post";
 
 const routes = [
   { path: "/", component: Home },
@@ -44,6 +46,8 @@ const routes = [
   { path: "/ma-liste", component: Favorites },
   { path: "/category/:genre", component: Category },
   { path: "/tv-channels", component: TVChannelsPage }, // Ajout de la route
+  { path: "/blog", component: BlogPage },
+  { path: "/blog/:id", component: BlogPostPage },
   { path: "/*", component: NotFound },
 ];
 
@@ -96,6 +100,8 @@ function Router() {
       
       {/* Regular routes with navbar/footer */}
       <Route path="/tv-channels" component={TVChannelsPage} /> {/* Ajout de la route */}
+      <Route path="/blog/:id" component={BlogPostPage} />
+      <Route path="/blog" component={BlogPage} />
       <Route path="/" component={Home} />
       <Route path="/movie/:id" component={MovieDetail} />
       <Route path="/universe/:id" component={Universe} />

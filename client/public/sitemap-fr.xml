@@ -188,26 +188,4 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2-o7vx.onrender.com/es/category/terror" />
   </url>
   
-  <!-- Sitemap index for additional language versions -->
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-fr.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-en.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-es.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
 </urlset>

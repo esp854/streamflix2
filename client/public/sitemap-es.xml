@@ -3,9 +3,9 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   
-  <!-- Page d'accueil -->
+  <!-- Página principal -->
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -15,9 +15,9 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2-o7vx.onrender.com/" />
   </url>
   
-  <!-- Pages principales -->
+  <!-- Páginas principales -->
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/films</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/peliculas</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -27,7 +27,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/series</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/series</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
@@ -37,7 +37,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/tendance</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/tendencias</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
@@ -47,7 +47,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/recherche</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/buscar</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -57,7 +57,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/abonnement</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/suscripcion</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -67,7 +67,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/profil</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/perfil</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -77,7 +77,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/favoris</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/favoritos</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -87,7 +87,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/continuer-a-regarder</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/continuar-viendo</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -96,9 +96,9 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2-o7vx.onrender.com/es/continuar-viendo" />
   </url>
   
-  <!-- Pages légales -->
+  <!-- Páginas legales -->
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/conditions-d-utilisation</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/terminos-de-uso</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
@@ -108,7 +108,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/politique-de-confidentialite</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/politica-de-privacidad</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
@@ -118,7 +118,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/centre-d-aide</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/centro-de-ayuda</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
@@ -128,7 +128,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/contact</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/contacto</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
@@ -137,9 +137,9 @@
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2-o7vx.onrender.com/es/contacto" />
   </url>
   
-  <!-- Catégories de films -->
+  <!-- Categorías de películas -->
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/category/action</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/category/accion</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -149,7 +149,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/category/comedie</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/category/comedia</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -159,7 +159,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/category/drame</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/category/drama</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -169,7 +169,7 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/category/science-fiction</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/category/ciencia-ficcion</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -179,35 +179,13 @@
   </url>
   
   <url>
-    <loc>https://streamflix2-o7vx.onrender.com/category/horreur</loc>
+    <loc>https://streamflix2-o7vx.onrender.com/es/category/terror</loc>
     <lastmod>2025-10-23</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/horreur" />
     <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2-o7vx.onrender.com/en/category/horror" />
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2-o7vx.onrender.com/es/category/terror" />
-  </url>
-  
-  <!-- Sitemap index for additional language versions -->
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-fr.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-en.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
-  </url>
-  
-  <url>
-    <loc>https://streamflix2-o7vx.onrender.com/sitemap-es.xml</loc>
-    <lastmod>2025-10-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
   </url>
   
 </urlset>

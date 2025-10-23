@@ -18,8 +18,8 @@
     </script>
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="StreamFlix - La meilleure plateforme de streaming légal pour films et séries en haute qualité. Découvrez des milliers de contenus exclusifs, sans publicité intrusive, avec un accès illimité 24h/24. Abonnez-vous dès maintenant et profitez d'une expérience de visionnage exceptionnelle !" />
-    <meta name="keywords" content="streamflix, streaming, films, séries, streaming légal, cinéma, divertissement, vidéo à la demande, VOD, films gratuits, séries gratuites, streaming sans publicité, plateforme streaming, visionnage en ligne, films HD, séries HD, contenu exclusif" />
+    <meta name="description" content="StreamFlix - Regarder films et séries en streaming HD gratuit et légal. +1000 contenus disponibles sans publicité intrusive. Accès illimité 24h/24 aux derniers films et séries TV en haute qualité." />
+    <meta name="keywords" content="streamflix, streaming gratuit, films en streaming, series streaming, streaming légal, cinéma en ligne, vidéo à la demande, VOD, films HD gratuits, séries HD gratuites, streaming sans publicité, plateforme streaming, films en ligne, séries en ligne, contenus exclusifs" />
     <meta name="author" content="StreamFlix" />
     <meta name="robots" content="index, follow" />
     <meta name="googlebot" content="index, follow" />
@@ -31,6 +31,7 @@
     <meta name="revisit-after" content="7 days" />
     <meta name="distribution" content="global" />
     <meta name="coverage" content="Worldwide" />
+    <meta name="google-site-verification" content="verification-code-here" />
 
     <!-- Performance and Mobile Optimization -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -111,18 +112,21 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://streamflix2-o7vx.onrender.com/" />
-    <meta property="og:title" content="StreamFlix - Films et Séries en Streaming HD | Plateforme Légale" />
-    <meta property="og:description" content="Regardez des milliers de films et séries en streaming légal, sans publicité et en haute qualité. Abonnement à partir de 2000 FCFA/mois. Découvrez notre vaste catalogue dès maintenant !" />
+    <meta property="og:title" content="StreamFlix - Films et Séries en Streaming HD Gratuit | Plateforme Légale" />
+    <meta property="og:description" content="Regardez +1000 films et séries en streaming légal, sans publicité et en haute qualité. Accès gratuit 24h/24 à notre vaste catalogue de contenus exclusifs." />
     <meta property="og:image" content="https://streamflix2-o7vx.onrender.com/manifest-icon-512.maskable.png" />
     <meta property="og:site_name" content="StreamFlix" />
     <meta property="og:locale" content="fr_FR" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://streamflix2-o7vx.onrender.com/" />
-    <meta property="twitter:title" content="StreamFlix - Films et Séries en Streaming HD | Plateforme Légale" />
-    <meta property="twitter:description" content="Regardez des milliers de films et séries en streaming légal, sans publicité et en haute qualité. Abonnement à partir de 2000 FCFA/mois." />
+    <meta property="twitter:title" content="StreamFlix - Films et Séries en Streaming HD Gratuit | Plateforme Légale" />
+    <meta property="twitter:description" content="Regardez +1000 films et séries en streaming légal, sans publicité et en haute qualité. Accès gratuit 24h/24 à notre vaste catalogue." />
     <meta property="twitter:image" content="https://streamflix2-o7vx.onrender.com/manifest-icon-512.maskable.png" />
+    <meta property="twitter:site" content="@streamflix" />
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
@@ -145,7 +149,12 @@
         "https://twitter.com/streamflix",
         "https://www.instagram.com/streamflix",
         "https://www.youtube.com/streamflix"
-      ]
+      ],
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
     }
     </script>
 
@@ -159,10 +168,10 @@
       "description": "Plateforme de streaming légal pour films et séries en haute qualité.",
       "offers": {
         "@type": "Offer",
-        "name": "Abonnement StreamFlix",
-        "price": "2000",
+        "name": "Accès Gratuit StreamFlix",
+        "price": "0",
         "priceCurrency": "XOF",
-        "description": "Accès illimité à tous les films et séries"
+        "description": "Accès illimité à tous les films et séries gratuitement"
       },
       "aggregateRating": {
         "@type": "AggregateRating",
@@ -186,6 +195,34 @@
     }
     </script>
 
+    <!-- BreadcrumbList Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Accueil",
+          "item": "https://streamflix2-o7vx.onrender.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Films",
+          "item": "https://streamflix2-o7vx.onrender.com/films"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Séries",
+          "item": "https://streamflix2-o7vx.onrender.com/series"
+        }
+      ]
+    }
+    </script>
+
     <!-- Alternate Language Links -->
     <link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/" />
     <link rel="alternate" hreflang="en" href="https://streamflix2-o7vx.onrender.com/en/" />
@@ -193,7 +230,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Outfit:wght@100..900&family=Oxanium:wght@200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     
-    <title>StreamFlix - Films et Séries en Streaming HD | Plateforme Légale</title>
+    <title>StreamFlix - Films et Séries en Streaming HD Gratuit | Plateforme Légale</title>
   </head>
   <body>
     <div id="root"></div>

@@ -7,6 +7,9 @@ Disallow: /login
 Disallow: /register
 
 Sitemap: https://streamflix2-o7vx.onrender.com/sitemap.xml
+Sitemap: https://streamflix2-o7vx.onrender.com/sitemap-fr.xml
+Sitemap: https://streamflix2-o7vx.onrender.com/sitemap-en.xml
+Sitemap: https://streamflix2-o7vx.onrender.com/sitemap-es.xml
 
 Host: streamflix2-o7vx.onrender.com
 

@@ -8,6 +8,7 @@ import { useShare } from "@/hooks/use-share";
 import MovieRow from "@/components/movie-row";
 import CommentsSection from "@/components/CommentsSection";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import MovieDetailStructuredData from "@/components/seo/movie-detail-structured-data";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
@@ -116,32 +117,16 @@ export default function MovieDetail() {
     }).format(amount);
   };
 
-  // Données structurées pour le film
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Movie",
-    "name": movie.title,
-    "image": tmdbService.getBackdropUrl(movie.backdrop_path),
-    "description": movie.overview,
-    "datePublished": movie.release_date,
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": movie.vote_average,
-      "bestRating": 10,
-      "worstRating": 0,
-      "ratingCount": movie.vote_count
-    },
-    "genre": movie.genres?.map(g => g.name),
-    "director": crew.filter(person => person.job === "Director").map(person => person.name),
-    "actor": cast.slice(0, 5).map(person => person.name),
-    "duration": movie.runtime ? `PT${movie.runtime}M` : undefined
+  // Format data for structured data component
+  const movieDetailsForStructuredData = {
+    movie,
+    credits,
+    videos
   };
 
   return (
     <div className="min-h-screen bg-background" data-testid="movie-detail-page">
-      <script type="application/ld+json">
-        {JSON.stringify(structuredData)}
-      </script>
+      <MovieDetailStructuredData movieDetails={movieDetailsForStructuredData} />
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img

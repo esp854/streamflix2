@@ -5,7 +5,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
-import { storage } from "./storage.js";
+import { storage } from "./storage";
 import { config } from "dotenv";
 
 // Charger les variables d'environnement

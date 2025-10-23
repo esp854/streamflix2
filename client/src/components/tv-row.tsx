@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TMDBTVSeries } from "@/types/movie";
-import TVCard from "./tv-card";
+import OptimizedTVCard from "@/components/optimized-tv-card";
 
 // Add interface for local content
 interface LocalContent {
@@ -106,7 +106,7 @@ export default function TVRow({ title, series, isLoading }: TVRowProps) {
           data-testid="tv-container"
         >
           {activeSeries.map((show, index) => (
-            <TVCard key={`${'tmdbId' in show ? show.tmdbId : show.id}-${index}`} series={show} />
+            <OptimizedTVCard key={`${'tmdbId' in show ? show.tmdbId : show.id}-${index}`} series={show as TMDBTVSeries} />
           ))}
         </div>
       </div>

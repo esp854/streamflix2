@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TMDBMovie } from "@/types/movie";
-import MovieCard from "./movie-card";
+import OptimizedMovieCard from "@/components/optimized-movie-card";
 
 // Add interface for local content
 interface LocalContent {
@@ -131,7 +131,7 @@ export default function MovieRow({ title, movies, isLoading }: MovieRowProps) {
           data-testid="movie-container"
         >
           {movies.map((movie) => (
-            <MovieCard key={'tmdbId' in movie ? movie.tmdbId.toString() : movie.id} movie={movie as TMDBMovie} />
+            <OptimizedMovieCard key={'tmdbId' in movie ? movie.tmdbId.toString() : movie.id} movie={movie as TMDBMovie} />
           ))}
         </div>
       </div>
