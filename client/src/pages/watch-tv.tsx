@@ -1239,21 +1239,23 @@ export default function WatchTV() {
 
       </div>
       
-      {/* Suggestions de séries similaires */}
-      <VideoSuggestions 
-        suggestions={suggestions.map(show => ({
-          id: show.id,
-          title: show.name,
-          posterPath: show.poster_path,
-          voteAverage: show.vote_average,
-          firstAirDate: show.first_air_date,
-          mediaType: 'tv'
-        }))}
-        title="Vous aimerez aussi"
-        onMediaClick={(media) => {
-          window.location.href = `/watch/tv/${media.id}/1/1`;
-        }}
-      />
+      {/* Suggestions de séries similaires - Amélioration pour mobile */}
+      <div className="bg-background">
+        <VideoSuggestions 
+          suggestions={suggestions.map(show => ({
+            id: show.id,
+            title: show.name,
+            posterPath: show.poster_path,
+            voteAverage: show.vote_average,
+            firstAirDate: show.first_air_date,
+            mediaType: 'tv'
+          }))}
+          title="Vous aimerez aussi"
+          onMediaClick={(media) => {
+            window.location.href = `/watch/tv/${media.id}/1/1`;
+          }}
+        />
+      </div>
     </div>
   );
 }

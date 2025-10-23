@@ -960,21 +960,23 @@ export default function WatchMovie() {
 
       </div>
       
-      {/* Suggestions de films similaires */}
-      <VideoSuggestions 
-        suggestions={suggestions.map(movie => ({
-          id: movie.id,
-          title: movie.title,
-          posterPath: movie.poster_path,
-          voteAverage: movie.vote_average,
-          releaseDate: movie.release_date,
-          mediaType: 'movie'
-        }))}
-        title="Vous aimerez aussi"
-        onMediaClick={(media) => {
-          window.location.href = `/watch/movie/${media.id}`;
-        }}
-      />
+      {/* Suggestions de films similaires - Amélioration pour mobile */}
+      <div className="bg-background">
+        <VideoSuggestions 
+          suggestions={suggestions.map(movie => ({
+            id: movie.id,
+            title: movie.title,
+            posterPath: movie.poster_path,
+            voteAverage: movie.vote_average,
+            releaseDate: movie.release_date,
+            mediaType: 'movie'
+          }))}
+          title="Vous aimerez aussi"
+          onMediaClick={(media) => {
+            window.location.href = `/watch/movie/${media.id}`;
+          }}
+        />
+      </div>
     </div>
   );
 }

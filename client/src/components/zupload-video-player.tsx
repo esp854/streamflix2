@@ -1065,7 +1065,11 @@ const ZuploadVideoPlayer: React.FC<ZuploadVideoPlayerProps> = ({
                   aspectRatio: '16 / 9', // Forcer le format 16:9
                   objectFit: 'contain',   // S'assurer que la vidéo s'adapte correctement
                   maxWidth: '100%',
-                  maxHeight: '100vh'
+                  maxHeight: '100vh',
+                  // Ajout de propriétés spécifiques pour mobile
+                  touchAction: 'manipulation',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none'
                 }}
                 // Pour Frembed, utiliser la configuration optimale corrigée
                 {...(currentSource.name === 'Frembed' && {
