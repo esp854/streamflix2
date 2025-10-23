@@ -103,7 +103,7 @@ export default function Footer() {
         <hr className="border-border my-6 sm:my-8" />
 
         <div className="text-center text-muted-foreground" data-testid="footer-copyright">
-          <p className="text-xs sm:text-sm">&copy; 2024 StreamFlix. Tous droits réservés.</p>
+          <p className="text-xs sm:text-sm">&copy; 2025 StreamFlix. Tous droits réservés.</p>
         </div>
       </div>
     </footer>
