@@ -10,7 +10,6 @@ import { useShare } from "@/hooks/use-share";
 import TVRow from "@/components/tv-row";
 import CommentsSection from "@/components/CommentsSection";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
-import TVDetailStructuredData from "@/components/seo/tv-detail-structured-data";
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
@@ -214,16 +213,34 @@ export default function TVDetail() {
     });
   };
 
-  // Format data for structured data component
-  const tvDetailsForStructuredData = {
-    ...tv,
-    credits,
-    videos
+  // Données structurées pour la série
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "TVSeries",
+    "name": tv.name,
+    "image": tmdbService.getBackdropUrl(tv.backdrop_path),
+    "description": tv.overview,
+    "datePublished": tv.first_air_date,
+    "endDate": tv.last_air_date,
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": tv.vote_average,
+      "bestRating": 10,
+      "worstRating": 0,
+      "ratingCount": tv.vote_count
+    },
+    "genre": tv.genres?.map((g: any) => g.name),
+    "creator": tv.created_by?.map((person: any) => person.name),
+    "actor": cast.slice(0, 5).map((person: any) => person.name),
+    "numberOfSeasons": tv.number_of_seasons,
+    "numberOfEpisodes": tv.number_of_episodes
   };
 
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
-      <TVDetailStructuredData tvDetails={tvDetailsForStructuredData} />
+      <script type="application/ld+json">
+        {JSON.stringify(structuredData)}
+      </script>
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img

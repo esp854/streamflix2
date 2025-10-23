@@ -42,11 +42,6 @@ export default function Footer() {
                   Ma Liste
                 </Link>
               </li>
-              <li>
-                <Link href="/blog" className="hover:text-foreground transition-colors duration-200 text-sm sm:text-base" data-testid="footer-link-blog">
-                  Blog
-                </Link>
-              </li>
             </ul>
           </div>
 
