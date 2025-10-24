@@ -4,6 +4,8 @@ import MovieRow from "@/components/movie-row";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { Helmet } from "react-helmet";
+import { SEO_CONFIG } from "@/lib/seo-config";
 
 export default function MoviesPage() {
   // Balisage JSON-LD pour la collection de films
@@ -228,6 +230,20 @@ export default function MoviesPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Films en Streaming - StreamFlix</title>
+        <meta name="description" content="Découvrez notre vaste collection de films en streaming légal. Regardez des films HD sans publicité et en haute qualité." />
+        <link rel="canonical" href="https://streamflix2-o7vx.onrender.com/films" />
+        <meta property="og:title" content="Films en Streaming - StreamFlix" />
+        <meta property="og:description" content="Découvrez notre vaste collection de films en streaming légal." />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://streamflix2-o7vx.onrender.com/logo.png" />
+        <meta property="og:url" content="https://streamflix2-o7vx.onrender.com/films" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Films en Streaming - StreamFlix" />
+        <meta name="twitter:description" content="Découvrez notre vaste collection de films en streaming légal." />
+        <meta name="twitter:image" content="https://streamflix2-o7vx.onrender.com/logo.png" />
+      </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(collectionData)}
       </script>

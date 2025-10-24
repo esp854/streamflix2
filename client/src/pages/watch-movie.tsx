@@ -670,21 +670,30 @@ export default function WatchMovie() {
             />
           </div>
         ) : (
-          // Other video types (YouTube, Odysee, etc.) or fallback message
+          // Other video types (YouTube, Odysee, Frembed, etc.) 
           <>
-            {/* Video player has been removed for non-Zupload videos */}
-            <div className="w-full h-screen flex items-center justify-center bg-black">
-              <div className="text-center p-8">
-                <div className="text-4xl mb-4">🎬</div>
-                <h2 className="text-2xl font-bold mb-2">Lecteur de film non disponible</h2>
-                <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
-                <p className="text-gray-500 text-sm mb-6">Seules les vidéos Zupload sont actuellement supportées.</p>
-                <Button onClick={handleGoHome} variant="default">
-                  <Home className="w-4 h-4 mr-2" />
-                  Retour à l'accueil
-                </Button>
+            {/* Show iframe for non-Zupload videos */}
+            {videoUrl ? (
+              <iframe 
+                src={videoUrl}
+                className="w-full h-full"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; gyroscope; accelerometer"
+                allowFullScreen
+                title={movieDetails?.movie?.title || 'Film'}
+              />
+            ) : (
+              <div className="w-full h-screen flex items-center justify-center bg-black">
+                <div className="text-center p-8">
+                  <div className="text-4xl mb-4">🎬</div>
+                  <h2 className="text-2xl font-bold mb-2">Lecteur de film non disponible</h2>
+                  <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
+                  <Button onClick={handleGoHome} variant="default">
+                    <Home className="w-4 h-4 mr-2" />
+                    Retour à l'accueil
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
 

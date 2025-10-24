@@ -8,6 +8,8 @@ import MovieCard from "@/components/movie-card";
 import TVCard from "@/components/tv-card";
 import { tmdbService } from "@/lib/tmdb";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
+import { Helmet } from "react-helmet";
+import { SEO_CONFIG } from "@/lib/seo-config";
 
 // Type pour les résultats combinés
 type SearchResult = {
@@ -133,6 +135,20 @@ export default function Search() {
 
   return (
     <div className="min-h-screen bg-background py-8" data-testid="search-page">
+      <Helmet>
+        <title>{SEO_CONFIG.search.title}</title>
+        <meta name="description" content={SEO_CONFIG.search.description} />
+        <link rel="canonical" href={SEO_CONFIG.search.canonical} />
+        <meta property="og:title" content={SEO_CONFIG.search.og.title} />
+        <meta property="og:description" content={SEO_CONFIG.search.og.description} />
+        <meta property="og:type" content={SEO_CONFIG.search.og.type} />
+        <meta property="og:image" content={SEO_CONFIG.search.og.image} />
+        <meta property="og:url" content={SEO_CONFIG.search.canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_CONFIG.search.og.title} />
+        <meta name="twitter:description" content={SEO_CONFIG.search.og.description} />
+        <meta name="twitter:image" content={SEO_CONFIG.search.og.image} />
+      </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(searchData)}
       </script>
@@ -207,28 +223,11 @@ export default function Search() {
 
         {!moviesLoading && !tvLoading && debouncedQuery && combinedResults.length === 0 && (
           <div className="text-center py-12" data-testid="search-no-results">
-            <div className="text-6xl mb-4">🎬</div>
+            <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-semibold text-foreground mb-2">Aucun résultat trouvé</h3>
-            <p className="text-muted-foreground animate-pulse">
-              Essayez avec d'autres mots-clés ou vérifiez l'orthographe.
-            </p>
-          </div>
-        )}
-
-        {!debouncedQuery && (
-          <div className="text-center py-12" data-testid="search-empty-state">
-            <div className="text-6xl mb-4">🎬</div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">Découvrez des films et séries</h3>
             <p className="text-muted-foreground">
-              Utilisez la barre de recherche pour trouver vos contenus préférés.
+              Aucun film ou série ne correspond à votre recherche "{debouncedQuery}"
             </p>
-          </div>
-        )}
-        
-        {/* Message pour les utilisateurs non premium */}
-        {shouldShowAds && debouncedQuery && combinedResults.length > 0 && (
-          <div className="mt-12 text-center text-muted-foreground">
-            🔔 Certaines fonctionnalités sont réservées aux abonnés Premium.
           </div>
         )}
       </div>

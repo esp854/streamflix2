@@ -4,8 +4,10 @@ import TVRow from "@/components/tv-row";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Info, Pause, PlayIcon } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { TMDBTVSeries } from "@/types/movie";
+import { Helmet } from "react-helmet";
+import { SEO_CONFIG } from "@/lib/seo-config";
 
 // Add this interface for local content (matching TVRow exactly)
 interface LocalContent {
@@ -27,6 +29,7 @@ interface LocalContent {
 type TVSeriesType = TMDBTVSeries | LocalContent;
 
 export default function Series() {
+  const [, setLocation] = useLocation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -190,6 +193,37 @@ export default function Series() {
     setIsPlaying(!isPlaying);
   };
 
+  // Helper function to get backdrop path
+  const getBackdropPath = (show: TVSeriesType): string | undefined => {
+    if ('backdropPath' in show && show.backdropPath) {
+      return show.backdropPath;
+    } else if ('backdrop_path' in show && show.backdrop_path) {
+      return show.backdrop_path;
+    }
+    return undefined;
+  };
+
+  // Helper function to get title/name
+  const getTitle = (show: TVSeriesType): string => {
+    if ('name' in show && show.name) {
+      return show.name;
+    } else if ('title' in show && show.title) {
+      return show.title;
+    }
+    return 'Série inconnue';
+  };
+
+  const handleWatchSeries = (series: TVSeriesType) => {
+    // Si c'est un contenu local avec ID, rediriger vers la page de lecture
+    if ('id' in series && series.id && !series.id.toString().startsWith('tmdb-')) {
+      setLocation(`/watch/tv/${series.id}`);
+    } else {
+      // Sinon, rediriger vers la page de détail
+      const tmdbId = 'tmdbId' in series ? series.tmdbId : series.id;
+      setLocation(`/tv/${tmdbId}`);
+    }
+  };
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -204,143 +238,141 @@ export default function Series() {
     );
   }
 
-  // Handle error state - mais seulement si toutes les sources de données échouent
-  const hasAnyData = popularSeries || topRatedSeries || onTheAirSeries || 
-                     airingTodaySeries || dramaSeries || comedySeries || 
-                     (localContent && localContent.length > 0);
-
-  if (isError && !hasAnyData) {
-    console.error("Error loading series data:", {
-      popularError: popularErrorMsg,
-      topRatedError,
-      onTheAirError,
-      airingTodayError,
-      dramaError,
-      comedyError,
-      localContentError
-    });
-    
-    return (
-      <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
-        <div className="text-center p-8">
-          <p className="text-xl text-muted-foreground mb-4">Erreur lors du chargement des séries</p>
-          <p className="text-sm text-muted-foreground mb-4">Détails: {popularErrorMsg?.message || "Erreur inconnue"}</p>
-          <Button onClick={() => window.location.reload()} variant="secondary">
-            Réessayer
-          </Button>
-        </div>
-      </section>
-    );
-  }
-
-  // Si aucune série n'est disponible, afficher un message approprié
-  if (!heroSeries.length && !hasAnyData) {
+  // Handle error state
+  if (isError) {
     return (
       <section className="relative h-screen overflow-hidden bg-muted flex items-center justify-center" data-testid="series-hero-error">
         <div className="text-center">
-          <p className="text-xl text-muted-foreground">Aucune série disponible</p>
-          <Button onClick={() => window.location.reload()} variant="secondary" className="mt-4">
-            Réessayer
+          <div className="text-4xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Erreur de chargement</h2>
+          <p className="text-muted-foreground mb-4">
+            Impossible de charger les séries. Veuillez réessayer plus tard.
+          </p>
+          <Button onClick={() => window.location.reload()} variant="secondary">
+            Recharger la page
           </Button>
         </div>
       </section>
     );
   }
 
-  const currentSeries = heroSeries[currentSlide];
-
   return (
-    <div className="min-h-screen bg-background" data-testid="series-page">
+    <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{SEO_CONFIG.series.title}</title>
+        <meta name="description" content={SEO_CONFIG.series.description} />
+        <link rel="canonical" href={SEO_CONFIG.series.canonical} />
+        <meta property="og:title" content={SEO_CONFIG.series.og.title} />
+        <meta property="og:description" content={SEO_CONFIG.series.og.description} />
+        <meta property="og:type" content={SEO_CONFIG.series.og.type} />
+        <meta property="og:image" content={SEO_CONFIG.series.og.image} />
+        <meta property="og:url" content={SEO_CONFIG.series.canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_CONFIG.series.og.title} />
+        <meta name="twitter:description" content={SEO_CONFIG.series.og.description} />
+        <meta name="twitter:image" content={SEO_CONFIG.series.og.image} />
+      </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(collectionData)}
       </script>
-      {/* Hero Section */}
-      <section className="relative h-screen overflow-hidden" data-testid="series-hero">
-        {/* Background Images */}
-        <div className="absolute inset-0">
-          {heroSeries.map((series: TVSeriesType, index: number) => (
-            <div
-              key={'tmdbId' in series ? series.tmdbId : series.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-100" : "opacity-0"
-              }`}
-              data-testid={`series-hero-slide-${index}`}
-            >
+      {/* Hero Section - Carousel */}
+      <section 
+        className="relative h-[60vh] sm:h-[70vh] md:h-screen overflow-hidden" 
+        data-testid="series-hero"
+      >
+        {heroSeries.length > 0 && (
+          <>
+            <div className="absolute inset-0 transition-opacity duration-1000">
               <img
-                src={
-                  'backdropPath' in series && series.backdropPath
-                    ? tmdbService.getBackdropUrl(series.backdropPath)
-                    : 'backdrop_path' in series && series.backdrop_path
-                    ? tmdbService.getBackdropUrl(series.backdrop_path)
-                    : "/placeholder-backdrop.jpg"
-                }
-                alt={'name' in series ? series.name : series.title}
+                src={tmdbService.getBackdropUrl(getBackdropPath(heroSeries[currentSlide]) || "")}
+                alt={getTitle(heroSeries[currentSlide])}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = "/placeholder-backdrop.jpg";
-                }}
-                loading="lazy"
+                data-testid="series-hero-image"
               />
-              <div className="absolute inset-0 gradient-overlay"></div>
-              <div className="absolute inset-0 gradient-bottom"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-background via-background/50 to-transparent"></div>
             </div>
-          ))}
-        </div>
-        
-        {/* Content */}
-        <div className="absolute bottom-1/4 left-8 md:left-16 max-w-lg z-10" data-testid="series-hero-content">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight text-white" data-testid="series-hero-title">
-            {'name' in currentSeries ? currentSeries.name : currentSeries.title}
-          </h1>
-          <p className="text-lg md:text-xl text-white/80 mb-6 leading-relaxed line-clamp-3" data-testid="series-hero-overview">
-            {currentSeries.overview}
-          </p>
-          <div className="flex space-x-4" data-testid="series-hero-actions">
-            <Link href={`/tv/${'tmdbId' in currentSeries ? currentSeries.tmdbId : currentSeries.id}`}>
-              <Button className="btn-primary flex items-center space-x-2" data-testid="button-watch-series">
-                <Play className="w-5 h-5" />
-                <span>Regarder</span>
-              </Button>
-            </Link>
-            <Link href={`/tv/${'tmdbId' in currentSeries ? currentSeries.tmdbId : currentSeries.id}`}>
-              <Button className="btn-secondary flex items-center space-x-2" data-testid="button-info-series">
-                <Info className="w-5 h-5" />
-                <span>Plus d'infos</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-        
-        {/* Controls */}
-        <div className="absolute bottom-8 right-8 flex space-x-2 z-20" data-testid="series-carousel-controls">
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={togglePlayPause}
-            className="w-12 h-12 rounded-full bg-secondary/50 hover:bg-secondary/70"
-            data-testid="series-carousel-play-pause"
-          >
-            {isPlaying ? <Pause className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
-          </Button>
-        </div>
 
-        {/* Slide Indicators */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20" data-testid="series-carousel-indicators">
-          {heroSeries.map((_: any, index: number) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-3 h-3 rounded-full transition-colors duration-200 ${
-                index === currentSlide ? "bg-primary" : "bg-white/50"
-              }`}
-              data-testid={`series-carousel-indicator-${index}`}
-            />
-          ))}
-        </div>
+            {/* Content */}
+            <div className="relative z-10 h-full flex items-center">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <div className="max-w-2xl">
+                  <h1 
+                    className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 line-clamp-2" 
+                    data-testid="series-hero-title"
+                  >
+                    {getTitle(heroSeries[currentSlide])}
+                  </h1>
+                  
+                  <p 
+                    className="text-lg sm:text-xl text-white/90 mb-6 line-clamp-3" 
+                    data-testid="series-hero-overview"
+                  >
+                    {heroSeries[currentSlide].overview}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    <Button 
+                      size="lg" 
+                      className="bg-white text-black hover:bg-gray-200"
+                      data-testid="series-hero-play-button"
+                      onClick={() => handleWatchSeries(heroSeries[currentSlide])}
+                    >
+                      <Play className="w-5 h-5 mr-2" />
+                      Lecture
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      size="lg"
+                      className="bg-black/50 text-white hover:bg-black/70"
+                      data-testid="series-hero-info-button"
+                      onClick={() => {
+                        const tmdbId = 'tmdbId' in heroSeries[currentSlide] ? heroSeries[currentSlide].tmdbId : heroSeries[currentSlide].id;
+                        setLocation(`/tv/${tmdbId}`);
+                      }}
+                    >
+                      <Info className="w-5 h-5 mr-2" />
+                      Plus d'infos
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Play/Pause Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white z-10"
+              onClick={togglePlayPause}
+              data-testid="series-hero-play-pause"
+            >
+              {isPlaying ? (
+                <Pause className="w-6 h-6" />
+              ) : (
+                <PlayIcon className="w-6 h-6" />
+              )}
+            </Button>
+
+            {/* Slide Indicators */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+              {heroSeries.map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-3 h-3 rounded-full transition-all ${
+                    index === currentSlide ? 'bg-white w-6' : 'bg-white/50'
+                  }`}
+                  onClick={() => setCurrentSlide(index)}
+                  aria-label={`Aller à la diapositive ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </section>
-      
-      {/* TV Series Sections */}
-      <div className="space-y-8 py-12">
+
+      {/* TV Show Sections */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 sm:space-y-12">
         <TVRow
           title="Séries Populaires"
           series={allPopularSeries || []}
@@ -348,33 +380,27 @@ export default function Series() {
         />
         
         <TVRow
-          title="Meilleures Séries"
+          title="Mieux Notées"
           series={allTopRatedSeries || []}
-          isLoading={topRatedLoading || localContentLoading}
+          isLoading={topRatedLoading}
         />
         
         <TVRow
-          title="En Cours de Diffusion"
+          title="Actuellement Diffusées"
           series={allOnTheAirSeries || []}
-          isLoading={onTheAirLoading || localContentLoading}
-        />
-        
-        <TVRow
-          title="Diffusées Aujourd'hui"
-          series={allAiringTodaySeries || []}
-          isLoading={airingTodayLoading || localContentLoading}
+          isLoading={onTheAirLoading}
         />
         
         <TVRow
           title="Séries Dramatiques"
           series={allDramaSeries || []}
-          isLoading={dramaLoading || localContentLoading}
+          isLoading={dramaLoading}
         />
         
         <TVRow
           title="Séries Comiques"
           series={allComedySeries || []}
-          isLoading={comedyLoading || localContentLoading}
+          isLoading={comedyLoading}
         />
       </div>
     </div>

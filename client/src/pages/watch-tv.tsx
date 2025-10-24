@@ -884,19 +884,29 @@ export default function WatchTV() {
             />
           </div>
         ) : (
-          // Other video types (YouTube, Odysee, etc.) or fallback message
+          // Other video types (YouTube, Odysee, Frembed, etc.) 
           <>
-            {/* Video player has been removed for non-Zupload videos */}
-            <div className="w-full h-screen flex items-center justify-center bg-black">
-              <div className="text-center p-8">
-                <div className="text-4xl mb-4">🎬</div>
-                <h2 className="text-2xl font-bold mb-2">Lecteur de série non disponible</h2>
-                <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
-                <Link href="/series">
-                  <Button variant="secondary">Retour aux séries</Button>
-                </Link>
+            {/* Show iframe for non-Zupload videos */}
+            {videoUrl ? (
+              <iframe 
+                src={videoUrl}
+                className="w-full h-full"
+                allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; gyroscope; accelerometer"
+                allowFullScreen
+                title={`${tvDetails?.name || 'Série'} - S${currentSeason} E${currentEpisode}`}
+              />
+            ) : (
+              <div className="w-full h-screen flex items-center justify-center bg-black">
+                <div className="text-center p-8">
+                  <div className="text-4xl mb-4">🎬</div>
+                  <h2 className="text-2xl font-bold mb-2">Lecteur de série non disponible</h2>
+                  <p className="text-gray-400 mb-4">Cette vidéo n'est pas disponible pour le moment.</p>
+                  <Link href="/series">
+                    <Button variant="secondary">Retour aux séries</Button>
+                  </Link>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
         

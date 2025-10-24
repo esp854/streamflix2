@@ -3299,6 +3299,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upcoming movies endpoint
+  app.get("/api/tmdb/movie/upcoming", async (req: any, res: any) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+      
+      if (!response.ok) {
+        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please try again later.",
+            status: 429 
+          });
+        }
+        return res.status(response.status).json({ 
+          error: `TMDB API error: ${response.statusText}`,
+          status: response.status 
+        });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching upcoming movies:", error);
+      res.status(500).json({ error: "Failed to fetch upcoming movies", details: error.message || 'Unknown error' });
+    }
+  });
+
+  // Now playing movies endpoint
+  app.get("/api/tmdb/movie/now_playing", async (req: any, res: any) => {
+    try {
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=fr-FR&page=1`
+      );
+      
+      if (!response.ok) {
+        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please try again later.",
+            status: 429 
+          });
+        }
+        return res.status(response.status).json({ 
+          error: `TMDB API error: ${response.statusText}`,
+          status: response.status 
+        });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Error fetching now playing movies:", error);
+      res.status(500).json({ error: "Failed to fetch now playing movies", details: error.message || 'Unknown error' });
+    }
+  });
+
+  // Endpoint pour récupérer les liens vidéo Frembed uniquement pour les contenus sans liens existants
+  app.get("/api/frembed/video-link/:tmdbId", async (req: any, res: any) => {
+    try {
+      const { tmdbId } = req.params;
+
+      const apiKey = process.env.TMDB_API_KEY;
+      if (!apiKey) {
+        console.error("TMDB_API_KEY is not configured in environment variables");
+        return res.status(500).json({ error: "TMDB API key not configured" });
+      }
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${apiKey}&append_to_response=videos`
+      );
+
+      if (!response.ok) {
+        console.error(`TMDB API error: ${response.status} ${response.statusText}`);
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          return res.status(429).json({ 
+            error: "Rate limit exceeded. Please try again later.",
+            status: 429 
+          });
+        }
+        return res.status(response.status).json({ 
+          error: `TMDB API error: ${response.statusText}`,
+          status: response.status 
+        });
+      }
+
+      const data = await response.json();
+
+      // Vérifier si le film a des vidéos
+      if (data.videos && data.videos.results.length > 0) {
+        const video = data.videos.results.find((v: any) => v.site === "YouTube");
+        if (video) {
+          const videoId = video.key;
+          const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+          return res.json({ videoUrl });
+        }
+      }
+
+      // Si aucune vidéo n'est trouvée, rechercher sur Frembed
+      const frembedResponse = await fetch(
+        `https://api.frembed.com/api/v1/movie/${tmdbId}`
+      );
+
+      if (!frembedResponse.ok) {
+        console.error(`Frembed API error: ${frembedResponse.status} ${frembedResponse.statusText}`);
+        return res.status(frembedResponse.status).json({ 
+          error: `Frembed API error: ${frembedResponse.statusText}`,
+          status: frembedResponse.status 
+        });
+      }
+
+      const frembedData = await frembedResponse.json();
+
+      if (frembedData.status === "success" && frembedData.data && frembedData.data.url) {
+        return res.json({ videoUrl: frembedData.data.url });
+      }
+
+      return res.status(404).json({ error: "No video found" });
+
+    } catch (error: any) {
+      console.error("Error fetching video link:", error);
+      res.status(500).json({ error: "Failed to fetch video link", details: error.message || 'Unknown error' });
+    }
+  });
+
   app.get("/api/tmdb/genre/:genreId", async (req: any, res: any) => {
     try {
       const { genreId } = req.params;

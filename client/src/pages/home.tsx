@@ -10,6 +10,8 @@ import PWAInstallBanner from "@/components/PWAInstallBanner";
 import { TMDBMovie } from "@/types/movie";
 import { Link } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
+import { Helmet } from "react-helmet";
+import { SEO_CONFIG } from "@/lib/seo-config";
 
 // Add this interface for local content
 interface LocalContent {
@@ -160,6 +162,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{SEO_CONFIG.home.title}</title>
+        <meta name="description" content={SEO_CONFIG.home.description} />
+        <link rel="canonical" href={SEO_CONFIG.home.canonical} />
+        <meta property="og:title" content={SEO_CONFIG.home.og.title} />
+        <meta property="og:description" content={SEO_CONFIG.home.og.description} />
+        <meta property="og:type" content={SEO_CONFIG.home.og.type} />
+        <meta property="og:image" content={SEO_CONFIG.home.og.image} />
+        <meta property="og:url" content={SEO_CONFIG.home.canonical} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_CONFIG.home.og.title} />
+        <meta name="twitter:description" content={SEO_CONFIG.home.og.description} />
+        <meta name="twitter:image" content={SEO_CONFIG.home.og.image} />
+      </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(homeData)}
       </script>
