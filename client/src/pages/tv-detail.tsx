@@ -35,9 +35,9 @@ export default function TvDetail() {
 
   // Get content ID for comments
   const { data: contentData } = useQuery({
-    queryKey: [`/api/contents/tmdb/${tvId}`],
+    queryKey: [`/api/content/tmdb/${tvId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/contents/tmdb/${tvId}`);
+      const response = await fetch(`/api/content/tmdb/${tvId}`);
       if (!response.ok) return null;
       return response.json();
     },
@@ -45,19 +45,15 @@ export default function TvDetail() {
   });
 
   // Get real episodes from database
-  const { data: episodesData, isLoading: episodesLoading, isError: episodesError } = useQuery({
+  const { data: episodesData } = useQuery({
     queryKey: [`/api/admin/episodes/${contentData?.id}`],
     queryFn: async () => {
       if (!contentData?.id) return null;
       const response = await fetch(`/api/admin/episodes/${contentData.id}`);
-      if (!response.ok) {
-        console.error('Failed to fetch episodes:', response.status, response.statusText);
-        return null;
-      }
+      if (!response.ok) return null;
       return response.json();
     },
     enabled: !!contentData?.id,
-    retry: 1, // Retry once on failure
   });
 
   // Get season details from TMDB to get episode images
@@ -117,48 +113,28 @@ export default function TvDetail() {
 
   // Group episodes by season from database using useMemo correctly
   const episodesBySeason = useMemo(() => {
-    // Debug: log episodes data
-    console.log('Episodes data:', episodesData);
-    
-    if (!episodesData?.episodes) {
-      console.log('No episodes data available');
-      return {};
-    }
+    if (!episodesData?.episodes) return {};
 
     const grouped: { [seasonNumber: number]: any[] } = {};
     episodesData.episodes.forEach((episode: any) => {
-      // Debug: log each episode
-      console.log('Processing episode:', episode);
-      
-      const seasonNumber = episode.seasonNumber || episode.season_number;
-      if (!seasonNumber) {
-        console.warn('Episode without season number:', episode);
-        return;
+      if (!grouped[episode.seasonNumber]) {
+        grouped[episode.seasonNumber] = [];
       }
-      
-      if (!grouped[seasonNumber]) {
-        grouped[seasonNumber] = [];
-      }
-      grouped[seasonNumber].push(episode);
+      grouped[episode.seasonNumber].push(episode);
     });
 
     // Sort episodes within each season
     Object.keys(grouped).forEach(season => {
-      grouped[parseInt(season)].sort((a: any, b: any) => {
-        const aEpisodeNumber = a.episodeNumber || a.episode_number;
-        const bEpisodeNumber = b.episodeNumber || b.episode_number;
-        return aEpisodeNumber - bEpisodeNumber;
-      });
+      grouped[parseInt(season)].sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
     });
 
-    console.log('Grouped episodes by season:', grouped);
     return grouped;
   }, [episodesData]);
 
   const handleWatchSeries = async () => {
     try {
       // Vérifier d'abord si le contenu existe dans la base de données
-      const response = await fetch(`/api/contents/tmdb/${tvId}`);
+      const response = await fetch(`/api/content/tmdb/${tvId}`);
       if (!response.ok) {
         console.error("Erreur lors de la vérification du contenu");
         return;
@@ -166,12 +142,12 @@ export default function TvDetail() {
       
       const contentData = await response.json();
       
-      // Si le contenu existe, rediriger vers la page de lecture du premier épisode
+      // Si le contenu existe, rediriger vers la page de lecture
       if (contentData && contentData.id) {
-        setLocation(`/watch/tv/${contentData.id}/1/1`);
+        setLocation(`/watch/tv/${contentData.id}`);
       } else {
-        // Sinon, essayer de récupérer un lien vidéo Frembed pour le premier épisode
-        const frembedResponse = await fetch(`/api/frembed/video-link/${tvId}?mediaType=tv&season=1&episode=1`);
+        // Sinon, essayer de récupérer un lien vidéo Frembed
+        const frembedResponse = await fetch(`/api/frembed/video-link/${tvId}?mediaType=tv`);
         if (!frembedResponse.ok) {
           console.error("Erreur lors de la récupération du lien vidéo");
           return;
@@ -180,7 +156,7 @@ export default function TvDetail() {
         const frembedData = await frembedResponse.json();
         if (frembedData.success && frembedData.videoUrl) {
           // Rediriger vers une page de lecture avec le lien Frembed
-          setLocation(`/watch/tv/tmdb/${tvId}/1/1`);
+          setLocation(`/watch/tv/tmdb/${tvId}`);
         } else {
           console.error("Aucun lien vidéo disponible");
         }
@@ -274,15 +250,13 @@ export default function TvDetail() {
   const crew = tv.credits?.crew?.slice(0, 8) || [];
 
   const toggleSeason = (seasonNumber: number) => {
-    setExpandedSeasons(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(seasonNumber)) {
-        newSet.delete(seasonNumber);
-      } else {
-        newSet.add(seasonNumber);
-      }
-      return newSet;
-    });
+    const newExpanded = new Set(expandedSeasons);
+    if (newExpanded.has(seasonNumber)) {
+      newExpanded.delete(seasonNumber);
+    } else {
+      newExpanded.add(seasonNumber);
+    }
+    setExpandedSeasons(newExpanded);
   };
 
   const formatRuntime = (minutes: number) => {
@@ -422,10 +396,10 @@ export default function TvDetail() {
         </div>
       </div>
 
-      {/* TV Details - Adapté pour mobile */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* TV Details - Desktop only for now */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 hidden md:block">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cast and Crew - Adapté pour mobile */}
+          {/* Cast and Crew */}
           <div className="lg:col-span-2">
             <div className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Casting</h2>
@@ -478,7 +452,7 @@ export default function TvDetail() {
             </div>
           </div>
 
-          {/* TV Info - Adapté pour mobile */}
+          {/* TV Info */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Informations</h2>
             <div className="space-y-4">
@@ -605,12 +579,7 @@ export default function TvDetail() {
                             )}
                           </div>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="flex-shrink-0"
-                          onClick={() => toggleSeason(season.season_number)}
-                        >
+                        <Button variant="ghost" size="sm" className="flex-shrink-0">
                           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                       </div>
@@ -618,17 +587,7 @@ export default function TvDetail() {
                     {isExpanded && (
                       <div className="border-t border-gray-700">
                         <div className="p-3 sm:p-4 space-y-2">
-                          {episodesLoading ? (
-                            <div className="flex justify-center py-8">
-                              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                              <span className="ml-3">Chargement des épisodes...</span>
-                            </div>
-                          ) : episodesError ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <p>Erreur lors du chargement des épisodes.</p>
-                              <p className="text-sm mt-2">Veuillez réessayer plus tard.</p>
-                            </div>
-                          ) : seasonEpisodes.length > 0 ? (
+                          {seasonEpisodes.length > 0 ? (
                             seasonEpisodes.map((episode: any) => {
                               const episodeKey = `${season.season_number}-${episode.episodeNumber}`;
                               const episodeImage = episodeImages[episodeKey] || null;
@@ -637,31 +596,30 @@ export default function TvDetail() {
                                 <EpisodeCard
                                   key={`${season.season_number}-${episode.episodeNumber}`}
                                   episode={{
-                                    air_date: episode.releaseDate || episode.air_date || '',
-                                    episode_number: episode.episodeNumber || episode.episode_number,
+                                    air_date: episode.releaseDate || '',
+                                    episode_number: episode.episodeNumber,
                                     id: episode.id || 0,
-                                    name: episode.title || episode.name || `Épisode ${episode.episodeNumber || episode.episode_number}`,
-                                    overview: episode.description || episode.overview || 'Aucune description disponible',
-                                    production_code: episode.productionCode || episode.production_code || '',
-                                    runtime: episode.duration || episode.runtime || null,
+                                    name: episode.title,
+                                    overview: episode.description || '',
+                                    production_code: '',
+                                    runtime: null,
                                     season_number: season.season_number,
                                     show_id: tv.id,
-                                    still_path: episode.stillPath || episode.still_path || null,
-                                    vote_average: episode.voteAverage || episode.vote_average || 0,
-                                    vote_count: episode.voteCount || episode.vote_count || 0,
-                                    crew: episode.crew || [],
-                                    guest_stars: episode.guestStars || episode.guest_stars || []
+                                    still_path: null,
+                                    vote_average: 0,
+                                    vote_count: 0,
+                                    crew: [],
+                                    guest_stars: []
                                   }}
                                   tvId={tv.id}
                                   seasonNumber={season.season_number}
                                   episodeImage={episodeImage}
-                                  onPlay={() => window.location.href = `/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber || episode.episode_number}`}
                                 />
                               );
                             })
                           ) : (
                             // Fallback to placeholder episodes if no real episodes in DB
-                            Array.from({ length: season.episode_count || 10 }, (_, i) => {
+                            Array.from({ length: season.episode_count }, (_, i) => {
                               const episodeKey = `${season.season_number}-${i + 1}`;
                               const episodeImage = episodeImages[episodeKey] || null;
                               
@@ -687,7 +645,6 @@ export default function TvDetail() {
                                   tvId={tv.id}
                                   seasonNumber={season.season_number}
                                   episodeImage={episodeImage}
-                                  onPlay={() => window.location.href = `/watch/tv/${tv.id}/${season.season_number}/${i + 1}`}
                                 />
                               );
                             })

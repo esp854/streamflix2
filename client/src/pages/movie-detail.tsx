@@ -31,9 +31,9 @@ export default function MovieDetail() {
 
   // Get content ID for comments
   const { data: contentData } = useQuery({
-    queryKey: [`/api/contents/tmdb/${movieId}`],
+    queryKey: [`/api/content/tmdb/${movieId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/contents/tmdb/${movieId}`);
+      const response = await fetch(`/api/content/tmdb/${movieId}`);
       if (!response.ok) return null;
       return response.json();
     },
@@ -70,7 +70,7 @@ export default function MovieDetail() {
   const handleWatchMovie = async () => {
     try {
       // Vérifier d'abord si le contenu existe dans la base de données
-      const response = await fetch(`/api/contents/tmdb/${movieId}`);
+      const response = await fetch(`/api/content/tmdb/${movieId}`);
       if (!response.ok) {
         console.error("Erreur lors de la vérification du contenu");
         return;
@@ -275,10 +275,10 @@ export default function MovieDetail() {
         </div>
       </div>
 
-      {/* Movie Details - Adapté pour mobile */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Movie Details - Desktop only for now */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 hidden md:block">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cast and Crew - Adapté pour mobile */}
+          {/* Cast and Crew */}
           <div className="lg:col-span-2">
             <div className="mb-8">
               <h2 className="text-2xl font-bold mb-4">Casting</h2>
@@ -331,7 +331,7 @@ export default function MovieDetail() {
             </div>
           </div>
 
-          {/* Movie Info - Adapté pour mobile */}
+          {/* Movie Info */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Informations</h2>
             <div className="space-y-4">
