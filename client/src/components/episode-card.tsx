@@ -31,7 +31,11 @@ export function EpisodeCard({ episode, tvId, seasonNumber, episodeImage, onPlay 
         />
         <div className="absolute inset-0 bg-black/30 rounded flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
           <button 
-            onClick={onPlay}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (onPlay) onPlay();
+            }}
             className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 bg-primary hover:bg-primary/90 rounded-full transition-colors flex items-center justify-center"
           >
             <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
