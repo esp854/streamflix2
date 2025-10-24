@@ -4,7 +4,7 @@ import TVRow from "@/components/tv-row";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Info, Pause, PlayIcon } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { TMDBTVSeries } from "@/types/movie";
 import { Helmet } from "react-helmet";
 import { SEO_CONFIG } from "@/lib/seo-config";
@@ -29,6 +29,7 @@ interface LocalContent {
 type TVSeriesType = TMDBTVSeries | LocalContent;
 
 export default function Series() {
+  const [, setLocation] = useLocation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -212,6 +213,17 @@ export default function Series() {
     return 'Série inconnue';
   };
 
+  const handleWatchSeries = (series: TVSeriesType) => {
+    // Si c'est un contenu local avec ID, rediriger vers la page de lecture
+    if ('id' in series && series.id && !series.id.toString().startsWith('tmdb-')) {
+      setLocation(`/watch/tv/${series.id}`);
+    } else {
+      // Sinon, rediriger vers la page de détail
+      const tmdbId = 'tmdbId' in series ? series.tmdbId : series.id;
+      setLocation(`/tv/${tmdbId}`);
+    }
+  };
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -304,6 +316,7 @@ export default function Series() {
                       size="lg" 
                       className="bg-white text-black hover:bg-gray-200"
                       data-testid="series-hero-play-button"
+                      onClick={() => handleWatchSeries(heroSeries[currentSlide])}
                     >
                       <Play className="w-5 h-5 mr-2" />
                       Lecture
@@ -313,6 +326,10 @@ export default function Series() {
                       size="lg"
                       className="bg-black/50 text-white hover:bg-black/70"
                       data-testid="series-hero-info-button"
+                      onClick={() => {
+                        const tmdbId = 'tmdbId' in heroSeries[currentSlide] ? heroSeries[currentSlide].tmdbId : heroSeries[currentSlide].id;
+                        setLocation(`/tv/${tmdbId}`);
+                      }}
                     >
                       <Info className="w-5 h-5 mr-2" />
                       Plus d'infos
