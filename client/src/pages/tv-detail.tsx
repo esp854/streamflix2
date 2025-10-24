@@ -166,12 +166,12 @@ export default function TvDetail() {
       
       const contentData = await response.json();
       
-      // Si le contenu existe, rediriger vers la page de lecture
+      // Si le contenu existe, rediriger vers la page de lecture du premier épisode
       if (contentData && contentData.id) {
-        setLocation(`/watch/tv/${contentData.id}`);
+        setLocation(`/watch/tv/${contentData.id}/1/1`);
       } else {
-        // Sinon, essayer de récupérer un lien vidéo Frembed
-        const frembedResponse = await fetch(`/api/frembed/video-link/${tvId}?mediaType=tv`);
+        // Sinon, essayer de récupérer un lien vidéo Frembed pour le premier épisode
+        const frembedResponse = await fetch(`/api/frembed/video-link/${tvId}?mediaType=tv&season=1&episode=1`);
         if (!frembedResponse.ok) {
           console.error("Erreur lors de la récupération du lien vidéo");
           return;
@@ -180,7 +180,7 @@ export default function TvDetail() {
         const frembedData = await frembedResponse.json();
         if (frembedData.success && frembedData.videoUrl) {
           // Rediriger vers une page de lecture avec le lien Frembed
-          setLocation(`/watch/tv/tmdb/${tvId}`);
+          setLocation(`/watch/tv/tmdb/${tvId}/1/1`);
         } else {
           console.error("Aucun lien vidéo disponible");
         }
