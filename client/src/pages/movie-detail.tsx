@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { SEO_CONFIG } from "@/lib/seo-config";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
   const movieId = parseInt(id || "0");
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
@@ -63,6 +64,41 @@ export default function MovieDetail() {
   const handleShare = async () => {
     if (movieDetails?.movie) {
       await shareCurrentPage(movieDetails.movie.title);
+    }
+  };
+
+  const handleWatchMovie = async () => {
+    try {
+      // Vérifier d'abord si le contenu existe dans la base de données
+      const response = await fetch(`/api/content/tmdb/${movieId}`);
+      if (!response.ok) {
+        console.error("Erreur lors de la vérification du contenu");
+        return;
+      }
+      
+      const contentData = await response.json();
+      
+      // Si le contenu existe, rediriger vers la page de lecture
+      if (contentData && contentData.id) {
+        setLocation(`/watch/movie/${contentData.id}`);
+      } else {
+        // Sinon, essayer de récupérer un lien vidéo Frembed
+        const frembedResponse = await fetch(`/api/frembed/video-link/${movieId}?mediaType=movie`);
+        if (!frembedResponse.ok) {
+          console.error("Erreur lors de la récupération du lien vidéo");
+          return;
+        }
+        
+        const frembedData = await frembedResponse.json();
+        if (frembedData.success && frembedData.videoUrl) {
+          // Rediriger vers une page de lecture avec le lien Frembed
+          setLocation(`/watch/movie/tmdb/${movieId}`);
+        } else {
+          console.error("Aucun lien vidéo disponible");
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lors du démarrage de la lecture:", error);
     }
   };
 
@@ -214,7 +250,11 @@ export default function MovieDetail() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4" data-testid="movie-actions">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="watch-button">
+            <Button 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground" 
+              data-testid="watch-button"
+              onClick={handleWatchMovie}
+            >
               <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Regarder
             </Button>
