@@ -6,7 +6,7 @@
   <!-- Page d'accueil -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/" />
@@ -18,7 +18,7 @@
   <!-- Pages principales -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/films</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/films" />
@@ -29,7 +29,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/series</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/series" />
@@ -40,7 +40,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/tendance</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/tendance" />
@@ -51,7 +51,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/recherche</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/recherche" />
@@ -62,7 +62,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/profil</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/profil" />
@@ -73,7 +73,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/favoris</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/favoris" />
@@ -84,7 +84,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/continuer-a-regarder</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/continuer-a-regarder" />
@@ -96,7 +96,7 @@
   <!-- Pages légales -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/conditions-d-utilisation</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/conditions-d-utilisation" />
@@ -107,7 +107,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/politique-de-confidentialite</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/politique-de-confidentialite" />
@@ -118,7 +118,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/centre-d-aide</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/centre-d-aide" />
@@ -129,7 +129,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/contact</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/contact" />
@@ -141,7 +141,7 @@
   <!-- Catégories de films -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/action</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/action" />
@@ -152,7 +152,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/comedie</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/comedie" />
@@ -163,7 +163,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/drame</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/drame" />
@@ -174,7 +174,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/science-fiction</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/science-fiction" />
@@ -185,7 +185,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/horreur</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/horreur" />
@@ -197,7 +197,7 @@
   <!-- Catégories de séries -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/series-action</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/series-action" />
@@ -208,7 +208,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/series-comedie</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/series-comedie" />
@@ -219,7 +219,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/category/series-drame</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/category/series-drame" />
@@ -231,7 +231,7 @@
   <!-- Pages de collections -->
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/collections/populaires</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/collections/populaires" />
@@ -242,7 +242,7 @@
   
   <url>
     <loc>https://streamflix2-o7vx.onrender.com/collections/nouveautes</loc>
-    <lastmod>2025-09-30</lastmod>
+    <lastmod>2025-10-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2-o7vx.onrender.com/collections/nouveautes" />

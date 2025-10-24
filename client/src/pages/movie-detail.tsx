@@ -8,6 +8,8 @@ import { useShare } from "@/hooks/use-share";
 import MovieRow from "@/components/movie-row";
 import CommentsSection from "@/components/CommentsSection";
 import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
+import { Helmet } from "react-helmet";
+import { SEO_CONFIG } from "@/lib/seo-config";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
@@ -143,6 +145,20 @@ export default function MovieDetail() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="movie-detail-page">
+      <Helmet>
+        <title>{SEO_CONFIG.movie.title.replace('{movieTitle}', movie.title)}</title>
+        <meta name="description" content={SEO_CONFIG.movie.description.replace('{movieTitle}', movie.title)} />
+        <link rel="canonical" href={SEO_CONFIG.movie.canonical.replace('{id}', movieId.toString())} />
+        <meta property="og:title" content={SEO_CONFIG.movie.og.title.replace('{movieTitle}', movie.title)} />
+        <meta property="og:description" content={SEO_CONFIG.movie.og.description.replace('{movieTitle}', movie.title)} />
+        <meta property="og:type" content={SEO_CONFIG.movie.og.type} />
+        <meta property="og:image" content={tmdbService.getPosterUrl(movie.poster_path)} />
+        <meta property="og:url" content={SEO_CONFIG.movie.canonical.replace('{id}', movieId.toString())} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_CONFIG.movie.og.title.replace('{movieTitle}', movie.title)} />
+        <meta name="twitter:description" content={SEO_CONFIG.movie.og.description.replace('{movieTitle}', movie.title)} />
+        <meta name="twitter:image" content={tmdbService.getPosterUrl(movie.poster_path)} />
+      </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
@@ -198,180 +214,165 @@ export default function MovieDetail() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4" data-testid="movie-actions">
-            <Button 
-              onClick={() => {
-                // If user should be redirected to payment page, redirect them
-                if (shouldRedirectToPayment) {
-                  window.location.href = `/subscription`;
-                  return;
-                }
-                window.location.href = `/watch/movie/${movieId}`;
-              }}
-              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" 
-              data-testid="watch-button"
-            >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Regarder</span>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid="watch-button">
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              Regarder
             </Button>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 flex-1 sm:flex-none">
-              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" onClick={handleAddToList} data-testid="add-list-button">
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden xs:inline text-sm sm:text-base">Ma Liste</span>
-                <span className="xs:hidden text-sm">Liste</span>
-              </Button>
-              <Button
-                className={`btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12 ${isFavorite ? 'bg-primary text-white' : ''}`}
-                onClick={handleToggleFavorite}
-                disabled={isAddingToFavorites}
-                data-testid="favorite-button"
-              >
-                <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                <span className="hidden xs:inline text-sm sm:text-base">{isFavorite ? 'Retirer des favoris' : 'Favoris'}</span>
-                <span className="xs:hidden text-sm">{isFavorite ? 'Retirer' : 'Favoris'}</span>
-              </Button>
-              <Button className="btn-secondary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" onClick={handleShare} data-testid="share-button">
-                <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden xs:inline text-sm sm:text-base">Partager</span>
-                <span className="xs:hidden text-sm">Share</span>
-              </Button>
-            </div>
+            <Button 
+              variant="secondary" 
+              onClick={handleToggleFavorite}
+              disabled={isAddingToFavorites}
+              data-testid="favorite-button"
+            >
+              <Heart className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
+              {isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            </Button>
+            <Button variant="outline" onClick={handleShare} data-testid="share-button">
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              Partager
+            </Button>
           </div>
         </div>
       </div>
-      
-      {/* Content sections - Adapté pour mobile */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12 space-y-6 sm:space-y-8 md:space-y-12">
-        {/* Additional Movie Information - Optimisé pour mobile */}
-        <section data-testid="movie-info-section">
-          <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Informations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-start">
-                <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-foreground text-sm sm:text-base">Langue originale</h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm">{movie.original_language?.toUpperCase()}</p>
-                </div>
+
+      {/* Movie Details - Desktop only for now */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 hidden md:block">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Cast and Crew */}
+          <div className="lg:col-span-2">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-4">Casting</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {cast.map((person) => (
+                  <div key={person.id} className="text-center">
+                    <div className="aspect-[2/3] bg-muted rounded-lg mb-2 overflow-hidden">
+                      {person.profile_path ? (
+                        <img 
+                          src={tmdbService.getProfileUrl(person.profile_path)} 
+                          alt={person.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{person.name}</p>
+                    <p className="text-muted-foreground text-xs">{person.character}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Équipe</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {crew.map((person) => (
+                  <div key={person.id} className="text-center">
+                    <div className="aspect-[2/3] bg-muted rounded-lg mb-2 overflow-hidden">
+                      {person.profile_path ? (
+                        <img 
+                          src={tmdbService.getProfileUrl(person.profile_path)} 
+                          alt={person.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-medium text-sm">{person.name}</p>
+                    <p className="text-muted-foreground text-xs">{person.job}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Movie Info */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Informations</h2>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-1">Date de sortie</h3>
+                <p>{new Date(movie.release_date).toLocaleDateString('fr-FR')}</p>
               </div>
               
+              {movie.runtime && (
+                <div>
+                  <h3 className="font-semibold mb-1">Durée</h3>
+                  <p>{formatRuntime(movie.runtime)}</p>
+                </div>
+              )}
+              
               {movie.budget && movie.budget > 0 && (
-                <div className="flex items-start">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Budget</h3>
-                    <p className="text-muted-foreground text-xs sm:text-sm">{formatCurrency(movie.budget)}</p>
-                  </div>
+                <div>
+                  <h3 className="font-semibold mb-1">Budget</h3>
+                  <p>{formatCurrency(movie.budget)}</p>
                 </div>
               )}
               
               {movie.revenue && movie.revenue > 0 && (
-                <div className="flex items-start">
-                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Revenus</h3>
-                    <p className="text-muted-foreground text-xs sm:text-sm">{formatCurrency(movie.revenue)}</p>
-                  </div>
+                <div>
+                  <h3 className="font-semibold mb-1">Recettes</h3>
+                  <p>{formatCurrency(movie.revenue)}</p>
                 </div>
               )}
               
-              {movie.status && (
-                <div className="flex items-start">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground mt-1 mr-2 sm:mr-3 flex-shrink-0" />
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Statut</h3>
-                    <p className="text-muted-foreground text-xs sm:text-sm">{movie.status}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-3 sm:space-y-4">
-              {movie.tagline && (
+              {movie.genres && movie.genres.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Slogan</h3>
-                  <p className="text-muted-foreground italic text-xs sm:text-sm">"{movie.tagline}"</p>
+                  <h3 className="font-semibold mb-1">Genres</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {movie.genres.map((genre) => (
+                      <span key={genre.id} className="px-2 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                        {genre.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
               
               {movie.production_companies && movie.production_companies.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Sociétés de production</h3>
-                  <p className="text-muted-foreground text-xs sm:text-sm">
-                    {movie.production_companies.map((company: any) => company.name).join(", ")}
-                  </p>
+                  <h3 className="font-semibold mb-1">Sociétés de production</h3>
+                  <div className="space-y-2">
+                    {movie.production_companies.slice(0, 3).map((company) => (
+                      <div key={company.id} className="flex items-center">
+                        {company.logo_path ? (
+                          <img 
+                            src={tmdbService.getImageUrl(company.logo_path)} 
+                            alt={company.name}
+                            className="w-8 h-8 object-contain mr-2"
+                          />
+                        ) : (
+                          <Globe className="w-8 h-8 text-muted-foreground mr-2" />
+                        )}
+                        <span>{company.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
-        </section>
-
-        {/* Cast - Optimisé pour mobile */}
-        {cast.length > 0 && (
-          <section data-testid="cast-section">
-            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Distribution</h2>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 md:gap-4 lg:gap-6" data-testid="cast-grid">
-              {cast.map((actor) => (
-                <div key={actor.id} className="text-center" data-testid={`cast-member-${actor.id}`}>
-                  <img
-                    src={tmdbService.getProfileUrl(actor.profile_path)}
-                    alt={actor.name}
-                    className="w-full aspect-square rounded-lg object-cover mb-1 sm:mb-2"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder-profile.jpg";
-                    }}
-                  />
-                  <h3 className="text-xs sm:text-sm font-medium text-foreground line-clamp-1">{actor.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-1">{actor.character}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Crew - Optimisé pour mobile */}
-        {crew.length > 0 && (
-          <section data-testid="crew-section">
-            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Équipe technique</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4" data-testid="crew-grid">
-              {crew.map((member) => (
-                <div key={member.id} className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
-                  <img
-                    src={tmdbService.getProfileUrl(member.profile_path)}
-                    alt={member.name}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = "/placeholder-profile.jpg";
-                    }}
-                  />
-                  <div>
-                    <h3 className="font-medium text-foreground text-xs sm:text-sm">{member.name}</h3>
-                    <p className="text-xs text-muted-foreground">{member.job}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Similar Movies */}
-        {similarMovies && similarMovies.length > 0 && (
-          <section data-testid="similar-movies-section">
-            <MovieRow
-              title="Films Similaires"
-              movies={similarMovies}
-              isLoading={false}
-            />
-          </section>
-        )}
-
-        {/* Comments Section */}
-        {contentData && (
-          <CommentsSection
-            contentId={contentData.id}
-            contentType="movie"
-          />
-        )}
+        </div>
       </div>
+
+      {/* Comments Section */}
+      {contentData?.id && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <CommentsSection contentId={contentData.id} contentType="movie" />
+        </div>
+      )}
+
+      {/* Similar Movies */}
+      {similarMovies && similarMovies.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <MovieRow title="Vous aimerez aussi" movies={similarMovies} />
+        </div>
+      )}
     </div>
   );
 }
