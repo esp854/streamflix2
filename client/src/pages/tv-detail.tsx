@@ -45,15 +45,19 @@ export default function TvDetail() {
   });
 
   // Get real episodes from database
-  const { data: episodesData, isLoading: episodesLoading } = useQuery({
+  const { data: episodesData, isLoading: episodesLoading, isError: episodesError } = useQuery({
     queryKey: [`/api/admin/episodes/${contentData?.id}`],
     queryFn: async () => {
       if (!contentData?.id) return null;
       const response = await fetch(`/api/admin/episodes/${contentData.id}`);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.error('Failed to fetch episodes:', response.status, response.statusText);
+        return null;
+      }
       return response.json();
     },
     enabled: !!contentData?.id,
+    retry: 1, // Retry once on failure
   });
 
   // Get season details from TMDB to get episode images
@@ -113,21 +117,41 @@ export default function TvDetail() {
 
   // Group episodes by season from database using useMemo correctly
   const episodesBySeason = useMemo(() => {
-    if (!episodesData?.episodes) return {};
+    // Debug: log episodes data
+    console.log('Episodes data:', episodesData);
+    
+    if (!episodesData?.episodes) {
+      console.log('No episodes data available');
+      return {};
+    }
 
     const grouped: { [seasonNumber: number]: any[] } = {};
     episodesData.episodes.forEach((episode: any) => {
-      if (!grouped[episode.seasonNumber]) {
-        grouped[episode.seasonNumber] = [];
+      // Debug: log each episode
+      console.log('Processing episode:', episode);
+      
+      const seasonNumber = episode.seasonNumber || episode.season_number;
+      if (!seasonNumber) {
+        console.warn('Episode without season number:', episode);
+        return;
       }
-      grouped[episode.seasonNumber].push(episode);
+      
+      if (!grouped[seasonNumber]) {
+        grouped[seasonNumber] = [];
+      }
+      grouped[seasonNumber].push(episode);
     });
 
     // Sort episodes within each season
     Object.keys(grouped).forEach(season => {
-      grouped[parseInt(season)].sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+      grouped[parseInt(season)].sort((a: any, b: any) => {
+        const aEpisodeNumber = a.episodeNumber || a.episode_number;
+        const bEpisodeNumber = b.episodeNumber || b.episode_number;
+        return aEpisodeNumber - bEpisodeNumber;
+      });
     });
 
+    console.log('Grouped episodes by season:', grouped);
     return grouped;
   }, [episodesData]);
 
@@ -597,6 +621,12 @@ export default function TvDetail() {
                           {episodesLoading ? (
                             <div className="flex justify-center py-8">
                               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                              <span className="ml-3">Chargement des épisodes...</span>
+                            </div>
+                          ) : episodesError ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <p>Erreur lors du chargement des épisodes.</p>
+                              <p className="text-sm mt-2">Veuillez réessayer plus tard.</p>
                             </div>
                           ) : seasonEpisodes.length > 0 ? (
                             seasonEpisodes.map((episode: any) => {
@@ -607,33 +637,28 @@ export default function TvDetail() {
                                 <EpisodeCard
                                   key={`${season.season_number}-${episode.episodeNumber}`}
                                   episode={{
-                                    air_date: episode.releaseDate || '',
-                                    episode_number: episode.episodeNumber,
+                                    air_date: episode.releaseDate || episode.air_date || '',
+                                    episode_number: episode.episodeNumber || episode.episode_number,
                                     id: episode.id || 0,
-                                    name: episode.title || `Épisode ${episode.episodeNumber}`,
-                                    overview: episode.description || 'Aucune description disponible',
-                                    production_code: '',
-                                    runtime: episode.duration || null,
+                                    name: episode.title || episode.name || `Épisode ${episode.episodeNumber || episode.episode_number}`,
+                                    overview: episode.description || episode.overview || 'Aucune description disponible',
+                                    production_code: episode.productionCode || episode.production_code || '',
+                                    runtime: episode.duration || episode.runtime || null,
                                     season_number: season.season_number,
                                     show_id: tv.id,
-                                    still_path: episode.stillPath || null,
-                                    vote_average: episode.voteAverage || 0,
-                                    vote_count: episode.voteCount || 0,
-                                    crew: [],
-                                    guest_stars: []
+                                    still_path: episode.stillPath || episode.still_path || null,
+                                    vote_average: episode.voteAverage || episode.vote_average || 0,
+                                    vote_count: episode.voteCount || episode.vote_count || 0,
+                                    crew: episode.crew || [],
+                                    guest_stars: episode.guestStars || episode.guest_stars || []
                                   }}
                                   tvId={tv.id}
                                   seasonNumber={season.season_number}
                                   episodeImage={episodeImage}
-                                  onPlay={() => window.location.href = `/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber}`}
+                                  onPlay={() => window.location.href = `/watch/tv/${tv.id}/${season.season_number}/${episode.episodeNumber || episode.episode_number}`}
                                 />
                               );
                             })
-                          ) : episodesData === null ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <p>Les épisodes de cette saison ne sont pas encore disponibles.</p>
-                              <p className="text-sm mt-2">Veuillez revenir plus tard.</p>
-                            </div>
                           ) : (
                             // Fallback to placeholder episodes if no real episodes in DB
                             Array.from({ length: season.episode_count || 10 }, (_, i) => {
