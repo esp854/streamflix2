@@ -61,7 +61,7 @@ const server = createServer(app);
 // Configuration Socket.IO pour Watch Party
 const io = new SocketIOServer(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2-o7vx.onrender.com"],
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2.site"],
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -69,7 +69,7 @@ const io = new SocketIOServer(server, {
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2-o7vx.onrender.com"],
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2.site"],
   credentials: true
 }));
 app.use(express.json());

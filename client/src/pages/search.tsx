@@ -47,12 +47,12 @@ export default function Search() {
   const searchData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "url": "https://streamflix2-o7vx.onrender.com/",
+    "url": "https://streamflix2.site/",
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}"
+        "urlTemplate": "https://streamflix2.site/search?q={search_term_string}"
       },
       "query-input": "required name=search_term_string"
     }

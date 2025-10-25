@@ -7,21 +7,21 @@ Disallow: /login
 Disallow: /register
 Disallow: /watch/
 
-Sitemap: https://streamflix2-o7vx.onrender.com/sitemap.xml
+Sitemap: https://streamflix2.site/sitemap.xml
 
-Host: streamflix2-o7vx.onrender.com
+Host: streamflix2.site
 
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 5
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
-Crawl-delay: 5
+Crawl-delay: 1
 
 User-agent: Slurp
 Allow: /
-Crawl-delay: 5
+Crawl-delay: 1
 
 # Optimisation pour les moteurs de recherche internationaux
 User-agent: Googlebot-Image
@@ -45,3 +45,8 @@ Allow: /$
 Allow: /films$
 Allow: /series$
 Allow: /tendance$
+
+# Optimisation de l'indexation
+Disallow: /*?*
+Allow: /*?q=*
+Allow: /*?page=*

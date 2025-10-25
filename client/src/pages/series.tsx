@@ -39,10 +39,10 @@ export default function Series() {
     "@type": "MediaGallery",
     "name": "Séries StreamFlix",
     "description": "Découvrez notre collection de séries en streaming",
-    "url": "https://streamflix2-o7vx.onrender.com/series",
+    "url": "https://streamflix2.site/series",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "target": "https://streamflix2.site/search?q={search_term_string}",
       "query-input": "required name=search_term_string"
     }
   };

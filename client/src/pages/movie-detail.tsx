@@ -1,4 +1,4 @@
-﻿import { useParams, Link } from "wouter";
+﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,9 +87,9 @@ export default function MovieDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="movie-detail-error">
         <div className="text-center max-w-md">
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Film non trouv├®</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Film non trouvé</h1>
           <Link href="/">
-            <Button className="w-full sm:w-auto">Retour ├á l'accueil</Button>
+            <Button className="w-full sm:w-auto">Retour à l'accueil</Button>
           </Link>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function MovieDetail() {
     }).format(amount);
   };
 
-  // Donn├®es structur├®es pour le film
+  // Données structurées pour le film
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Movie",
@@ -137,7 +137,7 @@ export default function MovieDetail() {
     "duration": movie.runtime ? `PT${movie.runtime}M` : undefined,
     "potentialAction": {
       "@type": "WatchAction",
-      "target": `https://streamflix2-o7vx.onrender.com/watch/movie/${movieId}`
+      "target": `https://streamflix2.site/watch/movie/${movieId}`
     }
   };
 
@@ -146,7 +146,7 @@ export default function MovieDetail() {
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
-      {/* Hero Section - Adapt├® pour mobile */}
+      {/* Hero Section - Adapté pour mobile */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img
           src={tmdbService.getBackdropUrl(movie.backdrop_path)}
@@ -157,7 +157,7 @@ export default function MovieDetail() {
         <div className="absolute inset-0 bg-black/50"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
 
-        {/* Back button - Ajust├® pour mobile */}
+        {/* Back button - Ajusté pour mobile */}
         <Link href="/">
           <Button
             variant="ghost"
@@ -169,7 +169,7 @@ export default function MovieDetail() {
           </Button>
         </Link>
 
-        {/* Movie info - Optimis├® pour mobile */}
+        {/* Movie info - Optimisé pour mobile */}
         <div className="absolute bottom-4 left-4 right-4 sm:bottom-8 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
           <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 md:mb-4" data-testid="movie-title">
             {movie.title}
@@ -183,7 +183,7 @@ export default function MovieDetail() {
             {movie.runtime && (
               <span className="flex items-center space-x-1">
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                <span>Dur├®e: {formatRuntime(movie.runtime)}</span>
+                <span>Durée: {formatRuntime(movie.runtime)}</span>
               </span>
             )}
             <span className="text-xs sm:text-sm">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
@@ -239,9 +239,9 @@ export default function MovieDetail() {
         </div>
       </div>
       
-      {/* Content sections - Adapt├® pour mobile */}
+      {/* Content sections - Adapté pour mobile */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12 space-y-6 sm:space-y-8 md:space-y-12">
-        {/* Additional Movie Information - Optimis├® pour mobile */}
+        {/* Additional Movie Information - Optimisé pour mobile */}
         <section data-testid="movie-info-section">
           <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Informations</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -295,7 +295,7 @@ export default function MovieDetail() {
               
               {movie.production_companies && movie.production_companies.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Soci├®t├®s de production</h3>
+                  <h3 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">Sociétés de production</h3>
                   <p className="text-muted-foreground text-xs sm:text-sm">
                     {movie.production_companies.map((company: any) => company.name).join(", ")}
                   </p>
@@ -305,7 +305,7 @@ export default function MovieDetail() {
           </div>
         </section>
 
-        {/* Cast - Optimis├® pour mobile */}
+        {/* Cast - Optimisé pour mobile */}
         {cast.length > 0 && (
           <section data-testid="cast-section">
             <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Distribution</h2>
@@ -328,10 +328,10 @@ export default function MovieDetail() {
           </section>
         )}
 
-        {/* Crew - Optimis├® pour mobile */}
+        {/* Crew - Optimisé pour mobile */}
         {crew.length > 0 && (
           <section data-testid="crew-section">
-            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">├ëquipe technique</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-foreground">Équipe technique</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4" data-testid="crew-grid">
               {crew.map((member) => (
                 <div key={member.id} className="flex items-center space-x-2 sm:space-x-3 p-2 sm:p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>

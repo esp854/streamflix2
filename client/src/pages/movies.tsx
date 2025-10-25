@@ -14,10 +14,10 @@ export default function MoviesPage() {
     "@type": "MediaGallery",
     "name": "Films StreamFlix",
     "description": "Découvrez notre collection de films en streaming",
-    "url": "https://streamflix2-o7vx.onrender.com/films",
+    "url": "https://streamflix2.site/films",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "target": "https://streamflix2.site/search?q={search_term_string}",
       "query-input": "required name=search_term_string"
     }
   };
@@ -233,16 +233,16 @@ export default function MoviesPage() {
       <Helmet>
         <title>Films en Streaming - StreamFlix</title>
         <meta name="description" content="Découvrez notre vaste collection de films en streaming légal. Regardez des films HD sans publicité et en haute qualité." />
-        <link rel="canonical" href="https://streamflix2-o7vx.onrender.com/films" />
+        <link rel="canonical" href="https://streamflix2.site/films" />
         <meta property="og:title" content="Films en Streaming - StreamFlix" />
         <meta property="og:description" content="Découvrez notre vaste collection de films en streaming légal." />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://streamflix2-o7vx.onrender.com/logo.png" />
-        <meta property="og:url" content="https://streamflix2-o7vx.onrender.com/films" />
+        <meta property="og:image" content="https://streamflix2.site/logo.png" />
+        <meta property="og:url" content="https://streamflix2.site/films" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Films en Streaming - StreamFlix" />
         <meta name="twitter:description" content="Découvrez notre vaste collection de films en streaming légal." />
-        <meta name="twitter:image" content="https://streamflix2-o7vx.onrender.com/logo.png" />
+        <meta name="twitter:image" content="https://streamflix2.site/logo.png" />
       </Helmet>
       <script type="application/ld+json">
         {JSON.stringify(collectionData)}

@@ -37,11 +37,11 @@ export default function Home() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "StreamFlix",
-    "url": "https://streamflix2-o7vx.onrender.com/",
-    "description": "Plateforme de streaming légal pour films et séries en haute qualité",
+    "url": "https://streamflix2.site/",
+    "description": "Plateforme de streaming légal pour films et séries en haute qualité sans publicité intrusive",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://streamflix2-o7vx.onrender.com/search?q={search_term_string}",
+      "target": "https://streamflix2.site/search?q={search_term_string}",
       "query-input": "required name=search_term_string"
     }
   };
@@ -76,7 +76,7 @@ export default function Home() {
   const { data: popularMovies, isLoading: popularLoading, isError: popularError } = useQuery({
     queryKey: ["/api/tmdb/popular"],
     queryFn: () => tmdbService.getPopular(),
-    retry: 1,
+    retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('popular'), // Only fetch when section is active
     // Reduce cache time to save memory on mobile devices
@@ -110,7 +110,7 @@ export default function Home() {
   const { data: actionMovies, isLoading: actionLoading, isError: actionError } = useQuery({
     queryKey: ["/api/tmdb/genre/28"],
     queryFn: () => tmdbService.getMoviesByGenre(28),
-    retry: 1,
+    retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('action'), // Only fetch when section is active
     // Reduce cache time to save memory on mobile devices
@@ -120,7 +120,7 @@ export default function Home() {
   const { data: comedyMovies, isLoading: comedyLoading, isError: comedyError } = useQuery({
     queryKey: ["/api/tmdb/genre/35"],
     queryFn: () => tmdbService.getMoviesByGenre(35),
-    retry: 1,
+    retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('comedy'), // Only fetch when section is active
     // Reduce cache time to save memory on mobile devices
@@ -130,7 +130,7 @@ export default function Home() {
   const { data: horrorMovies, isLoading: horrorLoading, isError: horrorError } = useQuery({
     queryKey: ["/api/tmdb/genre/27"],
     queryFn: () => tmdbService.getMoviesByGenre(27),
-    retry: 1,
+    retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: activeSections.includes('horror'), // Only fetch when section is active
     // Reduce cache time to save memory on mobile devices

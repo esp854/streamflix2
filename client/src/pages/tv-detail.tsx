@@ -1,4 +1,4 @@
-﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,11 @@ import { EpisodeCard } from "@/components/episode-card";
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
   
-  // Am├®lioration de la gestion de l'identifiant pour g├®rer les diff├®rents formats
+  // Amélioration de la gestion de l'identifiant pour gérer les différents formats
   const tvId = (() => {
     if (!id) return 0;
     
-    // Si l'ID est au format "tmdb-12345", on extrait le num├®ro
+    // Si l'ID est au format "tmdb-12345", on extrait le numéro
     if (id.startsWith('tmdb-')) {
       const parsed = parseInt(id.substring(5), 10);
       return isNaN(parsed) ? 0 : parsed;
@@ -198,12 +198,15 @@ export default function TVDetail() {
   if (error) {
     console.error("Error loading TV show:", error);
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center" data-testid="tv-detail-error">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Erreur de chargement</h1>
-          <p className="text-muted-foreground mb-4">Impossible de charger les d├®tails de la s├®rie</p>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">📺</div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
+          <p className="text-muted-foreground mb-6">
+            Désolé, nous n'avons pas pu charger les informations de cette série.
+          </p>
           <Link href="/series">
-            <Button>Retour aux s├®ries</Button>
+            <Button className="w-full sm:w-auto">Retour aux séries</Button>
           </Link>
         </div>
       </div>
@@ -212,36 +215,55 @@ export default function TVDetail() {
 
   if (!tvDetails) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center" data-testid="tv-detail-error">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">S├®rie non trouv├®e</h1>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">📺</div>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
+          <p className="text-muted-foreground mb-6">
+            La série que vous recherchez n'est pas disponible.
+          </p>
           <Link href="/series">
-            <Button>Retour aux s├®ries</Button>
+            <Button className="w-full sm:w-auto">Retour aux séries</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  // Extract the actual TV show data from the response
-  // The backend returns { show, credits, videos } but sometimes it might return the data directly
-  const tv = (tvDetails as any).show || tvDetails;
-  const { credits, videos } = tvDetails as any;
-  const cast = credits?.cast?.slice(0, 8) || [];
-  const crew = credits?.crew?.slice(0, 8) || [];
-  const trailer = videos?.results?.find((video: any) => video.type === "Trailer" && video.site === "YouTube");
+  const { 
+    name, 
+    overview, 
+    genres, 
+    vote_average, 
+    first_air_date, 
+    last_air_date, 
+    status, 
+    number_of_seasons, 
+    number_of_episodes, 
+    episode_run_time,
+    backdrop_path,
+    poster_path,
+    created_by,
+    production_companies,
+    seasons,
+    credits
+  } = tvDetails;
 
-  const formatEpisodeRuntime = (runtimes: number[] | undefined) => {
-    if (!runtimes || runtimes.length === 0) return null;
-    const avgRuntime = Math.round(runtimes.reduce((a, b) => a + b, 0) / runtimes.length);
-    return `~${avgRuntime}min/├®pisode`;
+  // Extract cast and crew from credits
+  const cast = credits?.cast || [];
+  const crew = credits?.crew || [];
+
+  const formatEpisodeRuntime = (runtimeArray: number[]) => {
+    if (!runtimeArray || runtimeArray.length === 0) return null;
+    const avgRuntime = Math.round(runtimeArray.reduce((a, b) => a + b, 0) / runtimeArray.length);
+    return `~${avgRuntime}min/épisode`;
   };
 
   const getAirYears = () => {
-    if (!tv.first_air_date) return "Date inconnue";
-    const startYear = new Date(tv.first_air_date).getFullYear();
-    if (tv.status === "Ended" && tv.last_air_date) {
-      const endYear = new Date(tv.last_air_date).getFullYear();
+    if (!first_air_date) return "Date inconnue";
+    const startYear = new Date(first_air_date).getFullYear();
+    if (status === "Ended" && last_air_date) {
+      const endYear = new Date(last_air_date).getFullYear();
       return startYear === endYear ? startYear.toString() : `${startYear}-${endYear}`;
     }
     return `${startYear}-en cours`;
@@ -259,47 +281,47 @@ export default function TVDetail() {
     });
   };
 
-  // Donn├®es structur├®es pour la s├®rie
+  // Données structurées pour la série
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "TVSeries",
-    "name": tv.name,
-    "image": tmdbService.getBackdropUrl(tv.backdrop_path),
-    "description": tv.overview,
-    "datePublished": tv.first_air_date,
-    "endDate": tv.last_air_date,
+    "name": tvDetails.name,
+    "image": tmdbService.getBackdropUrl(tvDetails.backdrop_path),
+    "description": tvDetails.overview,
+    "datePublished": tvDetails.first_air_date,
+    "endDate": tvDetails.last_air_date,
     "aggregateRating": {
       "@type": "AggregateRating",
-      "ratingValue": tv.vote_average,
+      "ratingValue": tvDetails.vote_average,
       "bestRating": 10,
       "worstRating": 0,
-      "ratingCount": tv.vote_count
+      "ratingCount": tvDetails.vote_count
     },
-    "genre": tv.genres?.map((g: any) => g.name),
-    "creator": tv.created_by?.map((person: any) => person.name),
+    "genre": tvDetails.genres?.map((g: any) => g.name),
+    "creator": tvDetails.created_by?.map((person: any) => person.name),
     "actor": cast.slice(0, 5).map((person: any) => person.name),
-    "numberOfSeasons": tv.number_of_seasons,
-    "numberOfEpisodes": tv.number_of_episodes,
+    "numberOfSeasons": tvDetails.number_of_seasons,
+    "numberOfEpisodes": tvDetails.number_of_episodes,
     "potentialAction": {
       "@type": "WatchAction",
-      "target": `https://streamflix2-o7vx.onrender.com/watch/tv/${tvId}`
+      "target": `https://streamflix2.site/watch/tv/${tvId}`
     }
   };
 
-  // Donn├®es structur├®es pour les ├®pisodes (exemple pour le premier ├®pisode)
-  const episodeData = tv.seasons && tv.seasons.length > 0 ? {
+  // Données structurées pour les épisodes (exemple pour le premier épisode)
+  const episodeData = tvDetails.seasons && tvDetails.seasons.length > 0 ? {
     "@context": "https://schema.org",
     "@type": "TVEpisode",
-    "name": `${tv.name} - Saison 1 ├ëpisode 1`,
+    "name": `${tvDetails.name} - Saison 1 Épisode 1`,
     "episodeNumber": 1,
     "seasonNumber": 1,
     "partOfSeries": {
       "@type": "TVSeries",
-      "name": tv.name
+      "name": tvDetails.name
     },
     "potentialAction": {
       "@type": "WatchAction",
-      "target": `https://streamflix2-o7vx.onrender.com/watch/tv/${tvId}/1/1`
+      "target": `https://streamflix2.site/watch/tv/${tvId}/1/1`
     }
   } : null;
 
@@ -316,8 +338,8 @@ export default function TVDetail() {
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
         <img
-          src={tmdbService.getBackdropUrl(tv.backdrop_path)}
-          alt={tv.name}
+          src={tmdbService.getBackdropUrl(backdrop_path)}
+          alt={name}
           className="w-full h-full object-cover"
           data-testid="tv-backdrop"
           onError={(e) => {
@@ -342,46 +364,46 @@ export default function TVDetail() {
         {/* TV Show info */}
         <div className="absolute bottom-8 left-4 right-4 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
           <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold text-white mb-3 sm:mb-4" data-testid="tv-title">
-            {tv.name}
+            {name}
           </h1>
 
           <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-white/80 mb-4 sm:mb-6 text-sm sm:text-base" data-testid="tv-metadata">
             <span className="flex items-center space-x-1">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Ann├®es: {getAirYears()}</span>
+              <span>Années: {getAirYears()}</span>
             </span>
-            {tv.number_of_seasons && (
+            {number_of_seasons && (
               <span className="flex items-center space-x-1">
                 <Tv className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{tv.number_of_seasons} saison{tv.number_of_seasons > 1 ? 's' : ''}</span>
+                <span>{number_of_seasons} saison{number_of_seasons > 1 ? 's' : ''}</span>
               </span>
             )}
-            {tv.number_of_episodes && (
-              <span>{tv.number_of_episodes} ├®pisodes au total</span>
+            {number_of_episodes && (
+              <span>{number_of_episodes} épisodes au total</span>
             )}
-            {formatEpisodeRuntime(tv.episode_run_time) && (
+            {formatEpisodeRuntime(episode_run_time) && (
               <span className="flex items-center space-x-1">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Dur├®e moyenne: {formatEpisodeRuntime(tv.episode_run_time)}</span>
+                <span>Durée moyenne: {formatEpisodeRuntime(episode_run_time)}</span>
               </span>
             )}
-            <span className="hidden sm:inline">Genres: {tv.genres?.map((g: any) => g.name).join(", ")}</span>
+            <span className="hidden sm:inline">Genres: {genres?.map((g: any) => g.name).join(", ")}</span>
 
-            {tv.vote_average > 0 && (
+            {vote_average > 0 && (
               <span className="flex items-center space-x-1">
                 <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                <span>Note: {tv.vote_average.toFixed(1)}/10</span>
+                <span>Note: {vote_average.toFixed(1)}/10</span>
               </span>
             )}
           </div>
 
           {/* Genres on mobile */}
           <div className="sm:hidden mb-4">
-            <span className="text-white/80 text-sm">{tv.genres?.map((g: any) => g.name).join(", ")}</span>
+            <span className="text-white/80 text-sm">{genres?.map((g: any) => g.name).join(", ")}</span>
           </div>
 
           <p className="text-white/90 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed line-clamp-3 sm:line-clamp-none" data-testid="tv-overview">
-            {tv.overview}
+            {overview}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="tv-actions">
@@ -392,7 +414,7 @@ export default function TVDetail() {
                   window.location.href = `/subscription`;
                   return;
                 }
-                window.location.href = `/watch/tv/${tv.id}/1/1`;
+                window.location.href = `/watch/tv/${tvDetails.id}/1/1`;
               }}
               className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
               data-testid="button-watch"
@@ -450,53 +472,53 @@ export default function TVDetail() {
                 <Globe className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold text-foreground">Langue originale</h3>
-                  <p className="text-muted-foreground">{tv.original_language?.toUpperCase()}</p>
+                  <p className="text-muted-foreground">{tvDetails.original_language?.toUpperCase()}</p>
                 </div>
               </div>
               
-              {tv.status && (
+              {tvDetails.status && (
                 <div className="flex items-start">
                   <Users className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-foreground">Statut</h3>
-                    <p className="text-muted-foreground">{tv.status}</p>
+                    <p className="text-muted-foreground">{tvDetails.status}</p>
                   </div>
                 </div>
               )}
               
-              {tv.type && (
+              {tvDetails.type && (
                 <div className="flex items-start">
                   <Award className="w-5 h-5 text-muted-foreground mt-1 mr-3 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-foreground">Type</h3>
-                    <p className="text-muted-foreground">{tv.type}</p>
+                    <p className="text-muted-foreground">{tvDetails.type}</p>
                   </div>
                 </div>
               )}
             </div>
             
             <div className="space-y-4">
-              {tv.tagline && (
+              {tvDetails.tagline && (
                 <div>
                   <h3 className="font-semibold text-foreground mb-2">Slogan</h3>
-                  <p className="text-muted-foreground italic">"{tv.tagline}"</p>
+                  <p className="text-muted-foreground italic">"{tvDetails.tagline}"</p>
                 </div>
               )}
               
-              {tv.created_by && tv.created_by.length > 0 && (
+              {tvDetails.created_by && tvDetails.created_by.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-2">Cr├®ateurs</h3>
+                  <h3 className="font-semibold text-foreground mb-2">Créateurs</h3>
                   <p className="text-muted-foreground">
-                    {tv.created_by.map((creator: any) => creator.name).join(", ")}
+                    {tvDetails.created_by.map((creator: any) => creator.name).join(", ")}
                   </p>
                 </div>
               )}
               
-              {tv.networks && tv.networks.length > 0 && (
+              {tvDetails.networks && tvDetails.networks.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-foreground mb-2">Cha├«nes de diffusion</h3>
+                  <h3 className="font-semibold text-foreground mb-2">Chaînes de diffusion</h3>
                   <p className="text-muted-foreground">
-                    {tv.networks.map((network: any) => network.name).join(", ")}
+                    {tvDetails.networks.map((network: any) => network.name).join(", ")}
                   </p>
                 </div>
               )}
@@ -536,7 +558,7 @@ export default function TVDetail() {
         {/* Crew Section */}
         {crew.length > 0 && (
           <section className="mb-8 sm:mb-12" data-testid="tv-crew">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">├ëquipe technique</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Équipe technique</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" data-testid="crew-grid">
               {crew.map((member: any) => (
                 <div key={member.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg" data-testid={`crew-member-${member.id}`}>
@@ -559,11 +581,11 @@ export default function TVDetail() {
         )}
         
         {/* Seasons Section */}
-        {tv.seasons && tv.seasons.length > 0 && (
+        {tvDetails.seasons && tvDetails.seasons.length > 0 && (
           <div className="mt-6 sm:mt-8">
             <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Saisons</h3>
             <div className="space-y-3 sm:space-y-4">
-              {tv.seasons.map((season: any) => {
+              {tvDetails.seasons.map((season: any) => {
                 const isExpanded = expandedSeasons.has(season.season_number);
                 const seasonEpisodes = episodesBySeason[season.season_number] || [];
                 const episodeCount = seasonEpisodes.length > 0 ? seasonEpisodes.length : season.episode_count;
@@ -592,7 +614,7 @@ export default function TVDetail() {
                           )}
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-sm sm:text-base line-clamp-1">{season.name}</h4>
-                            <p className="text-xs sm:text-sm text-gray-400">{episodeCount} ├®pisodes</p>
+                            <p className="text-xs sm:text-sm text-gray-400">{episodeCount} épisodes</p>
                             {season.air_date && (
                               <p className="text-xs text-gray-500">
                                 {new Date(season.air_date).getFullYear()}
@@ -625,14 +647,14 @@ export default function TVDetail() {
                                     production_code: '',
                                     runtime: null,
                                     season_number: season.season_number,
-                                    show_id: tv.id,
+                                    show_id: tvDetails.id,
                                     still_path: null,
                                     vote_average: 0,
                                     vote_count: 0,
                                     crew: [],
                                     guest_stars: []
                                   }}
-                                  tvId={tv.id}
+                                  tvId={tvDetails.id}
                                   seasonNumber={season.season_number}
                                   episodeImage={episodeImage}
                                 />
@@ -651,19 +673,19 @@ export default function TVDetail() {
                                     air_date: season.air_date || '',
                                     episode_number: i + 1,
                                     id: 0,
-                                    name: `├ëpisode ${i + 1}`,
-                                    overview: 'R├®sum├® de l\'├®pisode ├á venir...',
+                                    name: `Épisode ${i + 1}`,
+                                    overview: 'Résumé de l\'épisode à venir...',
                                     production_code: '',
                                     runtime: null,
                                     season_number: season.season_number,
-                                    show_id: tv.id,
+                                    show_id: tvDetails.id,
                                     still_path: null,
                                     vote_average: 0,
                                     vote_count: 0,
                                     crew: [],
                                     guest_stars: []
                                   }}
-                                  tvId={tv.id}
+                                  tvId={tvDetails.id}
                                   seasonNumber={season.season_number}
                                   episodeImage={episodeImage}
                                 />
@@ -684,7 +706,7 @@ export default function TVDetail() {
         {similarShows && similarShows.length > 0 && (
           <section className="mb-6 sm:mb-8" data-testid="similar-shows">
             <TVRow
-              title="S├®ries Similaires"
+              title="Séries Similaires"
               series={similarShows}
               isLoading={false}
             />

@@ -52,7 +52,7 @@ const NotificationBell: React.FC = () => {
   // Initialize Socket.IO connection
   useEffect(() => {
     if (isAuthenticated && user?.id) {
-      const newSocket = io(process.env.NODE_ENV === 'production' ? 'https://streamflix2-o7vx.onrender.com' : 'http://localhost:5000');
+      const newSocket = io(process.env.NODE_ENV === 'production' ? 'https://streamflix2.site' : 'http://localhost:5000');
       
       newSocket.on('connect', () => {
         console.log('Connected to notification service');

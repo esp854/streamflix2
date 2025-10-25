@@ -7,7 +7,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const SERVER_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://streamflix2-o7vx.onrender.com' 
+  ? 'https://streamflix2.site' 
   : 'http://localhost:5000';
 
 console.log('🧪 Test du Système de Notifications Streamflix');
