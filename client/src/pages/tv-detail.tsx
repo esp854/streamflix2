@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -336,7 +336,7 @@ export default function TVDetail() {
         </script>
       )}
       {/* Hero Section */}
-      <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
+      <div className="relative h-[50vh] sm:h-[60vh] md:h-[70vh]">
         <img
           src={tmdbService.getBackdropUrl(backdrop_path)}
           alt={name}
@@ -354,59 +354,59 @@ export default function TVDetail() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 left-4 sm:top-8 sm:left-8 bg-black/50 hover:bg-black/70 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full z-10"
+            className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-black/50 hover:bg-black/70 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full z-10"
             data-testid="back-button"
           >
-            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </Link>
 
         {/* TV Show info */}
-        <div className="absolute bottom-8 left-4 right-4 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
-          <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold text-white mb-3 sm:mb-4" data-testid="tv-title">
+        <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 md:left-8 md:bottom-8 md:right-8 z-10">
+          <h1 className="text-lg sm:text-2xl md:text-4xl font-bold text-white mb-2 sm:mb-3" data-testid="tv-title">
             {name}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-white/80 mb-4 sm:mb-6 text-sm sm:text-base" data-testid="tv-metadata">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-white/80 mb-3 sm:mb-4 text-xs sm:text-sm" data-testid="tv-metadata">
             <span className="flex items-center space-x-1">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Années: {getAirYears()}</span>
             </span>
             {number_of_seasons && (
               <span className="flex items-center space-x-1">
-                <Tv className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Tv className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span>{number_of_seasons} saison{number_of_seasons > 1 ? 's' : ''}</span>
               </span>
             )}
             {number_of_episodes && (
-              <span>{number_of_episodes} épisodes au total</span>
+              <span>{number_of_episodes} épisodes</span>
             )}
             {formatEpisodeRuntime(episode_run_time) && (
               <span className="flex items-center space-x-1">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Durée moyenne: {formatEpisodeRuntime(episode_run_time)}</span>
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>{formatEpisodeRuntime(episode_run_time)}</span>
               </span>
             )}
             <span className="hidden sm:inline">Genres: {genres?.map((g: any) => g.name).join(", ")}</span>
 
             {vote_average > 0 && (
               <span className="flex items-center space-x-1">
-                <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                <span>Note: {vote_average.toFixed(1)}/10</span>
+                <Star className="w-3 h-3 fill-current" />
+                <span>{vote_average.toFixed(1)}/10</span>
               </span>
             )}
           </div>
 
           {/* Genres on mobile */}
-          <div className="sm:hidden mb-4">
-            <span className="text-white/80 text-sm">{genres?.map((g: any) => g.name).join(", ")}</span>
+          <div className="sm:hidden mb-3">
+            <span className="text-white/80 text-xs">{genres?.map((g: any) => g.name).join(", ")}</span>
           </div>
 
-          <p className="text-white/90 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed line-clamp-3 sm:line-clamp-none" data-testid="tv-overview">
+          <p className="text-white/90 text-xs sm:text-sm md:text-base mb-4 sm:mb-6 leading-relaxed line-clamp-3" data-testid="tv-overview">
             {overview}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4" data-testid="tv-actions">
+          <div className="flex flex-col sm:flex-row gap-2" data-testid="tv-actions">
             <Button 
               onClick={() => {
                 // If user should be redirected to payment page, redirect them

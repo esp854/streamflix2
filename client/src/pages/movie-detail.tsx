@@ -1,4 +1,4 @@
-﻿﻿﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -147,7 +147,7 @@ export default function MovieDetail() {
         {JSON.stringify(structuredData)}
       </script>
       {/* Hero Section - Adapté pour mobile */}
-      <div className="relative h-[60vh] sm:h-[70vh] md:h-screen">
+      <div className="relative h-[50vh] sm:h-[60vh] md:h-[70vh]">
         <img
           src={tmdbService.getBackdropUrl(movie.backdrop_path)}
           alt={movie.title}
@@ -162,42 +162,42 @@ export default function MovieDetail() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 left-4 sm:top-8 sm:left-8 bg-black/50 hover:bg-black/70 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full z-10"
+            className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-black/50 hover:bg-black/70 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full z-10"
             data-testid="back-button"
           >
-            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </Link>
 
         {/* Movie info - Optimisé pour mobile */}
-        <div className="absolute bottom-4 left-4 right-4 sm:bottom-8 sm:left-8 sm:right-8 md:left-16 md:bottom-16 md:max-w-3xl z-10">
-          <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-6xl font-bold text-white mb-2 sm:mb-3 md:mb-4" data-testid="movie-title">
+        <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 md:left-8 md:bottom-8 md:right-8 z-10">
+          <h1 className="text-lg sm:text-xl md:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-3" data-testid="movie-title">
             {movie.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-6 text-white/80 mb-3 sm:mb-4 md:mb-6 text-xs sm:text-sm md:text-base" data-testid="movie-metadata">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/80 mb-2 sm:mb-3 text-xs sm:text-sm" data-testid="movie-metadata">
             <span className="flex items-center space-x-1">
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-              <span>Date de sortie: {new Date(movie.release_date).getFullYear()}</span>
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>{new Date(movie.release_date).getFullYear()}</span>
             </span>
             {movie.runtime && (
               <span className="flex items-center space-x-1">
-                <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                <span>Durée: {formatRuntime(movie.runtime)}</span>
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>{formatRuntime(movie.runtime)}</span>
               </span>
             )}
-            <span className="text-xs sm:text-sm">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
+            <span className="text-xs">Genres: {movie.genres?.map(g => g.name).join(", ")}</span>
             <div className="flex items-center space-x-1">
-              <Star className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-accent fill-current" />
-              <span>Note: {movie.vote_average.toFixed(1)}/10</span>
+              <Star className="w-3 h-3 text-accent fill-current" />
+              <span>{movie.vote_average.toFixed(1)}/10</span>
             </div>
           </div>
 
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 mb-4 sm:mb-6 md:mb-8 leading-relaxed max-w-2xl line-clamp-3 sm:line-clamp-none" data-testid="movie-overview">
+          <p className="text-xs sm:text-sm md:text-base text-white/90 mb-3 sm:mb-4 leading-relaxed max-w-2xl line-clamp-3" data-testid="movie-overview">
             {movie.overview}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4" data-testid="movie-actions">
+          <div className="flex flex-col sm:flex-row gap-2" data-testid="movie-actions">
             <Button 
               onClick={() => {
                 // If user should be redirected to payment page, redirect them
