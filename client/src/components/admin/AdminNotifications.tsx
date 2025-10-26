@@ -57,6 +57,27 @@ const AdminNotifications: React.FC = () => {
     }
   };
 
+  // Function to get CSRF token
+  const getCSRFToken = async (): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/csrf-token', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.csrfToken;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+      return null;
+    }
+  };
+
   const sendNotification = async () => {
     if (!selectedUserId || !notificationForm.title || !notificationForm.message) {
       toast({
@@ -69,12 +90,20 @@ const AdminNotifications: React.FC = () => {
 
     try {
       setIsLoading(true);
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      if (!csrfToken) {
+        throw new Error('Impossible de récupérer le jeton CSRF');
+      }
+      
       const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/notifications/send', {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
@@ -122,12 +151,20 @@ const AdminNotifications: React.FC = () => {
 
     try {
       setIsLoading(true);
+      
+      // Get CSRF token
+      const csrfToken = await getCSRFToken();
+      if (!csrfToken) {
+        throw new Error('Impossible de récupérer le jeton CSRF');
+      }
+      
       const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/notifications/announcement', {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
