@@ -1,36 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   
-  <!-- Page d'accueil -->
   <url>
     <loc>https://streamflix2.site/</loc>
-    <lastmod>2025-10-25</lastmod>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://streamflix2.site/logo.png</image:loc>
+      <image:title>Logo StreamFlix</image:title>
+      <image:caption>Logo officiel de StreamFlix</image:caption>
+    </image:image>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/" />
     <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/" />
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/" />
   </url>
   
-  <!-- Pages principales -->
   <url>
     <loc>https://streamflix2.site/films</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>hourly</changefreq>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/films" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/films" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/films" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/movies" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/peliculas" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/films" />
   </url>
   
   <url>
     <loc>https://streamflix2.site/series</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>hourly</changefreq>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/series" />
     <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/series" />
@@ -39,30 +43,30 @@
   </url>
   
   <url>
-    <loc>https://streamflix2.site/tendance</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>hourly</changefreq>
+    <loc>https://streamflix2.site/tendances</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/tendance" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/tendances" />
     <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/trending" />
     <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/tendencias" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/tendance" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/tendances" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/recherche</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>daily</changefreq>
+    <loc>https://streamflix2.site/ma-liste</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/recherche" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/search" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/buscar" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/recherche" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/ma-liste" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/my-list" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/mi-lista" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/ma-liste" />
   </url>
   
   <url>
     <loc>https://streamflix2.site/profil</loc>
-    <lastmod>2025-10-25</lastmod>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
     <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/profil" />
@@ -72,182 +76,156 @@
   </url>
   
   <url>
-    <loc>https://streamflix2.site/favoris</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/favoris" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/favorites" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/favoritos" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/favoris" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/continuer-a-regarder</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/28</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/continuer-a-regarder" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/continue-watching" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/continuar-viendo" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/continuer-a-regarder" />
-  </url>
-  
-  <!-- Pages légales -->
-  <url>
-    <loc>https://streamflix2.site/conditions-d-utilisation</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/conditions-d-utilisation" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/terms-of-use" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/terminos-de-uso" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/conditions-d-utilisation" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/28" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/28" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/28" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/28" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/politique-de-confidentialite</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/politique-de-confidentialite" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/privacy-policy" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/politica-de-privacidad" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/politique-de-confidentialite" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/centre-d-aide</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/centre-d-aide" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/help-center" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/centro-de-ayuda" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/centre-d-aide" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/contact</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/contact" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/contact" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/contacto" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/contact" />
-  </url>
-  
-  <!-- Catégories de films -->
-  <url>
-    <loc>https://streamflix2.site/category/action</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/12</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/action" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/action" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/accion" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/action" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/12" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/12" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/12" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/12" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/comedie</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/16</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/comedie" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/comedy" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/comedia" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/comedie" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/16" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/16" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/16" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/16" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/drame</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/35</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/drame" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/drama" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/drama" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/drame" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/35" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/35" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/35" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/35" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/science-fiction</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/80</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/science-fiction" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/science-fiction" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/ciencia-ficcion" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/science-fiction" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/80" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/80" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/80" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/80" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/horreur</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/18</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/horreur" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/horror" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/terror" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/horreur" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/18" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/18" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/18" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/18" />
   </url>
   
-  <!-- Catégories de séries -->
   <url>
-    <loc>https://streamflix2.site/category/series-action</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/10759</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/series-action" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/tv-action" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/series-accion" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/series-action" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10759" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10759" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10759" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10759" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/series-comedie</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/10762</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/series-comedie" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/tv-comedy" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/series-comedia" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/series-comedie" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10762" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10762" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10762" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10762" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/series-drame</loc>
-    <lastmod>2025-10-25</lastmod>
+    <loc>https://streamflix2.site/category/10763</loc>
+    <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/series-drame" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/tv-drama" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/series-drama" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/series-drame" />
-  </url>
-  
-  <!-- Pages de collections -->
-  <url>
-    <loc>https://streamflix2.site/collections/populaires</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/collections/populaires" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/collections/popular" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/collections/populares" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/collections/populaires" />
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10763" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10763" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10763" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10763" />
   </url>
   
   <url>
-    <loc>https://streamflix2.site/collections/nouveautes</loc>
-    <lastmod>2025-10-25</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/collections/nouveautes" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/collections/new-releases" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/collections/novedades" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/collections/nouveautes" />
+    <loc>https://streamflix2.site/category/10764</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10764" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10764" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10764" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10764" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2.site/category/10765</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10765" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10765" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10765" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10765" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2.site/category/10766</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10766" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10766" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10766" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10766" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2.site/category/10767</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10767" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10767" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10767" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10767" />
+  </url>
+  
+  <url>
+    <loc>https://streamflix2.site/category/10768</loc>
+    <lastmod>2025-10-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10768" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10768" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10768" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10768" />
   </url>
 </urlset>
