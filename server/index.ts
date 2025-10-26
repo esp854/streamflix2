@@ -40,14 +40,14 @@ app.use(cors({
 app.use(express.json());
 
 // Servir les fichiers statiques
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static(path.join(__dirname, '../dist/public')));
 
 // Enregistrer les routes API
 registerRoutes(app);
 
 // Route catch-all pour React Router (doit être après les routes API)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '../dist/public', 'index.html'));
 });
 
 // Configuration Socket.IO pour Watch Party
