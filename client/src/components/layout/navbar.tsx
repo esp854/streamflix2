@@ -123,18 +123,6 @@ export default function Navbar() {
                         Mon Profil
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/favorites" className="w-full text-xs sm:text-sm" data-testid="user-menu-favorites">
-                        <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        Ma Liste
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/help" className="w-full text-xs sm:text-sm" data-testid="user-menu-help">
-                        <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        Centre d'Aide
-                      </Link>
-                    </DropdownMenuItem>
                     {user?.role === "admin" && (
                       <DropdownMenuItem asChild>
                         <Link href="/admin" className="w-full text-xs sm:text-sm" data-testid="user-menu-admin">
