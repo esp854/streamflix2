@@ -60,10 +60,12 @@ const AdminNotifications: React.FC = () => {
   // Function to get CSRF token
   const getCSRFToken = async (): Promise<string | null> => {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/csrf-token', {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
       });
       
