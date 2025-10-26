@@ -1,4 +1,4 @@
-﻿﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -198,8 +198,11 @@ export default function MovieDetail() {
           <div className="flex flex-col sm:flex-row gap-2" data-testid="movie-actions">
             <Button 
               onClick={() => {
-                window.location.href = `/watch/movie/${movieId}`;
+                if (movieId) {
+                  window.location.href = `/watch/movie/${movieId}`;
+                }
               }}
+              disabled={!movieId}
               className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto h-10 sm:h-12" 
               data-testid="watch-button"
             >

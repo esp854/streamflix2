@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -321,12 +321,8 @@ export default function TVDetail() {
           <div className="flex flex-col sm:flex-row gap-3" data-testid="tv-actions">
             <Button 
               onClick={() => {
-                // If user should be redirected to payment page, redirect them
-                if (hasEpisodes) {
-                  window.location.href = `/watch/tv/${tvId}/1/1`;
-                }
+                window.location.href = `/watch/tv/${tvId}/1/1`;
               }}
-              disabled={!hasEpisodes}
               className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
               data-testid="button-watch"
             >
