@@ -580,38 +580,6 @@ export default function WatchMovie() {
     );
   }
 
-  // Check if authenticated user has paid subscription
-  if (isAuthenticated && planId === 'free') {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-center max-w-md p-8">
-          <div className="text-6xl mb-6">🎬</div>
-          <h1 className="text-2xl font-bold mb-4">Abonnement requis</h1>
-          <p className="text-gray-300 mb-6">
-            Pour regarder ce film, vous devez souscrire à un abonnement payant.
-          </p>
-          <div className="space-y-4">
-            <Button
-              onClick={() => window.location.href = '/subscription'}
-              className="w-full bg-primary hover:bg-primary/90"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Voir les abonnements
-            </Button>
-            <Button
-              onClick={handleGoHome}
-              variant="outline"
-              className="w-full border-white/20 text-white hover:bg-white/10"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Retour à l'accueil
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (!movieDetails) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
