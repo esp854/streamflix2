@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Crown, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play, Bell } from "lucide-react";
+import { Search, User, ChevronDown, Menu, LogOut, UserPlus, X, HelpCircle, Shield, Check, CheckCheck, Home, Film, Tv, Heart, TrendingUp, Play, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -124,12 +124,6 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/subscription" className="w-full text-yellow-600 text-xs sm:text-sm" data-testid="user-menu-subscription">
-                        <Crown className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        Abonnements Premium
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
                       <Link href="/favorites" className="w-full text-xs sm:text-sm" data-testid="user-menu-favorites">
                         <Bell className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Ma Liste
@@ -208,58 +202,51 @@ export default function Navbar() {
           </div>
         </div>
         
-        {/* Authentication Modal */}
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          defaultTab={authModalTab}
-        />
-      </nav>
-      
-      {/* Mobile Bottom Navigation - Déplacé en dehors de l'élément nav pour éviter les conflits de positionnement */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-around py-2 px-2 sm:px-4">
-          <Link
-            href="/"
-            className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Home className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs">Accueil</span>
-          </Link>
+        {/* Mobile Bottom Navigation - Déplacé en dehors de l'élément nav pour éviter les conflits de positionnement */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
+          <div className="flex items-center justify-around py-2 px-2 sm:px-4">
+            <Link
+              href="/"
+              className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs">Accueil</span>
+            </Link>
 
-          <Link
-            href="/films"
-            className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Film className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs">Films</span>
-          </Link>
+            <Link
+              href="/films"
+              className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Film className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs">Films</span>
+            </Link>
 
-          <Link
-            href="/series"
-            className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Tv className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs">Séries</span>
-          </Link>
+            <Link
+              href="/series"
+              className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Tv className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs">Séries</span>
+            </Link>
 
-          <Link
-            href="/ma-liste"
-            className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs">Favoris</span>
-          </Link>
+            <Link
+              href="/ma-liste"
+              className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs">Favoris</span>
+            </Link>
 
-          <Link
-            href="/tendances"
-            className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs">Tendance</span>
-          </Link>
+            <Link
+              href="/tendances"
+              className={`flex flex-col items-center space-y-1 p-1 sm:p-2 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs">Tendance</span>
+            </Link>
+          </div>
         </div>
-      </div>
+      </nav>
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useQuery } from "@tanstack/react-query";
 
 // Add interface for local content (matching TVRow exactly)
@@ -41,7 +40,6 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
    const [isHovering, setIsHovering] = useState(false);
    const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
    const { shareContent } = useShare();
-   const { shouldRedirectToPayment } = useSubscriptionCheck();
 
    // Fonction utilitaire pour extraire l'ID numérique de manière plus robuste
    const getSeriesId = (): number => {
@@ -153,12 +151,6 @@ export default function TVCard({ series, size = "medium", showOverlay = true }: 
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // If user should be redirected to payment page, redirect them
-    if (shouldRedirectToPayment) {
-      window.location.href = `/subscription`;
-      return;
-    }
     
     // For local content without video links, redirect to the detail page instead
     if ('odyseeUrl' in series && !series.odyseeUrl) {

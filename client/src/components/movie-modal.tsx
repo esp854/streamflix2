@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useQuery } from "@tanstack/react-query";
 import { tmdbService } from "@/lib/tmdb";
 import { MovieDetails, GENRE_MAP } from "@/types/movie";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 interface MovieModalProps {
   movieId: number | null;
@@ -19,8 +18,6 @@ export default function MovieModal({ movieId, open, onClose }: MovieModalProps) 
     queryFn: () => movieId ? tmdbService.getMovieDetails(movieId) : null,
     enabled: !!movieId && open,
   });
-  
-  const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -128,11 +125,6 @@ export default function MovieModal({ movieId, open, onClose }: MovieModalProps) 
               <div className="flex flex-wrap gap-3 mb-6" data-testid="modal-actions">
                 <Button 
                   onClick={() => {
-                    // If user should be redirected to payment page, redirect them
-                    if (shouldRedirectToPayment) {
-                      window.location.href = `/subscription`;
-                      return;
-                    }
                     window.location.href = `/watch/movie/${movieId}`;
                   }}
                   className="btn-primary flex items-center space-x-2" 

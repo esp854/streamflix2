@@ -111,80 +111,37 @@ export const usePlanFeatures = () => {
   }
   
   if (error) {
-    return { features: null, isLoading: false, error, planId: null };
+    // Si l'utilisateur n'a pas d'abonnement, ne pas lui attribuer de plan par défaut
+    return { features: null, isLoading: false, error: null, planId: null };
   }
   
-  const planId = subscriptionData?.subscription?.planId || 'free';
-  const features = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.free;
+  // Si l'utilisateur a un abonnement, utiliser son plan
+  if (subscriptionData?.subscription?.planId) {
+    const planId = subscriptionData.subscription.planId;
+    const features = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.free;
+    return { features, isLoading: false, error: null, planId };
+  }
   
-  return { features, isLoading: false, error: null, planId };
+  // Si l'utilisateur n'a pas d'abonnement, ne pas lui attribuer de plan
+  return { features: null, isLoading: false, error: null, planId: null };
 };
 
-// Hook to check if user has specific feature
+// Hook pour vérifier si l'utilisateur a accès à une fonctionnalité
+// Comme nous supprimons le système d'abonnement, tous les utilisateurs ont accès à toutes les fonctionnalités
 export const useHasFeature = (feature: string) => {
-  const { features, isLoading, error } = usePlanFeatures();
-  
-  if (isLoading || error || !features) {
-    return { hasFeature: false, isLoading, error };
-  }
-  
-  // Map feature names to actual feature checks
-  switch (feature) {
-    case 'download':
-      return { hasFeature: features.canDownload, isLoading, error };
-    case 'hd':
-      return { hasFeature: features.maxVideoQuality === 'HD' || features.maxVideoQuality === '4K', isLoading, error };
-    case '4k':
-      return { hasFeature: features.maxVideoQuality === '4K', isLoading, error };
-    case 'exclusive':
-      return { hasFeature: features.hasExclusive, isLoading, error };
-    case 'prioritySupport':
-      return { hasFeature: features.supportLevel === 'priority' || features.supportLevel === 'vip', isLoading, error };
-    case 'earlyAccess':
-      return { hasFeature: features.earlyAccessAllowed, isLoading, error };
-    case 'noAds':
-      return { hasFeature: !features.ads, isLoading, error };
-    case 'multipleDevices':
-      return { hasFeature: features.maxDevices > 1, isLoading, error };
-    default:
-      return { hasFeature: false, isLoading, error };
-  }
+  return { hasFeature: true, isLoading: false, error: null };
 };
 
-// Hook to check if user can access specific video quality
+// Hook pour vérifier si l'utilisateur peut accéder à une qualité vidéo spécifique
+// Comme nous supprimons le système d'abonnement, tous les utilisateurs ont accès à toutes les qualités
 export const useCanAccessQuality = (quality: 'SD' | 'HD' | '4K') => {
-  const { features, isLoading, error } = usePlanFeatures();
-  
-  if (isLoading || error || !features) {
-    return { canAccess: false, isLoading, error };
-  }
-  
-  // Check if user's plan allows this quality
-  switch (quality) {
-    case 'SD':
-      return { canAccess: true, isLoading, error }; // All plans can access SD
-    case 'HD':
-      return { canAccess: features.maxVideoQuality === 'HD' || features.maxVideoQuality === '4K', isLoading, error };
-    case '4K':
-      return { canAccess: features.maxVideoQuality === '4K', isLoading, error };
-    default:
-      return { canAccess: false, isLoading, error };
-  }
+  return { canAccess: true, isLoading: false, error: null };
 };
 
-// Hook to check device limit
+// Hook pour vérifier la limite d'appareils
+// Comme nous supprimons le système d'abonnement, il n'y a pas de limite d'appareils
 export const useDeviceLimit = () => {
-  const { features, isLoading, error } = usePlanFeatures();
-  
-  if (isLoading || error || !features) {
-    return { maxDevices: 1, currentDevices: 0, canAddDevice: true, isLoading, error };
-  }
-  
-  const maxDevices = features.maxDevices === Infinity ? 10 : features.maxDevices; // Cap for display purposes
-  const currentDevices = 1; // In a real app, this would come from the backend
-  const canAddDevice = features.maxDevices === Infinity || currentDevices < features.maxDevices;
-  
-  return { maxDevices, currentDevices, canAddDevice, isLoading, error };
+  return { maxDevices: Infinity, currentDevices: 1, canAddDevice: true, isLoading: false, error: null };
 };
 
 export default PLAN_FEATURES;

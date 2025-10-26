@@ -9,7 +9,6 @@ import { tmdbService } from "@/lib/tmdb";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAuthCheck } from "@/hooks/useAuthCheck";
 import { useAuth } from "@/contexts/auth-context";
-import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useFavorites } from "@/hooks/use-favorites";
 import ZuploadVideoPlayer from "@/components/zupload-video-player"; // Import ZuploadVideoPlayer
 import WatchPartyEnhanced from "@/components/watch-party-enhanced";
@@ -20,7 +19,6 @@ import { TVSeasonDetails } from "@/types/movie"; // Add this import
 export default function WatchTV() {
     const { shouldShowAds } = useAuthCheck();
     const { isAuthenticated } = useAuth();
-    const { features, planId, isLoading: planLoading } = usePlanFeatures();
     const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
     const { id, season = "1", episode = "1" } = useParams<{ id: string; season?: string; episode?: string }>();
     const tvId = parseInt(id || "0");
@@ -147,7 +145,7 @@ export default function WatchTV() {
   const { data: favoriteStatus } = checkFavorite(tvId);
   const isFavorite = favoriteStatus?.isFavorite || false;
 
-  const isLoading = tmdbLoading || contentLoading || episodeLoading || planLoading;
+  const isLoading = tmdbLoading || contentLoading || episodeLoading;
 
   // Auto-hide controls after 3 seconds (or 5 seconds on mobile)
   useEffect(() => {

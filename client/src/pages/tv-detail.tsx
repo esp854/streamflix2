@@ -409,11 +409,6 @@ export default function TVDetail() {
           <div className="flex flex-col sm:flex-row gap-2" data-testid="tv-actions">
             <Button 
               onClick={() => {
-                // If user should be redirected to payment page, redirect them
-                if (shouldRedirectToPayment) {
-                  window.location.href = `/subscription`;
-                  return;
-                }
                 window.location.href = `/watch/tv/${tvDetails.id}/1/1`;
               }}
               className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 

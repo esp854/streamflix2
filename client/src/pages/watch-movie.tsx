@@ -25,7 +25,6 @@ declare global {
 export default function WatchMovie() {
    const { shouldShowAds } = useAuthCheck();
    const { isAuthenticated } = useAuth();
-   const { features, planId, isLoading: planLoading } = usePlanFeatures();
    const { id } = useParams<{ id: string }>();
    const movieId = parseInt(id || "0");
    const playerRef = useRef<any>(null);
@@ -115,7 +114,7 @@ export default function WatchMovie() {
     retry: false // Don't retry on 404
   });
 
-  const isLoading = tmdbLoading || contentLoading || planLoading;
+  const isLoading = tmdbLoading || contentLoading;
 
   // Auto-hide controls after 3 seconds (or 5 seconds on mobile)
   useEffect(() => {

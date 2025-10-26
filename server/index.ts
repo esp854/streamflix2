@@ -1,70 +1,35 @@
 import { createServer } from "http";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import express from "express";
-import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
+import path from "path";
+import cors from "cors";
+import { securityLogger } from "./security-logger";
 import { storage } from "./storage";
-import { config } from "dotenv";
-
-// Charger les variables d'environnement
-config();
-
-// Alternative approach for getting __dirname in both ESM and CommonJS
-const getCurrentDir = (): string => {
-  if (typeof __dirname !== 'undefined') {
-    return __dirname;
-  }
-  try {
-    const __filename = fileURLToPath(import.meta.url);
-    return path.dirname(__filename);
-  } catch {
-    // Fallback for environments where import.meta.url is not available
-    return process.cwd();
-  }
-};
-
-const __dirname: string = getCurrentDir();
-
-// Déterminer le chemin vers les fichiers statiques
-// Utiliser process.cwd() pour s'assurer que le chemin est correct dans tous les environnements
-const getPublicPath = (): string => {
-  // En production (Render), les fichiers sont dans dist/public
-  // En développement, ils peuvent être dans des chemins différents
-  const publicPath = path.join(process.cwd(), "dist", "public");
-  console.log(`Public path: ${publicPath}`);
-  return publicPath;
-};
-
-// Initialisation de la base de données
-async function initializeDatabase() {
-  try {
-    console.log("🔧 Initialisation de la base de données...");
-    
-    // Exécuter le script d'initialisation existant
-    const { execSync } = await import("child_process");
-    
-    // Exécuter le script d'initialisation avec npx tsx
-    execSync("npx tsx server/init-db.ts", { stdio: "inherit" });
-    
-    console.log("✅ Base de données initialisée avec succès");
-  } catch (error) {
-    console.error("❌ Erreur lors de l'initialisation de la base de données:", error);
-    process.exit(1);
-  }
-}
 
 const app = express();
-const server = createServer(app);
 
-// Configuration Socket.IO pour Watch Party
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2.site"],
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+// Configuration du trust proxy pour les environnements derrière proxy (Render, etc.)
+// Cette configuration doit être placée avant les middlewares de sécurité
+app.set('trust proxy', 1); // Trust le premier proxy
+
+// Middleware de logging pour les requêtes
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - IP: ${req.ip}`);
+  next();
+});
+
+// Middleware de sécurité pour les requêtes
+app.use((req, res, next) => {
+  securityLogger.logEvent({
+    timestamp: new Date(),
+    eventType: 'UNAUTHORIZED_ACCESS', // Utiliser un type d'événement valide
+    ipAddress: req.ip || 'unknown',
+    userAgent: req.get('User-Agent'),
+    details: `${req.method} ${req.path}`,
+    severity: 'LOW'
+  });
+  next();
 });
 
 // Middleware
@@ -75,14 +40,24 @@ app.use(cors({
 app.use(express.json());
 
 // Servir les fichiers statiques
-app.use(express.static(getPublicPath()));
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Enregistrer les routes API
 registerRoutes(app);
 
 // Route catch-all pour React Router (doit être après les routes API)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(getPublicPath(), 'index.html'));
+  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+});
+
+// Configuration Socket.IO pour Watch Party
+const server = createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://streamflix2.site"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 // Gestion des salles de watch party
@@ -143,12 +118,12 @@ io.on('connection', (socket: Socket) => {
     console.log(`User ${userId} joined notifications room`);
     
     // Envoyer les notifications non lues
-    storage.getUserNotifications(userId).then(notifications => {
-      const unreadNotifications = notifications.filter(n => !n.read);
+    storage.getUserNotifications(userId).then((notifications: any[]) => {
+      const unreadNotifications = notifications.filter((n: any) => !n.read);
       if (unreadNotifications.length > 0) {
         socket.emit('unread-notifications', unreadNotifications);
       }
-    }).catch(error => {
+    }).catch((error: any) => {
       console.error('Error fetching unread notifications:', error);
     });
   });
@@ -160,7 +135,7 @@ io.on('connection', (socket: Socket) => {
       
       // Notifier l'utilisateur que la notification a été marquée comme lue
       socket.emit('notification-marked-read', { notificationId });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error marking notification as read:', error);
       socket.emit('error', { message: 'Failed to mark notification as read' });
     }
@@ -520,14 +495,9 @@ io.on('connection', (socket: Socket) => {
 // Démarrer le serveur
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 
-// Initialiser la base de données avant de démarrer le serveur
-initializeDatabase().then(() => {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Subscription plans route registered`);
-    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-    console.log(`🌐 Socket.IO activé pour Watch Party`);
-  });
-}).catch(error => {
-  console.error("❌ Impossible de démarrer le serveur:", error);
-  process.exit(1);
+// Démarrer le serveur directement sans initDB
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Subscription plans route registered`);
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🌐 Socket.IO activé pour Watch Party`);
 });

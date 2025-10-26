@@ -56,7 +56,7 @@ export default defineConfig({
           // Separate vendor chunks for better caching
           vendor: ['react', 'react-dom', 'wouter'],
           utils: ['@/lib/utils', '@/lib/tmdb'],
-          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
+          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck']
         }
       }
     }

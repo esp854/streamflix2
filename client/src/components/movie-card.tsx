@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect } from "react";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { useQuery } from "@tanstack/react-query";
 
 // Add interface for local content
@@ -39,7 +38,6 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
    const [isHovering, setIsHovering] = useState(false);
    const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
    const { shareContent } = useShare();
-   const { shouldRedirectToPayment } = useSubscriptionCheck();
 
    // Check if movie is favorite
    const isTMDBMovie = 'tmdbId' in movie;
@@ -96,12 +94,6 @@ export default function MovieCard({ movie, size = "medium", showOverlay = true }
   const handlePlayClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // If user should be redirected to payment page, redirect them
-    if (shouldRedirectToPayment) {
-      window.location.href = `/subscription`;
-      return;
-    }
     
     // For local content without video links, redirect to the detail page instead
     if ('odyseeUrl' in movie && !movie.odyseeUrl) {

@@ -23,19 +23,21 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Settings, Save, User, Crown, Calendar, CreditCard } from "lucide-react";
+import { Loader2, Settings, Save, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
-import type { UserPreferences } from "@shared/schema";
-import { PLAN_FEATURES } from "@/hooks/usePlanFeatures";
+import type { InferSelectModel } from 'drizzle-orm';
+import type { userPreferences } from '@shared/schema';
 import { useLocation } from "wouter";
+
+// Define the UserPreferences type based on the schema
+type UserPreferences = InferSelectModel<typeof userPreferences>;
 
 // Form validation schema extending the base preferences schema
 const preferencesFormSchema = z.object({
   language: z.string().min(1, "Veuillez sélectionner une langue"),
   autoplay: z.boolean(),
-  preferredGenres: z.array(z.string()).optional(),
 });
 
 type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
@@ -56,23 +58,6 @@ export default function Profile() {
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       }).then((res) => res.json());
-    },
-    enabled: !!userId && isAuthenticated,
-  });
-
-  // Query to fetch current user subscription
-  const { data: subscriptionData } = useQuery({
-    queryKey: ['/api/subscription/current'],
-    queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/subscription/current', {
-        credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch current subscription');
-      return response.json();
     },
     enabled: !!userId && isAuthenticated,
   });
@@ -103,7 +88,6 @@ export default function Profile() {
     defaultValues: {
       language: preferences?.language || "fr",
       autoplay: preferences?.autoplay ?? true,
-      preferredGenres: preferences?.preferredGenres || [],
     },
   });
 
@@ -113,7 +97,6 @@ export default function Profile() {
       form.reset({
         language: preferences.language || "fr",
         autoplay: preferences.autoplay ?? true,
-        preferredGenres: preferences.preferredGenres || [],
       });
     }
   }, [preferences, form]);
@@ -152,13 +135,6 @@ export default function Profile() {
     );
   }
 
-  // Get subscription info
-  const subscription = subscriptionData?.subscription;
-  const planId = subscription?.planId || 'free';
-  const planInfo = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.free;
-  const isSubscriptionActive = subscription?.status === 'active';
-  const subscriptionEndDate = subscription?.endDate ? new Date(subscription.endDate) : null;
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="space-y-6">
@@ -178,54 +154,6 @@ export default function Profile() {
             </div>
           </div>
         </div>
-
-        {/* Subscription Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5" />
-              Abonnement
-            </CardTitle>
-            <CardDescription>
-              Informations sur votre plan d'abonnement actuel
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <h3 className="font-medium">{planInfo.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {isSubscriptionActive ? 'Actif' : 'Inactif'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold">{planInfo.maxVideoQuality} qualité</p>
-                  <p className="text-sm text-muted-foreground">
-                    {planInfo.maxDevices === Infinity ? 'Appareils illimités' : `${planInfo.maxDevices} appareil(s)`}
-                  </p>
-                </div>
-              </div>
-              
-              {isSubscriptionActive && subscriptionEndDate && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    Valide jusqu'au {subscriptionEndDate.toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
-              )}
-              
-              <Button 
-                className="w-full" 
-                onClick={() => setLocation('/subscription')}
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Gérer mon abonnement
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         <Separator />
 
