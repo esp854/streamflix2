@@ -45,7 +45,7 @@ export function useFavorites() {
       if (!userId || !isAuthenticated) throw new Error("User not authenticated");
       
       const isMovie = data.type === 'movie';
-      const favoriteData: FavoriteData = {
+      const favoriteData = {
         userId,
         movieId: data.content.id,
         movieTitle: isMovie ? (data.content as TMDBMovie).title : (data.content as TMDBTVSeries).name,
@@ -53,10 +53,6 @@ export function useFavorites() {
         movieGenres: data.content.genre_ids?.map(id => 
           isMovie ? `Genre ${id}` : `TV Genre ${id}`
         ).slice(0, 3),
-        movieYear: isMovie 
-          ? new Date((data.content as TMDBMovie).release_date).getFullYear()
-          : (data.content as TMDBTVSeries).first_air_date ? new Date((data.content as TMDBTVSeries).first_air_date).getFullYear() : undefined,
-        addedAt: new Date().toISOString(),
       };
 
       const response = await fetch("/api/favorites", {

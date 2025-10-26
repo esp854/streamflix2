@@ -20,6 +20,9 @@ export const favorites = pgTable("favorites", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   movieId: integer("movie_id").notNull(),
+  movieTitle: text("movie_title").notNull(),
+  moviePoster: text("movie_poster"),
+  movieGenres: jsonb("movie_genres"),
   addedAt: timestamp("added_at").defaultNow().notNull(),
 });
 
