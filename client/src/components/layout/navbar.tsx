@@ -202,51 +202,6 @@ export default function Navbar() {
           </div>
         </div>
         
-        {/* Mobile Bottom Navigation - Déplacé en dehors de l'élément nav pour éviter les conflits de positionnement */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
-          <div className="flex items-center justify-around py-2 px-2">
-            <Link
-              href="/"
-              className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Home className="w-4 h-4" />
-              <span className="text-xs">Accueil</span>
-            </Link>
-
-            <Link
-              href="/films"
-              className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Film className="w-4 h-4" />
-              <span className="text-xs">Films</span>
-            </Link>
-
-            <Link
-              href="/series"
-              className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Tv className="w-4 h-4" />
-              <span className="text-xs">Séries</span>
-            </Link>
-
-            <Link
-              href="/ma-liste"
-              className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Heart className="w-4 h-4" />
-              <span className="text-xs">Favoris</span>
-            </Link>
-
-            <Link
-              href="/tendances"
-              className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span className="text-xs">Tendance</span>
-            </Link>
-          </div>
-        </div>
-        
         {/* Auth Modal */}
         <AuthModal 
           isOpen={authModalOpen} 
@@ -254,6 +209,51 @@ export default function Navbar() {
           defaultTab={authModalTab}
         />
       </nav>
+      
+      {/* Mobile Bottom Navigation - Déplacé complètement en dehors de l'élément nav pour éviter les conflits de positionnement */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="flex items-center justify-around py-2 px-2">
+          <Link
+            href="/"
+            className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Home className="w-4 h-4" />
+            <span className="text-xs">Accueil</span>
+          </Link>
+
+          <Link
+            href="/films"
+            className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/films" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Film className="w-4 h-4" />
+            <span className="text-xs">Films</span>
+          </Link>
+
+          <Link
+            href="/series"
+            className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/series" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Tv className="w-4 h-4" />
+            <span className="text-xs">Séries</span>
+          </Link>
+
+          <Link
+            href="/ma-liste"
+            className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/ma-liste" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Heart className="w-4 h-4" />
+            <span className="text-xs">Favoris</span>
+          </Link>
+
+          <Link
+            href="/tendances"
+            className={`flex flex-col items-center space-y-1 p-1 rounded-lg transition-colors ${location === "/tendances" ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-xs">Tendance</span>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
