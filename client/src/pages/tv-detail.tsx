@@ -9,7 +9,6 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
 import TVRow from "@/components/tv-row";
 import CommentsSection from "@/components/CommentsSection";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 import { EpisodeCard } from "@/components/episode-card";
 
 export default function TVDetail() {
@@ -33,7 +32,6 @@ export default function TVDetail() {
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set([1])); // First season expanded by default
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
-  const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   const { data: tvDetails, isLoading, error } = useQuery({
     queryKey: [`/api/tmdb/tv/${tvId}`],
@@ -200,13 +198,9 @@ export default function TVDetail() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">📺</div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
-          <p className="text-muted-foreground mb-6">
-            Désolé, nous n'avons pas pu charger les informations de cette série.
-          </p>
-          <Link href="/series">
-            <Button className="w-full sm:w-auto">Retour aux séries</Button>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
+          <Link href="/">
+            <Button className="w-full">Retour à l'accueil</Button>
           </Link>
         </div>
       </div>
@@ -215,73 +209,36 @@ export default function TVDetail() {
 
   if (!tvDetails) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
+      <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-not-found">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">📺</div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
-          <p className="text-muted-foreground mb-6">
-            La série que vous recherchez n'est pas disponible.
-          </p>
-          <Link href="/series">
-            <Button className="w-full sm:w-auto">Retour aux séries</Button>
+          <h1 className="text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
+          <Link href="/">
+            <Button className="w-full">Retour à l'accueil</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const { 
-    name, 
-    overview, 
-    genres, 
-    vote_average, 
-    first_air_date, 
-    last_air_date, 
-    status, 
-    number_of_seasons, 
-    number_of_episodes, 
-    episode_run_time,
-    backdrop_path,
-    poster_path,
-    created_by,
-    production_companies,
-    seasons,
-    credits
-  } = tvDetails;
-
-  // Extract cast and crew from credits
-  const cast = credits?.cast || [];
-  const crew = credits?.crew || [];
-
-  const formatEpisodeRuntime = (runtimeArray: number[]) => {
-    if (!runtimeArray || runtimeArray.length === 0) return null;
-    const avgRuntime = Math.round(runtimeArray.reduce((a, b) => a + b, 0) / runtimeArray.length);
-    return `~${avgRuntime}min/épisode`;
-  };
-
-  const getAirYears = () => {
-    if (!first_air_date) return "Date inconnue";
-    const startYear = new Date(first_air_date).getFullYear();
-    if (status === "Ended" && last_air_date) {
-      const endYear = new Date(last_air_date).getFullYear();
-      return startYear === endYear ? startYear.toString() : `${startYear}-${endYear}`;
-    }
-    return `${startYear}-en cours`;
-  };
+  const { cast, crew } = tvDetails.credits || { cast: [], crew: [] };
+  const castMembers = cast.slice(0, 8);
+  const crewMembers = crew.slice(0, 8);
 
   const toggleSeason = (seasonNumber: number) => {
-    setExpandedSeasons(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(seasonNumber)) {
-        newSet.delete(seasonNumber);
-      } else {
-        newSet.add(seasonNumber);
-      }
-      return newSet;
-    });
+    const newExpanded = new Set(expandedSeasons);
+    if (newExpanded.has(seasonNumber)) {
+      newExpanded.delete(seasonNumber);
+    } else {
+      newExpanded.add(seasonNumber);
+    }
+    setExpandedSeasons(newExpanded);
   };
 
-  // Données structurées pour la série
+  // Find the first episode to determine if we should show the watch button
+  const firstEpisode = episodesData?.episodes?.[0];
+  const hasEpisodes = episodesData?.episodes && episodesData.episodes.length > 0;
+
+  // Structured data for SEO
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "TVSeries",
@@ -289,7 +246,6 @@ export default function TVDetail() {
     "image": tmdbService.getBackdropUrl(tvDetails.backdrop_path),
     "description": tvDetails.overview,
     "datePublished": tvDetails.first_air_date,
-    "endDate": tvDetails.last_air_date,
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": tvDetails.vote_average,
@@ -298,119 +254,79 @@ export default function TVDetail() {
       "ratingCount": tvDetails.vote_count
     },
     "genre": tvDetails.genres?.map((g: any) => g.name),
-    "creator": tvDetails.created_by?.map((person: any) => person.name),
-    "actor": cast.slice(0, 5).map((person: any) => person.name),
+    "director": crewMembers.filter((person: any) => person.job === "Director").map((person: any) => person.name),
+    "actor": castMembers.slice(0, 5).map((person: any) => person.name),
     "numberOfSeasons": tvDetails.number_of_seasons,
     "numberOfEpisodes": tvDetails.number_of_episodes,
     "potentialAction": {
       "@type": "WatchAction",
-      "target": `https://streamflix2.site/watch/tv/${tvId}`
+      "target": `https://streamflix2.site/tv/${tvId}`
     }
   };
-
-  // Données structurées pour les épisodes (exemple pour le premier épisode)
-  const episodeData = tvDetails.seasons && tvDetails.seasons.length > 0 ? {
-    "@context": "https://schema.org",
-    "@type": "TVEpisode",
-    "name": `${tvDetails.name} - Saison 1 Épisode 1`,
-    "episodeNumber": 1,
-    "seasonNumber": 1,
-    "partOfSeries": {
-      "@type": "TVSeries",
-      "name": tvDetails.name
-    },
-    "potentialAction": {
-      "@type": "WatchAction",
-      "target": `https://streamflix2.site/watch/tv/${tvId}/1/1`
-    }
-  } : null;
 
   return (
     <div className="min-h-screen bg-background" data-testid="tv-detail-page">
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
-      {episodeData && (
-        <script type="application/ld+json">
-          {JSON.stringify(episodeData)}
-        </script>
-      )}
       {/* Hero Section */}
       <div className="relative h-[50vh] sm:h-[60vh] md:h-[70vh]">
         <img
-          src={tmdbService.getBackdropUrl(backdrop_path)}
-          alt={name}
+          src={tmdbService.getBackdropUrl(tvDetails.backdrop_path)}
+          alt={tvDetails.name}
           className="w-full h-full object-cover"
           data-testid="tv-backdrop"
-          onError={(e) => {
-            e.currentTarget.src = "/placeholder-backdrop.jpg";
-          }}
         />
         <div className="absolute inset-0 bg-black/50"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
 
         {/* Back button */}
-        <Link href="/series">
+        <Link href="/">
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-black/50 hover:bg-black/70 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full z-10"
+            className="absolute top-4 left-4 bg-black/50 hover:bg-black/70 text-white w-10 h-10 rounded-full z-10"
             data-testid="back-button"
           >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
 
-        {/* TV Show info */}
-        <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 md:left-8 md:bottom-8 md:right-8 z-10">
-          <h1 className="text-lg sm:text-2xl md:text-4xl font-bold text-white mb-2 sm:mb-3" data-testid="tv-title">
-            {name}
+        {/* TV show info */}
+        <div className="absolute bottom-4 left-4 right-4 md:left-8 md:bottom-8 md:right-8 z-10">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 sm:mb-3" data-testid="tv-title">
+            {tvDetails.name}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-white/80 mb-3 sm:mb-4 text-xs sm:text-sm" data-testid="tv-metadata">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-white/80 mb-3 sm:mb-4 text-sm sm:text-base" data-testid="tv-metadata">
             <span className="flex items-center space-x-1">
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>Années: {getAirYears()}</span>
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>{new Date(tvDetails.first_air_date).getFullYear()}</span>
             </span>
-            {number_of_seasons && (
-              <span className="flex items-center space-x-1">
-                <Tv className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>{number_of_seasons} saison{number_of_seasons > 1 ? 's' : ''}</span>
-              </span>
-            )}
-            {number_of_episodes && (
-              <span>{number_of_episodes} épisodes</span>
-            )}
-            {formatEpisodeRuntime(episode_run_time) && (
-              <span className="flex items-center space-x-1">
-                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span>{formatEpisodeRuntime(episode_run_time)}</span>
-              </span>
-            )}
-            <span className="hidden sm:inline">Genres: {genres?.map((g: any) => g.name).join(", ")}</span>
-
-            {vote_average > 0 && (
-              <span className="flex items-center space-x-1">
-                <Star className="w-3 h-3 fill-current" />
-                <span>{vote_average.toFixed(1)}/10</span>
-              </span>
-            )}
+            <span className="flex items-center space-x-1">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>{tvDetails.episode_run_time?.[0] || '?'} min/épisode</span>
+            </span>
+            <span className="text-sm">Genres: {tvDetails.genres?.map((g: any) => g.name).join(", ")}</span>
+            <div className="flex items-center space-x-1">
+              <Star className="w-4 h-4 text-accent fill-current" />
+              <span>{tvDetails.vote_average.toFixed(1)}/10</span>
+            </div>
           </div>
 
-          {/* Genres on mobile */}
-          <div className="sm:hidden mb-3">
-            <span className="text-white/80 text-xs">{genres?.map((g: any) => g.name).join(", ")}</span>
-          </div>
-
-          <p className="text-white/90 text-xs sm:text-sm md:text-base mb-4 sm:mb-6 leading-relaxed line-clamp-3" data-testid="tv-overview">
-            {overview}
+          <p className="text-sm sm:text-base md:text-lg text-white/90 mb-4 leading-relaxed max-w-2xl line-clamp-3" data-testid="tv-overview">
+            {tvDetails.overview}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-2" data-testid="tv-actions">
+          <div className="flex flex-col sm:flex-row gap-3" data-testid="tv-actions">
             <Button 
               onClick={() => {
-                window.location.href = `/watch/tv/${tvDetails.id}/1/1`;
+                // If user should be redirected to payment page, redirect them
+                if (hasEpisodes) {
+                  window.location.href = `/watch/tv/${tvId}/1/1`;
+                }
               }}
+              disabled={!hasEpisodes}
               className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto" 
               data-testid="button-watch"
             >

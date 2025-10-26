@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
+﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Globe, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,12 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { useShare } from "@/hooks/use-share";
 import MovieRow from "@/components/movie-row";
 import CommentsSection from "@/components/CommentsSection";
-import { useSubscriptionCheck } from "@/hooks/useSubscriptionCheck";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
-  const { shouldRedirectToPayment } = useSubscriptionCheck();
 
   const { data: movieDetails, isLoading } = useQuery({
     queryKey: [`/api/tmdb/movie/${movieId}`],

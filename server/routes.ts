@@ -1382,16 +1382,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send notification (admin only)
   app.post("/api/admin/notifications/send", requireAdmin, async (req, res) => {
     try {
-      const notificationData = insertNotificationSchema.parse(req.body);
-      const notification = await storage.createNotification(notificationData);
+      // Extraire les données de la requête
+      const { userId, title, message, type } = req.body;
+      
+      // Valider les données requises
+      if (!userId || !title || !message) {
+        return res.status(400).json({ error: "userId, title and message are required" });
+      }
+      
+      // Créer la notification avec les données validées
+      const notification = await storage.createNotification({
+        userId,
+        title,
+        message,
+        type: type || "info"
+      });
+      
       res.json(notification);
     } catch (error) {
       console.error("Error sending notification:", error);
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid notification data", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to send notification" });
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  // Send announcement to all users (admin only)
+  app.post("/api/admin/notifications/announcement", requireAdmin, async (req, res) => {
+    try {
+      const { subject, message } = req.body;
+      
+      // Validate input
+      if (!subject || !message) {
+        return res.status(400).json({ error: "Subject and message are required" });
       }
+      
+      // Send announcement to all users using storage method
+      const notifications = await storage.sendAnnouncementToAllUsers(subject, message);
+      
+      res.json({ 
+        success: true, 
+        notificationsCount: notifications.length,
+        message: `Annonce envoyée à ${notifications.length} utilisateurs`
+      });
+    } catch (error) {
+      console.error("Error sending announcement:", error);
+      res.status(500).json({ error: "Failed to send announcement" });
     }
   });
 
