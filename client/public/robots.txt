@@ -5,7 +5,6 @@ Disallow: /api/admin/
 Disallow: /private/
 Disallow: /login
 Disallow: /register
-Disallow: /watch/
 
 Sitemap: https://streamflix2.site/sitemap.xml
 
@@ -29,11 +28,6 @@ Allow: /
 
 User-agent: Googlebot-Video
 Allow: /
-
-User-agent: *
-Disallow: /watch/
-Disallow: /api/
-Disallow: /admin/
 
 # Internationalisation - permettre l'indexation des versions linguistiques
 Allow: /en/
