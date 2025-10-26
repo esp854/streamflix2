@@ -106,31 +106,6 @@ export const validateCSRFToken = (userId: string, token: string, userAgent: stri
     return false;
   }
   
-  // Check if user agent matches
-  if (record.userAgent !== userAgent) {
-    delete csrfTokens[userId];
-    return false;
-  }
-  
-  // Check if IP address matches (loosely - same subnet)
-  if (record.ipAddress !== ipAddress) {
-    // For IPv4, check if first 3 octets match
-    const recordIpParts = record.ipAddress.split('.');
-    const currentIpParts = ipAddress.split('.');
-    if (recordIpParts.length === 4 && currentIpParts.length === 4) {
-      if (recordIpParts[0] !== currentIpParts[0] || 
-          recordIpParts[1] !== currentIpParts[1] || 
-          recordIpParts[2] !== currentIpParts[2]) {
-        delete csrfTokens[userId];
-        return false;
-      }
-    } else {
-      // For other IP formats, delete the token
-      delete csrfTokens[userId];
-      return false;
-    }
-  }
-  
   // Check if token matches
   const isValid = record.token === token;
   
