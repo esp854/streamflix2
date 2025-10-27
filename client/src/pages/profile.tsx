@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Helmet } from "react-helmet";
 import AuthModal from "@/components/auth/auth-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,7 +15,6 @@ import { useAuth } from "@/contexts/auth-context";
 import type { InferSelectModel } from 'drizzle-orm';
 import type { userPreferences } from '@shared/schema';
 import { useLocation } from "wouter";
-import AuthModal from "@/components/AuthModal";
 
 // Define the UserPreferences type based on the schema
 type UserPreferences = InferSelectModel<typeof userPreferences>;
