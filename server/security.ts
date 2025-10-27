@@ -106,31 +106,6 @@ export const validateCSRFToken = (userId: string, token: string, userAgent: stri
     return false;
   }
   
-  // Check if user agent matches
-  if (record.userAgent !== userAgent) {
-    delete csrfTokens[userId];
-    return false;
-  }
-  
-  // Check if IP address matches (loosely - same subnet)
-  if (record.ipAddress !== ipAddress) {
-    // For IPv4, check if first 3 octets match
-    const recordIpParts = record.ipAddress.split('.');
-    const currentIpParts = ipAddress.split('.');
-    if (recordIpParts.length === 4 && currentIpParts.length === 4) {
-      if (recordIpParts[0] !== currentIpParts[0] || 
-          recordIpParts[1] !== currentIpParts[1] || 
-          recordIpParts[2] !== currentIpParts[2]) {
-        delete csrfTokens[userId];
-        return false;
-      }
-    } else {
-      // For other IP formats, delete the token
-      delete csrfTokens[userId];
-      return false;
-    }
-  }
-  
   // Check if token matches
   const isValid = record.token === token;
   
@@ -146,19 +121,16 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
       req.path === '/api/auth/login' || req.path === '/api/auth/register' ||
       req.path.startsWith('/api/favorites/') || req.path === '/api/favorites' ||
       req.path.startsWith('/api/watch-history/') || req.path === '/api/watch-history' ||
-      req.path.startsWith('/api/watch-progress/') || req.path === '/api/watch-progress') {
+      req.path.startsWith('/api/watch-progress/') || req.path === '/api/watch-progress' ||
+      req.path === '/api/csrf-token') {
     return next();
   }
   
   // For state-changing requests, validate CSRF token
   const csrfToken = req.headers['x-csrf-token'] as string || req.body._csrf;
   
-  // Get user agent and IP address
-  const userAgent = req.headers['user-agent'] || '';
-  const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-  
-  if (req.user && (!csrfToken || !validateCSRFToken(req.user.userId, csrfToken, userAgent, ipAddress))) {
-    securityLogger.logCSRFViolation(req.user.userId, ipAddress);
+  if (req.user && (!csrfToken || !validateCSRFToken(req.user.userId, csrfToken, '', ''))) {
+    securityLogger.logCSRFViolation(req.user.userId, req.ip || 'unknown');
     return res.status(403).json({ error: 'Invalid CSRF token' });
   }
   

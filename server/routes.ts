@@ -2393,29 +2393,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeSessions = await storage.getActiveSessions();
       const activeSessionsCount = activeSessions.length;
       
-      // Calculate revenue
-      const allPayments = await storage.getPayments();
-      const monthlyPayments = allPayments.filter(payment => {
-        const paymentDate = new Date(payment.createdAt);
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        return paymentDate >= oneMonthAgo;
-      });
-      
-      const monthlyRevenue = monthlyPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      
-      // Calculate growth (simplified - comparing this month to last month)
-      const twoMonthsAgo = new Date();
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-      const lastMonthPayments = allPayments.filter(payment => {
-        const paymentDate = new Date(payment.createdAt);
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        return paymentDate >= twoMonthsAgo && paymentDate < oneMonthAgo;
-      });
-      
-      const lastMonthRevenue = lastMonthPayments.reduce((sum, payment) => sum + payment.amount, 0);
-      const growth = lastMonthRevenue > 0 ? Math.round(((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+      // Calculate revenue (simplified since payments are removed)
+      const monthlyRevenue = 0;
+      const growth = 0;
       
       // Subscription plan counts
       const basicCount = activeSubscriptions.filter(s => s.planId === 'basic').length;
@@ -2449,7 +2429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         revenue: {
           monthly: monthlyRevenue,
           growth,
-          totalPayments: allPayments.length
+          totalPayments: 0
         },
         subscriptions: {
           basic: basicCount,
@@ -2467,6 +2447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching analytics data:", error);
       res.status(500).json({ error: "Failed to fetch analytics data" });
     }
+  });
+
   });
 
   // Analytics stream (SSE) - simplified implementation
