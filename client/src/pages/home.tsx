@@ -190,41 +190,48 @@ export default function Home() {
         <TelegramBanner />
       </div>
 
-      {/* Movie Sections */}
-      <div className="space-y-6 sm:space-y-8">
-        <MovieRow
-          title="Films Populaires"
-          movies={allPopularMovies || []}
-          isLoading={popularLoading || localContentLoading}
-        />
+      {/* Main content with H1 for SEO */}
+      <main>
+        <h1 className="sr-only">StreamFlix - Films et Séries en Streaming HD</h1>
         
-        {activeSections.includes('action') && (
+        {/* Movie Sections */}
+        <div className="space-y-6 sm:space-y-8">
           <MovieRow
-            title="Films d'Action"
-            movies={actionMovies || []}
-            isLoading={actionLoading}
+            title="Films Populaires"
+            movies={allPopularMovies || []}
+            isLoading={popularLoading || localContentLoading}
           />
-        )}
+          
+          {activeSections.includes('action') && (
+            <MovieRow
+              title="Films d'Action"
+              movies={actionMovies || []}
+              isLoading={actionLoading}
+            />
+          )}
+          
+          {activeSections.includes('comedy') && (
+            <MovieRow
+              title="Comédies"
+              movies={comedyMovies || []}
+              isLoading={comedyLoading}
+            />
+          )}
+          
+          {activeSections.includes('horror') && (
+            <MovieRow
+              title="Films d'Horreur"
+              movies={horrorMovies || []}
+              isLoading={horrorLoading}
+            />
+          )}
+        </div>
         
-        {activeSections.includes('comedy') && (
-          <MovieRow
-            title="Comédies"
-            movies={comedyMovies || []}
-            isLoading={comedyLoading}
-          />
-        )}
-        
-        {activeSections.includes('horror') && (
-          <MovieRow
-            title="Films d'Horreur"
-            movies={horrorMovies || []}
-            isLoading={horrorLoading}
-          />
-        )}
-      </div>
-      
-      {/* Categories */}
-      <CategoryGrid />
+        {/* Category Grid */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <CategoryGrid />
+        </div>
+      </main>
     </div>
   );
 }
