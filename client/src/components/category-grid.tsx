@@ -52,18 +52,9 @@ export default function CategoryGrid() {
               <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 blur-xl -z-10" />
             </span>
           </h2>
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4 sm:px-0 mb-6">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
             Explorez notre vaste collection organisée par genres pour trouver exactement ce que vous cherchez
           </p>
-          
-          {/* Additional SEO content */}
-          <div className="max-w-4xl mx-auto text-center mt-8 sm:mt-10">
-            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-              Notre plateforme de streaming vous offre un accès illimité à une bibliothèque en constante 
-              expansion de films et séries. Chaque genre est soigneusement sélectionné pour répondre aux 
-              goûts les plus divers, des blockbusters aux pépites méconnues.
-            </p>
-          </div>
         </div>
         
         {/* Enhanced Grid with improved animations */}
