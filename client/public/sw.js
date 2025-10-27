@@ -1,73 +1,3 @@
-// Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.7.1';
-const STATIC_CACHE = 'streamflix-static-v1.7.1';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.1';
-const IMAGE_CACHE = 'streamflix-images-v1.7.1';
-
-// Resources to cache immediately
-const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/index.html',
-  // PWA Icons
-  '/apple-icon-180.png',
-  '/favicon-196.png',
-  '/manifest-icon-192.maskable.png',
-  '/manifest-icon-512.maskable.png',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
-  '/mstile-icon-128.png',
-  '/mstile-icon-270.png',
-  '/mstile-icon-558.png',
-  '/mstile-icon-558-270.png'
-];
-
-// Install event - cache static assets
-self.addEventListener('install', (event) => {
-  console.log('[SW] Install event');
-  event.waitUntil(
-    Promise.all([
-      caches.open(STATIC_CACHE)
-        .then((cache) => {
-          console.log('[SW] Caching static assets');
-          return cache.addAll(STATIC_ASSETS).catch((error) => {
-            console.error('[SW] Failed to cache static assets:', error);
-            // Continue installation even if caching fails
-            return Promise.resolve();
-          });
-        }),
-      // Pre-cache critical CSS/JS chunks
-      caches.open(DYNAMIC_CACHE)
-        .then((cache) => {
-          // Add critical resources that should be cached during install
-          return Promise.resolve();
-        })
-    ]).then(() => {
-      return self.skipWaiting();
-    })
-  );
-});
-
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate event');
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE) {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-          return Promise.resolve();
-        })
-      );
-    }).then(() => {
-      return self.clients.claim();
-    })
-  );
-});
-
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -207,47 +137,36 @@ self.addEventListener('fetch', (event) => {
                   // Cache the response
                   caches.open(DYNAMIC_CACHE)
                     .then((cache) => {
-                      cache.put(request, responseWithCacheTime);
+                      cache.put(request, responseClone);
                     })
                     .catch((error) => {
                       console.error('[SW] Failed to cache TMDB response:', error);
                     });
+
+                  return responseWithCacheTime;
                 }
                 return response;
               })
               .catch((error) => {
-                console.log('[SW] TMDB fetch error, trying cache:', error, url.href);
-                // Return cached response if available, even if stale
-                return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
+                console.error('[SW] TMDB fetch failed:', error);
+                // If fetch fails, try to return cached response even if stale
+                if (cachedResponse) {
+                  console.log('[SW] Returning stale TMDB cache due to network error');
+                  return cachedResponse;
+                }
+                return new Response(null, { status: 503, statusText: 'Offline' });
               });
           })
       );
       return;
     }
-
-    // For content API, bypass cache to ensure fresh data
-    if (url.pathname.includes('/api/content')) {
-      event.respondWith(
-        fetch(request)
-          .then((response) => {
-            console.log('[SW] Content API response (bypass cache):', response.status, response.type, url.href);
-            return response;
-          })
-          .catch((error) => {
-            console.log('[SW] Content API fetch error:', error, url.href);
-            throw error;
-          })
-      );
-      return;
-    }
     
-    // For other API requests, use normal caching
+    // For other API requests, use network-first strategy
     event.respondWith(
       fetch(request)
         .then((response) => {
-          console.log('[SW] API response:', response.status, response.type, url.href);
-          // Only cache successful API responses with a valid response
-          if (response && response.status === 200 && response.type === 'cors') {
+          // If successful, cache the response
+          if (response && response.status === 200) {
             const responseClone = response.clone();
             caches.open(DYNAMIC_CACHE)
               .then((cache) => {
@@ -260,197 +179,96 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch((error) => {
-          console.log('[SW] API fetch error:', error, url.href);
-          // Return cached API response if available
-          return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || new Response(null, { status: 503, statusText: 'Offline' });
-          });
+          console.error('[SW] API fetch failed:', error);
+          // If network fails, try to return cached response
+          return caches.match(request)
+            .then((cachedResponse) => {
+              if (cachedResponse) {
+                console.log('[SW] Returning cached API response due to network error');
+                return cachedResponse;
+              }
+              return new Response(null, { status: 503, statusText: 'Offline' });
+            });
         })
     );
     return;
   }
 
-  // Handle static assets (JS, CSS, etc.) - try network first
-  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'font' || request.destination === 'image') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful responses
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(DYNAMIC_CACHE)
-              .then((cache) => {
-                cache.put(request, responseClone);
-              })
-              .catch((error) => {
-                console.error('[SW] Failed to cache asset:', error);
-              });
-          }
-          return response;
-        })
-        .catch((error) => {
-          console.error('[SW] Asset fetch failed:', error);
-          // Try to get from cache
-          return caches.match(request);
-        })
-    );
-    return;
-  }
+  // Handle static assets with cache-first strategy
+  // Check if this is a static asset (CSS, JS, images, etc.)
+  const isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/i.test(url.pathname) ||
+    STATIC_ASSETS.includes(url.pathname) ||
+    url.pathname === '/' ||
+    url.pathname === '/index.html';
 
-  // Handle navigation requests (HTML pages) with stale-while-revalidate strategy
-  if (request.mode === 'navigate') {
+  if (isStaticAsset) {
     event.respondWith(
-      caches.open(DYNAMIC_CACHE).then((cache) => {
-        return cache.match('/index.html').then((cachedResponse) => {
-          // Fetch fresh version in background
-          const networkResponse = fetch(request).then((response) => {
-            // Cache successful responses
-            if (response && response.status === 200) {
-              cache.put('/index.html', response.clone());
-            }
-            return response;
-          }).catch(() => {
-            // If network fails, return cached response if available
+      caches.match(request)
+        .then((cachedResponse) => {
+          // Return cached response if available
+          if (cachedResponse) {
+            console.log('[SW] Cache hit for static asset:', url.href);
             return cachedResponse;
-          });
-
-          // Return cached version immediately if available, otherwise wait for network
-          return cachedResponse || networkResponse;
-        });
-      }).catch((error) => {
-        console.error('[SW] Cache operation failed:', error);
-        // Fallback to network if cache operations fail
-        return fetch(request);
-      })
+          }
+          
+          // Fetch from network and cache
+          console.log('[SW] Cache miss for static asset, fetching from network:', url.href);
+          return fetch(request)
+            .then((response) => {
+              // Check if we received a valid response
+              if (!response || response.status !== 200 || response.type !== 'basic') {
+                return response;
+              }
+              
+              // Clone response and cache it
+              const responseClone = response.clone();
+              caches.open(STATIC_CACHE)
+                .then((cache) => {
+                  cache.put(request, responseClone);
+                })
+                .catch((error) => {
+                  console.error('[SW] Failed to cache static asset:', error);
+                });
+              
+              return response;
+            })
+            .catch((error) => {
+              console.error('[SW] Static asset fetch failed:', error);
+              return new Response(null, { status: 503, statusText: 'Offline' });
+            });
+        })
     );
     return;
   }
 
-  // For other requests, try network first, then cache
+  // For all other requests, use network-first strategy
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses
-        if (response && response.status === 200) {
+        // If successful, cache the response for dynamic content
+        if (response && response.status === 200 && response.type === 'basic') {
           const responseClone = response.clone();
           caches.open(DYNAMIC_CACHE)
             .then((cache) => {
               cache.put(request, responseClone);
             })
             .catch((error) => {
-              console.error('[SW] Failed to cache response:', error);
+              console.error('[SW] Failed to cache dynamic content:', error);
             });
         }
         return response;
       })
       .catch((error) => {
-        console.error('[SW] Fetch failed:', error);
-        // Try to get from cache
-        return caches.match(request);
+        console.error('[SW] Network request failed:', error);
+        // If network fails, try to return cached response
+        return caches.match(request)
+          .then((cachedResponse) => {
+            if (cachedResponse) {
+              console.log('[SW] Returning cached response due to network error');
+              return cachedResponse;
+            }
+            return new Response(null, { status: 503, statusText: 'Offline' });
+          });
       })
   );
 });
-
-// Background sync for offline actions
-self.addEventListener('sync', (event) => {
-  console.log('[SW] Background sync:', event.tag);
-
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-// Message handler for cache invalidation
-self.addEventListener('message', (event) => {
-  if (event.data.command === 'CLEAR_API_CACHE') {
-    clearAPICache();
-  } else if (event.data.command === 'CLEAR_TMDB_CACHE') {
-    clearTMDBCache();
-  }
-});
-
-// Push notifications
-self.addEventListener('push', (event) => {
-  console.log('[SW] Push received:', event);
-
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body,
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: data.primaryKey
-      }
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-    );
-  }
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification click:', event);
-  event.notification.close();
-
-  event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/')
-  );
-});
-
-// Background sync function
-async function doBackgroundSync() {
-  try {
-    // Implement background sync logic here
-    // For example, sync offline favorites, watch history, etc.
-    console.log('[SW] Performing background sync');
-  } catch (error) {
-    console.error('[SW] Background sync failed:', error);
-  }
-}
-
-// Periodic background sync (if supported)
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'content-sync') {
-    event.waitUntil(syncContent());
-  }
-});
-
-async function syncContent() {
-  try {
-    console.log('[SW] Periodic content sync');
-    // Update cached content in background
-  } catch (error) {
-    console.error('[SW] Content sync failed:', error);
-  }
-}
-
-// Add a function to clear specific cached API responses
-function clearAPICache() {
-  caches.open(DYNAMIC_CACHE).then(cache => {
-    // Delete all API responses from cache
-    cache.keys().then(keys => {
-      keys.forEach(request => {
-        if (request.url.includes('/api/')) {
-          cache.delete(request);
-        }
-      });
-    });
-  });
-}
-
-// Function to clear TMDB cache specifically
-function clearTMDBCache() {
-  caches.open(DYNAMIC_CACHE).then(cache => {
-    cache.keys().then(keys => {
-      keys.forEach(request => {
-        if (request.url.includes('/api/tmdb/')) {
-          cache.delete(request);
-          console.log('[SW] Cleared TMDB cache for:', request.url);
-        }
-      });
-    });
-  });
-}
