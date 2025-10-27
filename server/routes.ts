@@ -2448,9 +2448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch analytics data" });
     }
   });
-
-  });
-
+  
   // Analytics stream (SSE) - simplified implementation
   app.get("/api/admin/analytics/stream", requireAdmin, (req: any, res: any) => {
     try {
