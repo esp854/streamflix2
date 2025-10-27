@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
+﻿﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";

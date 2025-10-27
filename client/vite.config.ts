@@ -46,22 +46,17 @@ export default defineConfig({
   },
   root: ".",
   build: {
-    outDir: "../dist",
+    outDir: "../dist/public",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
+    // Optimize bundle splitting
     rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'index.html')
-      },
       output: {
-        entryFileNames: 'assets/[name].[hash].js',
-        chunkFileNames: 'assets/[name].[hash].js',
-        assetFileNames: 'assets/[name].[hash].[ext]',
         manualChunks: {
           // Separate vendor chunks for better caching
           vendor: ['react', 'react-dom', 'wouter'],
           utils: ['@/lib/utils', '@/lib/tmdb'],
-          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck']
+          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
         }
       }
     }

@@ -20,8 +20,7 @@ app.use((req, res, next) => {
 });
 
 // Servir les fichiers statiques (doit être avant le middleware de sécurité)
-// Correction du chemin pour servir les fichiers statiques
-app.use(express.static(path.join(__dirname, '../dist')));
+app.use(express.static(path.join(__dirname, '../dist/public')));
 
 // Middleware de sécurité pour les requêtes API uniquement
 app.use('/api', (req, res, next) => {
@@ -48,7 +47,7 @@ registerRoutes(app);
 
 // Route catch-all pour React Router (doit être après les routes API)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '../dist/public', 'index.html'));
 });
 
 // Configuration Socket.IO pour Watch Party
