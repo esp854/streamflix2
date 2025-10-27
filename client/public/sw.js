@@ -1,8 +1,8 @@
 // Service Worker for StreamFlix PWA
-const CACHE_NAME = 'streamflix-v1.7.3';
-const STATIC_CACHE = 'streamflix-static-v1.7.3';
-const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.3';
-const IMAGE_CACHE = 'streamflix-images-v1.7.3';
+const CACHE_NAME = 'streamflix-v1.7.4';
+const STATIC_CACHE = 'streamflix-static-v1.7.4';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.4';
+const IMAGE_CACHE = 'streamflix-images-v1.7.4';
 
 // Resources to cache immediately
 const STATIC_ASSETS = [
@@ -79,14 +79,31 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
 
-  // Allow requests to PayPal, Google, Zupload, HilltopAds and silent-basis domains
+  // Domains that should not be cached by this service worker
+  const excludedDomains = [
+    'pagead2.googlesyndication.com',
+    'google-analytics.com',
+    'googletagmanager.com',
+    'doubleclick.net',
+    'adservice.google.com',
+    'adtrafficquality.google.com'
+  ];
+
+  // Check if this is an excluded domain
+  const isExcludedDomain = excludedDomains.some(domain => url.hostname.includes(domain));
+  
+  if (isExcludedDomain) {
+    // For excluded domains, bypass service worker and fetch directly
+    console.log('[SW] Bypassing service worker for excluded domain:', url.hostname);
+    return;
+  }
+
+  // Allow requests to PayPal, Zupload, HilltopAds and silent-basis domains
   const allowedExternalDomains = [
     'www.paypal.com',
     'www.paypalobjects.com',
     'api.paypal.com',
     'www.sandbox.paypal.com',
-    'www.googletagmanager.com',
-    'www.google-analytics.com',
     'zupload.co',
     'zupload.cc',
     'zupload.io',
