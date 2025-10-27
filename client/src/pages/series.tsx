@@ -297,12 +297,13 @@ export default function Series() {
             <div className="relative z-10 h-full flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-2xl">
-                  <h1 
+                  {/* Changement de h1 à h2 pour éviter les balises H1 multiples */}
+                  <h2 
                     className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 line-clamp-2" 
                     data-testid="series-hero-title"
                   >
                     {getTitle(heroSeries[currentSlide])}
-                  </h1>
+                  </h2>
                   
                   <p 
                     className="text-lg sm:text-xl text-white/90 mb-6 line-clamp-3" 

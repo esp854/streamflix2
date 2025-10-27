@@ -255,7 +255,8 @@ export default function MoviesPage() {
               Retour
             </Link>
           </Button>
-          <h1 className="text-2xl md:text-3xl font-bold">Films</h1>
+          {/* Changement de h1 à h2 pour éviter les balises H1 multiples */}
+          <h2 className="text-2xl md:text-3xl font-bold">Films</h2>
         </div>
         
         <div className="space-y-12">
