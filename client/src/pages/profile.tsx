@@ -1,35 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Settings, Save, User } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import { Helmet } from "react-helmet";
+import AuthModal from "@/components/auth/auth-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/auth-context";
 import type { InferSelectModel } from 'drizzle-orm';
 import type { userPreferences } from '@shared/schema';
 import { useLocation } from "wouter";
+import AuthModal from "@/components/AuthModal";
 
 // Define the UserPreferences type based on the schema
 type UserPreferences = InferSelectModel<typeof userPreferences>;
@@ -43,9 +29,24 @@ const preferencesFormSchema = z.object({
 type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
 
 export default function Profile() {
+  const { user, logout } = useAuth();
+  const [location] = useLocation();
+  const [activeTab, setActiveTab] = useState("profile");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    username: user?.username || "",
+    email: user?.email || "",
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteForm, setDeleteForm] = useState({ password: "" });
+  const [deleteError, setDeleteError] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [subscriptionError, setSubscriptionError] = useState("");
+  const [subscriptionData, setSubscriptionData] = useState<any | null>(null);
+
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
   const userId = user?.id; // Extract user ID for type safety
 
   // Query to fetch current user preferences
@@ -59,7 +60,7 @@ export default function Profile() {
         },
       }).then((res) => res.json());
     },
-    enabled: !!userId && isAuthenticated,
+    enabled: !!userId,
   });
 
   // Mutation to update preferences
@@ -106,17 +107,34 @@ export default function Profile() {
   };
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-            <User className="w-8 h-8 text-muted-foreground" />
+      <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        {/* Ajout de la balise meta pour empêcher l'indexation */}
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Connectez-vous pour accéder à votre profil</h1>
+            <p className="mt-2 text-muted-foreground">
+              Vous devez être connecté pour voir cette page
+            </p>
           </div>
-          <h1 className="text-2xl font-bold">Connectez-vous pour accéder à votre profil</h1>
-          <p className="text-muted-foreground">
-            Vous devez être connecté pour voir et modifier vos préférences.
-          </p>
+          
+          <div className="mt-8">
+            <AuthModal 
+              isOpen={true} 
+              onClose={() => {
+                // Redirect to home or previous page
+                window.location.href = '/';
+              }} 
+              defaultTab="login"
+            />
+          </div>
         </div>
       </div>
     );

@@ -5,6 +5,8 @@ Disallow: /api/admin/
 Disallow: /private/
 Disallow: /login
 Disallow: /register
+Disallow: /profil
+Disallow: /ma-liste
 
 Sitemap: https://streamflix2.site/sitemap.xml
 
@@ -38,7 +40,7 @@ Allow: /fr/
 Allow: /$
 Allow: /films$
 Allow: /series$
-Allow: /tendance$
+Allow: /tendances$
 
 # Optimisation de l'indexation
 Disallow: /*?*

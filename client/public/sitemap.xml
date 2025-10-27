@@ -54,28 +54,6 @@
   </url>
   
   <url>
-    <loc>https://streamflix2.site/ma-liste</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/ma-liste" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/my-list" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/mi-lista" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/ma-liste" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/profil</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/profil" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/profile" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/perfil" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/profil" />
-  </url>
-  
-  <url>
     <loc>https://streamflix2.site/category/28</loc>
     <lastmod>2025-10-26</lastmod>
     <changefreq>daily</changefreq>

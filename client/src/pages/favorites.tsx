@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { tmdbService } from "@/lib/tmdb";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Favorite } from "@shared/schema";
+import { Helmet } from "react-helmet";
 
 export default function Favorites() {
   const { toast } = useToast();
@@ -31,7 +31,7 @@ export default function Favorites() {
       if (!response.ok) {
         throw new Error("Failed to fetch favorites");
       }
-      return response.json() as Promise<Favorite[]>;
+      return response.json() as Promise<any[]>;
     },
     enabled: !!userId && isAuthenticated,
   });
@@ -77,6 +77,9 @@ export default function Favorites() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background py-8" data-testid="favorites-page-unauthenticated">
+        <Helmet>
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <div className="text-8xl mb-6">🔒</div>
@@ -212,7 +215,7 @@ export default function Favorites() {
 }
 
 interface FavoriteMovieCardProps {
-  favorite: Favorite;
+  favorite: any;
   onRemove: (movieId: number, movieTitle: string) => void;
   isRemoving: boolean;
 }
