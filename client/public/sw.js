@@ -1,3 +1,73 @@
+// Service Worker for StreamFlix PWA
+const CACHE_NAME = 'streamflix-v1.7.3';
+const STATIC_CACHE = 'streamflix-static-v1.7.3';
+const DYNAMIC_CACHE = 'streamflix-dynamic-v1.7.3';
+const IMAGE_CACHE = 'streamflix-images-v1.7.3';
+
+// Resources to cache immediately
+const STATIC_ASSETS = [
+  '/',
+  '/manifest.json',
+  '/index.html',
+  // PWA Icons
+  '/apple-icon-180.png',
+  '/favicon-196.png',
+  '/manifest-icon-192.maskable.png',
+  '/manifest-icon-512.maskable.png',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+  '/mstile-icon-128.png',
+  '/mstile-icon-270.png',
+  '/mstile-icon-558.png',
+  '/mstile-icon-558-270.png'
+];
+
+// Install event - cache static assets
+self.addEventListener('install', (event) => {
+  console.log('[SW] Install event');
+  event.waitUntil(
+    Promise.all([
+      caches.open(STATIC_CACHE)
+        .then((cache) => {
+          console.log('[SW] Caching static assets');
+          return cache.addAll(STATIC_ASSETS).catch((error) => {
+            console.error('[SW] Failed to cache static assets:', error);
+            // Continue installation even if caching fails
+            return Promise.resolve();
+          });
+        }),
+      // Pre-cache critical CSS/JS chunks
+      caches.open(DYNAMIC_CACHE)
+        .then((cache) => {
+          // Add critical resources that should be cached during install
+          return Promise.resolve();
+        })
+    ]).then(() => {
+      return self.skipWaiting();
+    })
+  );
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activate event');
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE) {
+            console.log('[SW] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+          return Promise.resolve();
+        })
+      );
+    }).then(() => {
+      return self.clients.claim();
+    })
+  );
+});
+
 // Fetch event - serve cached content when offline
 self.addEventListener('fetch', (event) => {
   const { request } = event;
