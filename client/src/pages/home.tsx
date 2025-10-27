@@ -194,6 +194,29 @@ export default function Home() {
       <main>
         <h1 className="sr-only">StreamFlix - Films et Séries en Streaming HD</h1>
         
+        {/* SEO Content Section */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-border/30">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+              StreamFlix — Votre plateforme de streaming moderne
+            </h2>
+            <p className="text-muted-foreground mb-4 text-base sm:text-lg leading-relaxed">
+              Regardez vos films et séries préférés en ligne, sans interruption. StreamFlix vous offre 
+              une expérience de visionnage exceptionnelle avec une vaste collection de contenus en 
+              streaming HD légal, sans publicité intrusive.
+            </p>
+            <p className="text-muted-foreground mb-4 text-base sm:text-lg leading-relaxed">
+              Découvrez des milliers de films, des séries populaires, des documentaires captivants 
+              et bien plus encore. Notre plateforme propose un catalogue diversifié pour tous les goûts, 
+              accessible 24h/24 depuis n'importe quel appareil.
+            </p>
+            <p className="text-muted-foreground text-base sm:text-lg leading-relaxed">
+              Que vous soyez amateur de films d'action, de comédies, de drames ou de séries internationales, 
+              StreamFlix est votre destination idéale pour le divertissement en streaming.
+            </p>
+          </div>
+        </div>
+        
         {/* Movie Sections */}
         <div className="space-y-6 sm:space-y-8">
           <MovieRow
