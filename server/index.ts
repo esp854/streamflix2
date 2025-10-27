@@ -19,8 +19,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware de sécurité pour les requêtes
-app.use((req, res, next) => {
+// Servir les fichiers statiques (doit être avant le middleware de sécurité)
+app.use(express.static(path.join(__dirname, '../dist/public')));
+
+// Middleware de sécurité pour les requêtes API uniquement
+app.use('/api', (req, res, next) => {
   securityLogger.logEvent({
     timestamp: new Date(),
     eventType: 'UNAUTHORIZED_ACCESS', // Utiliser un type d'événement valide
@@ -38,9 +41,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
-// Servir les fichiers statiques
-app.use(express.static(path.join(__dirname, '../dist/public')));
 
 // Enregistrer les routes API
 registerRoutes(app);
