@@ -1656,7 +1656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'vimeo.com',
         'mux.com',
         'player.mux.com',
-        'frembed.cfd', // Ajout du domaine Frembed
+        'frembed.cfd',
+        'frembed.fun',
+        'frembed.mom', // Nouveau domaine Frembed
         'zupload.ws',
         'zupload.com',
         'embed',
