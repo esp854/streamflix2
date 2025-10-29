@@ -1695,9 +1695,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: updatedContent 
         });
       } else {
-        // Return error if content doesn't exist
-        return res.status(404).json({ 
-          error: "Content not found. Please add the content first before adding a video link." 
+        // Create new content with video URL if it doesn't exist
+        const newContent = {
+          tmdbId: tmdbId,
+          title: `Content ${tmdbId}`,
+          description: '',
+          posterPath: '',
+          backdropPath: '',
+          releaseDate: '',
+          genres: '[]',
+          odyseeUrl: cleanVideoUrl,
+          language: 'fr',
+          quality: 'auto',
+          mediaType: 'movie', // default to movie
+          active: true
+        };
+        
+        const createdContent = await storage.createContent(newContent);
+        
+        res.status(201).json({ 
+          success: true, 
+          message: "Contenu et lien vidéo créés avec succès", 
+          content: createdContent 
         });
       }
     } catch (error) {
