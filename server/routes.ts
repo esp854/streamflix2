@@ -1657,6 +1657,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'mux.com',
         'player.mux.com',
         'frembed.cfd', // Ajout du domaine Frembed
+        'zupload.ws',
+        'zupload.com',
+        'embed',
         '.mp4',
         '.webm',
         '.ogg',
@@ -1676,7 +1679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isSupported) {
         return res.status(400).json({ 
           error: "URL is not from a recognized video platform",
-          supported_platforms: "Odysee, YouTube, Vimeo, Mux, Frembed, and direct video files"
+          supported_platforms: "Odysee, YouTube, Vimeo, Mux, Frembed, Zupload, and direct video files"
         });
       }
       
