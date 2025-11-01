@@ -8,7 +8,7 @@ Disallow: /register
 Disallow: /profil
 Disallow: /ma-liste
 
-Sitemap: https://streamflix2.site/api/sitemap.xml
+Sitemap: https://streamflix2.site/sitemap.xml
 
 Host: streamflix2.site
 
