@@ -54,9 +54,11 @@ export default function Navbar() {
             {/* Logo - Ajusté pour mobile */}
             <div className="flex items-center space-x-4 sm:space-x-8">
               <Link href="/" className="text-lg sm:text-xl md:text-2xl font-bold text-primary flex items-center" data-testid="logo-link">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-1 sm:mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
+                <img 
+                  src="/logo.png" 
+                  alt="Logo StreamFlix" 
+                  className="w-6 h-6 sm:w-7 sm:h-7 mr-1 sm:mr-2 object-contain"
+                />
                 <span>StreamFlix</span>
               </Link>
               

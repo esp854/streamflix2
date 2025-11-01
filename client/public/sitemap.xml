@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  NOTE: This static sitemap is deprecated. 
+  Please use /api/sitemap.xml for the dynamically generated sitemap.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
@@ -54,156 +58,13 @@
   </url>
   
   <url>
-    <loc>https://streamflix2.site/category/28</loc>
+    <loc>https://streamflix2.site/search</loc>
     <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/28" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/28" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/28" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/28" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/12</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/12" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/12" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/12" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/12" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/16</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/16" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/16" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/16" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/16" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/35</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/35" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/35" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/35" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/35" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/80</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/80" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/80" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/80" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/80" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/18</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/18" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/18" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/18" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/18" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10759</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10759" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10759" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10759" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10759" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10762</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10762" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10762" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10762" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10762" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10763</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10763" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10763" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10763" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10763" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10764</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10764" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10764" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10764" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10764" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10765</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10765" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10765" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10765" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10765" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10766</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10766" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10766" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10766" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10766" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10767</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10767" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10767" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10767" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10767" />
-  </url>
-  
-  <url>
-    <loc>https://streamflix2.site/category/10768</loc>
-    <lastmod>2025-10-26</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/category/10768" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/category/10768" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/category/10768" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/category/10768" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://streamflix2.site/search" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://streamflix2.site/en/search" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://streamflix2.site/es/search" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://streamflix2.site/search" />
   </url>
 </urlset>

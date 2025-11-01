@@ -14,7 +14,7 @@ export default function MovieDetail() {
   const { toggleFavorite, checkFavorite, isAddingToFavorites } = useFavorites();
   const { shareCurrentPage } = useShare();
 
-  const { data: movieDetails, isLoading } = useQuery({
+  const { data: movieDetails, isLoading, error } = useQuery({
     queryKey: [`/api/tmdb/movie/${movieId}`],
     queryFn: () => tmdbService.getMovieDetails(movieId),
     enabled: !!movieId,
@@ -46,8 +46,16 @@ export default function MovieDetail() {
   });
 
   const handleToggleFavorite = async () => {
-    if (movieDetails?.movie) {
-      await toggleFavorite(movieDetails.movie, 'movie');
+    if (!movie) return;
+    
+    setIsAddingToFavorites(true);
+    try {
+      await toggleFavorite(movie, 'movie');
+      setIsFavorite(!isFavorite);
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    } finally {
+      setIsAddingToFavorites(false);
     }
   };
 
@@ -77,6 +85,56 @@ export default function MovieDetail() {
             <div className="h-3 sm:h-4 bg-muted rounded w-1/2 animate-pulse"></div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Improved error handling for 404 cases
+  if (error) {
+    // Check if it's a 404 error (content not found)
+    if (error.message && (error.message.includes('404') || error.message.includes('not found'))) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center px-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6 text-center">
+              <div className="flex justify-center mb-4">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">Film non trouvé</h1>
+              <p className="text-muted-foreground mb-6">
+                Désolé, le film que vous recherchez n'est pas disponible ou n'existe plus.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button onClick={() => window.location.href = '/'} variant="secondary">
+                  Retour à l'accueil
+                </Button>
+                <Button onClick={() => window.location.href = '/films'}>
+                  Voir tous les films
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
+    // For other errors, show generic error message
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Erreur</h1>
+            <p className="text-muted-foreground mb-6">
+              Une erreur s'est produite lors du chargement des détails du film.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

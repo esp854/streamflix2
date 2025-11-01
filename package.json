@@ -7,6 +7,8 @@
     "build": "cd client && npm install && npm run build && cd .. && npm install && npx esbuild server/index.ts --platform=node --packages=external --external:./server/vite.ts --external:./client/vite.config.ts --bundle --format=cjs --outdir=dist",
     "start": "node dist/index.js",
     "download-trailers": "node scripts/download-trailers.js",
+    "diagnose-content": "cd server && npx tsx diagnose-content.ts",
+    "test-db": "cd server && npx tsx test-db-connection.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

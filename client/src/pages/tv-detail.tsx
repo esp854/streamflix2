@@ -1,7 +1,8 @@
 ﻿﻿﻿﻿﻿﻿﻿﻿import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award } from "lucide-react";
+import { ArrowLeft, Play, Plus, Heart, Share2, Star, Calendar, Clock, Tv, ChevronDown, ChevronRight, Globe, Users, Award, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useState, useMemo } from "react";
 import React from "react";
 import { tmdbService } from "@/lib/tmdb";
@@ -193,16 +194,52 @@ export default function TVDetail() {
     );
   }
 
+  // Improved error handling for 404 cases
   if (error) {
-    console.error("Error loading TV show:", error);
+    // Check if it's a 404 error (content not found)
+    if (error.message && (error.message.includes('404') || error.message.includes('not found'))) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6 text-center">
+              <div className="flex justify-center mb-4">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">Série non trouvée</h1>
+              <p className="text-muted-foreground mb-6">
+                Désolé, la série que vous recherchez n'est pas disponible ou n'existe plus.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button onClick={() => window.location.href = '/'} variant="secondary">
+                  Retour à l'accueil
+                </Button>
+                <Button onClick={() => window.location.href = '/series'}>
+                  Voir toutes les séries
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
+    // For other errors, show generic error message
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4" data-testid="tv-detail-error">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Série non trouvée</h1>
-          <Link href="/">
-            <Button className="w-full">Retour à l'accueil</Button>
-          </Link>
-        </div>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Erreur</h1>
+            <p className="text-muted-foreground mb-6">
+              Une erreur s'est produite lors du chargement des détails de la série.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
