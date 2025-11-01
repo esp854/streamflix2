@@ -49,15 +49,10 @@ export default defineConfig({
     outDir: "../dist/public",
     emptyOutDir: true,
     chunkSizeWarningLimit: 2000,
-    // Optimize bundle splitting
+    // Simplified build configuration to avoid empty chunks
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Separate vendor chunks for better caching
-          vendor: ['react', 'react-dom', 'wouter'],
-          utils: ['@/lib/utils', '@/lib/tmdb'],
-          hooks: ['@/hooks/usePWA', '@/hooks/useAuthCheck', '@/hooks/usePlanFeatures']
-        }
+        // Remove manualChunks that were causing empty bundles
       }
     }
   },
@@ -80,7 +75,6 @@ export default defineConfig({
   },
   // Optimize dependencies
   optimizeDeps: {
-    include: ['react', 'react-dom', 'wouter'],
-    exclude: ['chunk-IPDEAFVS']
+    include: ['react', 'react-dom', 'wouter']
   }
 });
